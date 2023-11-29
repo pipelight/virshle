@@ -1,0 +1,25 @@
+[domain]
+"@type" = "kvm"
+name = "demo"
+uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
+memory = 140000
+vcpu = 2
+
+[domain.os.type]
+"@arch" = "x86_64"
+
+[domain.clock]
+"@sync" = "localtime"
+
+[devices]
+emulator = "/usr/bin/env quemu-kvm"
+
+[devices.disk]
+"@type" = "file"
+"@device" = "disk"
+source."@file" = "/var/lib/libvirt/images/demo2.img"
+target."@dev" = "hda"
+
+[devices.interface]
+"@type" = "network"
+source."@network" = "default"
