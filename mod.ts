@@ -1,5 +1,3 @@
-#!/usr/bin/env -S deno run -A
-
 import { generate as uuid } from "https://deno.land/std/uuid/v1.ts";
 // Xml
 import { stringify as to_xml } from "https://deno.land/x/xml/mod.ts";
