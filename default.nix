@@ -7,6 +7,13 @@ stdenv.mkDerivation {
   version = "0.1.0";
   src = ./.;
   buildInputs = [
-  deno
+    deno
   ];
+  buildPhase = ''
+    deno compile --output virshle ./mod.ts
+  '';
+  installPhase = ''
+    mkdir -p $out/bin
+    install -t $out/bin virshle
+  '';
 }

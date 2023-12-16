@@ -17,8 +17,6 @@ import {
 import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
 import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
 
-type Arguments = [string, (string | undefined)?];
-
 const success = colors.bold.green;
 
 const cli = new Command()
@@ -29,7 +27,7 @@ const cli = new Command()
 // Subcommands - Getters
 cli
   .arguments("[virsh_command] [file]")
-  .action(async (options, ...args: Arguments) => {
+  .action(async (_options, ...args: any) => {
     //Guards
     if (args.length < 2) {
       console.error("Please provide at least a command and a file");
@@ -50,7 +48,7 @@ cli
       markup = from_yaml(text!);
       format = "yaml";
     } else if (JSON.parse(text!)) {
-markup = JSON.parse(text!)
+      markup = JSON.parse(text!);
       format = "json";
     } else {
       console.error("Could not convert the provided file");
