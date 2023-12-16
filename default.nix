@@ -6,7 +6,7 @@ stdenv.mkDerivation {
   __noChroot = true;
 
   name = "virshle";
-  version = "0.1.0";
+  version = "0.1.1";
   src = ./.;
 
   buildInputs = with pkgs; [
