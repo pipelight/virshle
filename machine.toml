@@ -20,15 +20,8 @@ vcpu = 2
 "@device" = "disk"
 "@bus" = "virtio"
 "@size" = 16
-source."@file" = "/home/anon/Disks/nixos.qcow2"
+source."@file" = "/home/anon/ISO/nixos-crocuda.qcow2"
 target."@dev" = "hda"
-
-[[domain.devices.disk]]
-"@type" = "file"
-"@device" = "disk"
-"@bus" = "virtio"
-"@size" = 16
-cdrom = "home/anon/ISO/nixos-minimal-23.11-x86_64-linux.iso"
 
 # [[domain.devices.interface]]
 # "@type" = "network"
