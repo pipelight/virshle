@@ -3,13 +3,17 @@
   stdenv,
 }:
 stdenv.mkDerivation {
+  __noChroot = true;
+
   name = "virshle";
   version = "0.1.0";
   src = ./.;
-  buildInputs = [
+
+  buildInputs = with pkgs; [
     deno
   ];
   buildPhase = ''
+    export HOME=$(pwd)
     deno compile --output virshle ./mod.ts
   '';
   installPhase = ''
