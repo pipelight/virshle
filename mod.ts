@@ -49,6 +49,9 @@ cli
     } else if (from_yaml(text!)) {
       markup = from_yaml(text!);
       format = "yaml";
+    } else if (JSON.parse(text!)) {
+markup = JSON.parse(text!)
+      format = "json";
     } else {
       console.error("Could not convert the provided file");
       return;

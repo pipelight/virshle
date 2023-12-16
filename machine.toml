@@ -7,20 +7,29 @@ vcpu = 2
 
 [domain.os.type]
 "@arch" = "x86_64"
-"#text" = "kvm"
+"#text" = "hvm"
 
 [domain.clock]
 "@sync" = "localtime"
 
-[domain.devices]
-emulator = "/usr/bin/env quemu-kvm"
+# [domain.devices]
+# emulator = "/usr/bin/env qemu-kvm"
 
 [[domain.devices.disk]]
 "@type" = "file"
 "@device" = "disk"
-source."@file" = "/var/lib/libvirt/images/demo2.img"
+"@bus" = "virtio"
+"@size" = 16
+source."@file" = "/home/anon/Disks/nixos.qcow2"
 target."@dev" = "hda"
 
-[[domain.devices.interface]]
-"@type" = "network"
-source."@network" = "default"
+[[domain.devices.disk]]
+"@type" = "file"
+"@device" = "disk"
+"@bus" = "virtio"
+"@size" = 16
+cdrom = "home/anon/ISO/nixos-minimal-23.11-x86_64-linux.iso"
+
+# [[domain.devices.interface]]
+# "@type" = "network"
+# source."@network" = "default"
