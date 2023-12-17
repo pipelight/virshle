@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
     mkdir -p $out/bin
 
     echo -e "#!/usr/bin/env bash
-    deno run -A mod.ts" > ${name}
+    deno run -A $out/bin/mod.ts" > ${name}
 
     install -t $out/bin mod.ts
     install -t $out/bin ${name}
