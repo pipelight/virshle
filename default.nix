@@ -17,6 +17,7 @@ stdenv.mkDerivation {
     deno compile -A --output virshle ./mod.ts
   '';
   installPhase = ''
+    export HOME=$(pwd)
     mkdir -p $out/bin
     install -t $out/bin virshle
   '';
