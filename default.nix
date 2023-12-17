@@ -2,23 +2,24 @@
   pkgs ? import <nixpkgs> {},
   stdenv,
 }:
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   __noChroot = true;
 
   name = "virshle";
-  version = "0.1.1";
+  version = "0.1.3";
   src = ./.;
 
-  buildInputs = with pkgs; [
+  nativeBuildInputs = with pkgs; [
     deno
   ];
-  buildPhase = ''
-    export HOME=$(pwd)
-    deno compile -A --output virshle ./mod.ts
-  '';
+
   installPhase = ''
-    export HOME=$(pwd)
     mkdir -p $out/bin
-    install -t $out/bin virshle
+
+    echo -e "#!/usr/bin/env bash
+    deno run -A mod.ts" > ${name}
+
+    install -t $out/bin mod.ts
+    install -t $out/bin ${name}
   '';
 }

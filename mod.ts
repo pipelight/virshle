@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run -A
+#!/usr/bin/env -S bash -c 'deno run -A $0'
 
 import { generate as uuid } from "https://deno.land/std/uuid/v1.ts";
 // Xml
