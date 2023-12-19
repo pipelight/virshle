@@ -28,7 +28,10 @@ const xml2toml = async ({
 
 const toml2xml = async ({
   file,
-}: Args): Promise<Args> => {
+}: Args): Promise<
+  Args
+  | undefined
+> => {
   // Convert
   const text = await Deno.readTextFile(file!);
 
@@ -67,7 +70,6 @@ const toml2xml = async ({
   console.debug(success(`------------------------------------------`));
 
   return { file: tmp.file };
-
 };
 
 export const convert = {

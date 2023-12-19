@@ -1,10 +1,18 @@
-import { parseFlags } from "https://deno.land/x/cliffy@v1.0.0-rc.3/flags/mod.ts";
+import { parseFlags } from "https://deno.land/x/cliffy/flags/mod.ts";
 import { virsh } from "./mod.ts";
 //Guards
 export const optionGuardSwitch = (deno_args: any) => {
-
   // Igmore flags
-  const { flags } = parseFlags(deno_args);
+  const { flags } = parseFlags(deno_args, {
+    flags: [
+      {
+        name: "verbose",
+        aliases: ["v"],
+        collect: true,
+        value: (_: any, verbose = 0) => ++verbose,
+      },
+    ],
+  });
   const args = flags.unknown;
 
   const is_define = args.some((e: string) => virsh.define.includes(e));
