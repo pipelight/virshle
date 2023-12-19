@@ -1,11 +1,12 @@
 [[pipelines]]
-name =  "example"
+name = "example"
 
 [[pipelines.steps]]
-name = "first"
-commands = ["ls", "pwd"]
+name = "deno_test"
+commands = [
+"deno test", 
+]
 
 [[pipelines.steps]]
 name = "second"
-commands = ["ls","pwd"]
-
+commands = ["ls", "pwd"]
