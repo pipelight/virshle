@@ -1,9 +1,13 @@
 import { parseFlags } from "https://deno.land/x/cliffy/flags/mod.ts";
-import { virsh } from "./mod.ts";
+import { verbosity, virsh } from "./mod.ts";
+import { convert } from "../utils/mod.ts";
+import { run } from "../utils/mod.ts";
 //Guards
-export const optionGuardSwitch = (deno_args: any) => {
+export const optionGuardSwitch = async (deno_args: any) => {
   // Igmore flags
-  const { flags } = parseFlags(deno_args, {
+  const { flags, unknown } = parseFlags(deno_args, {
+    stopEarly: false,
+    stopOnUnknown: false,
     flags: [
       {
         name: "verbose",
@@ -13,26 +17,34 @@ export const optionGuardSwitch = (deno_args: any) => {
       },
     ],
   });
-  const args = flags.unknown;
-
-  const is_define = args.some((e: string) => virsh.define.includes(e));
-  const is_dump = args.some((e: string) => virsh.dump.includes(e));
-  const is_edit = args.some((e: string) => virsh.edit.includes(e));
-
-  if (is_define) {
-    // convertFile()
-  } else if (is_dump) {
-    //Args
-    const command = args.shift();
-    const file = args.shift();
-
-    convertFile(args.shift(), args.shift());
-  } else if (is_edit) {
-    // convertFile()
+  if (flags.verbose) {
+    verbosity.set(flags.verbose);
+  }
+  if (!unknown.length) {
+    console.debug("Please provide a command: virsh --help");
+    const cmd = new Deno.Command("virsh", { args: ["--help"] });
+    // const child = cmd.spawn();
+    return;
   }
 
-  if (args.length < 2) {
-    console.error("Please provide at least a command and a file");
-    return;
+  const is_define = unknown.some((e: string) => virsh.cmds.define.includes(e));
+  const is_dump = unknown.some((e: string) => virsh.cmds.dump.includes(e));
+  const is_edit = unknown.some((e: string) => virsh.cmds.edit.includes(e));
+
+  let args = {
+    command: unknown.shift(),
+    file: unknown.shift(),
+  };
+
+  if (is_define) {
+    args = {
+      ...args,
+      ...await convert.toml2xml(args),
+    };
+    await run(args);
+  } else if (is_dump) {
+    //Args
+  } else if (is_edit) {
+    // convertFile()
   }
 };

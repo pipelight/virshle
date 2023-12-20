@@ -1,10 +1,8 @@
 #!/usr/bin/env -S deno run -A
 
-
 import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
-import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
-
-const success = colors.bold.green;
+import { convert } from "./utils/mod.ts";
+import { optionGuardSwitch } from "./actions/mod.ts";
 
 const cli = new Command()
   .name("virshle")
@@ -12,9 +10,4 @@ const cli = new Command()
   .description("A virsh YAML/TOML wrapper");
 
 // Subcommands - Getters
-cli
-  .arguments("[virsh_command] [file]")
-  .action(async (_options, ...args: any) => {
-  });
-
-await cli.parse(Deno.args);
+await optionGuardSwitch(Deno.args);

@@ -1,6 +1,7 @@
-# Virshle - A modern libvirt wrapper.
+# Virshle - An unabstrative libvirt wrapper.
 
-A wrapper around the virsh cli. It makes it possible to define your virtual
+A wrapper around the virsh cli.
+It makes it possible to define your virtual
 machines in readable formats like **TOML, YAML and JSON** instead of XML.
 
 ## Motivations
@@ -10,8 +11,8 @@ itself an abstraction for many virtualization tool like qemu.
 
 You may ask why another ?
 
-Virshle is not abstraction, it is a convenience wrapper for those who want to use
-libvirt to keep control on there vm but with more readable files.
+Virshle is not abstraction, it is a convenience wrapper for those who want to
+use libvirt to keep control on there vm but with more readable files.
 
 ## Warning - Deno bundle size
 
@@ -31,6 +32,9 @@ Replace xml inner tag argumemts by prefixing them with a "@":
 [domain]
 "@type" = "kvm"
 ```
+
+Virshle adds a verbose flag `-vvvv` on every virsh commands for you to see the
+xml result file.
 
 ## Example
 

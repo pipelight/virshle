@@ -1,2 +1,2 @@
-export { virsh } from "./globals.ts";
-export { convert } from "./convert.ts";
+export * from "./globals.ts";
+export * from "./guards.ts";

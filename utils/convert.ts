@@ -15,21 +15,21 @@ import {
 
 // Colors
 import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
+
+import type { Args } from "../types.ts";
+import { verbosity } from "../actions/mod.ts";
+
 const success = colors.bold.green;
-
-type Args = {
-  file: string;
-};
-
 const xml2toml = async ({
   file,
 }: Args) => {
+  // const text = await Deno.readTextFile(file!);
 };
 
 const toml2xml = async ({
   file,
 }: Args): Promise<
-  Args
+  | Args
   | undefined
 > => {
   // Convert
@@ -62,12 +62,14 @@ const toml2xml = async ({
   await Deno.mkdir(tmp.dir, { recursive: true });
   await Deno.writeFile(`${tmp.file}`, data);
 
-  console.debug(success(`-------------input:${format}--------------`));
-  console.debug(text);
-  console.debug(success(`------------------------------------------`));
-  console.debug(success("-------------output:xml-------------------"));
-  console.debug(xml);
-  console.debug(success(`------------------------------------------`));
+  if (!!verbosity.get()) {
+    console.debug(success(`-------------input:${format}--------------`));
+    console.debug(text);
+    console.debug(success(`------------------------------------------`));
+    console.debug(success("-------------output:xml-------------------"));
+    console.debug(xml);
+    console.debug(success(`------------------------------------------`));
+  }
 
   return { file: tmp.file };
 };
