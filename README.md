@@ -33,8 +33,8 @@ Replace xml inner tag argumemts by prefixing them with a "@":
 "@type" = "kvm"
 ```
 
-Virshle adds a verbose flag `-vvvv` on every virsh commands for you to see the
-xml result file.
+Virshle adds a verbose flag `-vvvv` on every virsh commands for you to see
+underneath input and outputf files.
 
 ## Example
 
