@@ -1,7 +1,10 @@
 // Uuid
 import { generate as uuid } from "https://deno.land/std/uuid/v1.ts";
 // Xml
-import { stringify as to_xml } from "https://deno.land/x/xml/mod.ts";
+import {
+  parse as from_xml,
+  stringify as to_xml,
+} from "https://deno.land/x/xml/mod.ts";
 // Toml
 import {
   parse as from_toml,
@@ -16,41 +19,80 @@ import {
 // Colors
 import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
 
-import type { Args } from "../types.ts";
+import type { DefineArgs, DumpArgs } from "../types.ts";
 import { verbosity } from "../actions/mod.ts";
 
-const success = colors.bold.green;
-const xml2toml = async ({
-  file,
-}: Args) => {
-  // const text = await Deno.readTextFile(file!);
+import { removeEmpty } from "./clean.ts";
+
+type ConvertionResult = {
+  origin_format: string;
+  output: string;
+};
+
+const to_XML = async (input: string): Promise<ConvertionResult> => {
+  let data;
+  let origin_format;
+  if (from_toml(input!)) {
+    data = from_toml(input!);
+    origin_format = "toml";
+  } else if (from_yaml(input!)) {
+    data = from_yaml(input!);
+    origin_format = "yaml";
+  } else if (JSON.parse(input!)) {
+    data = JSON.parse(input!);
+    origin_format = "json";
+  } else {
+    const msg = "Could not convert the provided file";
+    throw new Error(msg);
+  }
+  const output = to_xml(data);
+  return {
+    origin_format,
+    output,
+  };
+};
+const to_TOML = async (input: string): Promise<ConvertionResult> => {
+  let data;
+  let origin_format;
+  if (from_xml(input!)) {
+    data = from_xml(input!);
+    data = removeEmpty(data);
+    origin_format = "xml";
+  } else {
+    const msg = "Could not convert the provided file";
+    throw new Error(msg);
+  }
+  const output = to_toml(data);
+  return {
+    origin_format,
+    output,
+  };
+};
+
+const xml2toml = async (input: string): Promise<string> => {
+  const { origin_format, output } = await to_TOML(input);
+
+  const success = colors.bold.green;
+  if (!!verbosity.get()) {
+    console.debug(success(`-------------input:${origin_format}--------------`));
+    console.debug(input);
+    console.debug(success(`------------------------------------------`));
+    console.debug(success("-------------output:xml-------------------"));
+    console.debug(output);
+    console.debug(success(`------------------------------------------`));
+  }
+  return output;
 };
 
 const toml2xml = async ({
   file,
-}: Args): Promise<
-  | Args
+}: DefineArgs): Promise<
+  | DefineArgs
   | undefined
 > => {
   // Convert
   const text = await Deno.readTextFile(file!);
-
-  let markup;
-  let format;
-  if (from_toml(text!)) {
-    markup = from_toml(text!);
-    format = "toml";
-  } else if (from_yaml(text!)) {
-    markup = from_yaml(text!);
-    format = "yaml";
-  } else if (JSON.parse(text!)) {
-    markup = JSON.parse(text!);
-    format = "json";
-  } else {
-    console.error("Could not convert the provided file");
-    return;
-  }
-  const xml = to_xml(markup);
+  const { origin_format, output: xml } = await to_XML(text);
 
   const tmp = {
     dir: ".virshle/tmp",
@@ -62,8 +104,9 @@ const toml2xml = async ({
   await Deno.mkdir(tmp.dir, { recursive: true });
   await Deno.writeFile(`${tmp.file}`, data);
 
+  const success = colors.bold.green;
   if (!!verbosity.get()) {
-    console.debug(success(`-------------input:${format}--------------`));
+    console.debug(success(`-------------input:${origin_format}--------------`));
     console.debug(text);
     console.debug(success(`------------------------------------------`));
     console.debug(success("-------------output:xml-------------------"));
@@ -75,6 +118,8 @@ const toml2xml = async ({
 };
 
 export const convert = {
+  to_XML,
+  to_TOML,
   xml2toml,
   toml2xml,
 };
