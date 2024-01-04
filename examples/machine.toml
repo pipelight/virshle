@@ -1,16 +1,19 @@
 [domain]
 "@type" = "kvm"
 name = "nixos"
-uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
-memory = 140000
+uuid = "4dea24b7-1d52-d8f3-2516-782e98a23fa0"
 vcpu = 2
+
+[domain.memory]
+"@unit" = "GiB"
+"#text" = 4
 
 [domain.os.type]
 "@arch" = "x86_64"
 "#text" = "hvm"
 
-[domain.clock]
-"@offset" = "localtime"
+# [domain.clock]
+# "@sync" = "localtime"
 
 # [domain.devices]
 # emulator = "/usr/bin/env qemu-kvm"

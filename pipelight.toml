@@ -1,12 +1,13 @@
 [[pipelines]]
-name = "example"
+name = "tests"
 
 [[pipelines.steps]]
-name = "deno_test"
+name = "deno internal tests"
 commands = [
-"deno test", 
+  "deno run -A ./mod.ts ",
+  "deno run -A ./mod.ts define ./examples/machine.toml -vvv",
 ]
 
 [[pipelines.steps]]
-name = "second"
-commands = ["ls", "pwd"]
+name = "virsh integration tests"
+commands = ["deno test"]

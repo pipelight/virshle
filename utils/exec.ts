@@ -3,13 +3,20 @@ import type { DefineArgs, DumpArgs } from "../types.ts";
 
 export const define = async (args: DefineArgs | DumpArgs): Promise<string> => {
   // Sub-process
-  const { code, stdout, stderr } = await $`virsh ${
-    Object.values(args).join(" ")
-  }`
-    .stdout("piped")
-    .stderr("piped");
+  const str = Object.values(args);
+  const cmd = new Deno.Command("virsh", {
+    args: str,
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const child = cmd.spawn();
 
-  if (code == 0) {
+  const output = await child.output();
+
+  const stdout = new TextDecoder().decode(output.stdout);
+  const stderr = new TextDecoder().decode(output.stderr);
+
+  if (output.success) {
     console.log(stdout);
     return stdout;
   } else {
@@ -17,15 +24,23 @@ export const define = async (args: DefineArgs | DumpArgs): Promise<string> => {
     return stderr;
   }
 };
+
 export const dump = async (args: DefineArgs | DumpArgs): Promise<string> => {
   // Sub-process
-  const { code, stdout, stderr } = await $`virsh ${
-    Object.values(args).join(" ")
-  }`
-    .stdout("piped")
-    .stderr("piped");
+  const str = Object.values(args);
+  const cmd = new Deno.Command("virsh", {
+    args: str,
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const child = cmd.spawn();
 
-  if (code == 0) {
+  const output = await child.output();
+
+  const stdout = new TextDecoder().decode(output.stdout);
+  const stderr = new TextDecoder().decode(output.stderr);
+
+  if (output.success) {
     return stdout;
   } else {
     return stderr;
