@@ -10,18 +10,18 @@ vcpu = 2
 "#text" = "hvm"
 
 [domain.clock]
-"@sync" = "localtime"
+"@offset" = "localtime"
 
 # [domain.devices]
 # emulator = "/usr/bin/env qemu-kvm"
 
-[[domain.devices.disk]]
-"@type" = "file"
-"@device" = "disk"
-"@bus" = "virtio"
-"@size" = 16
-source."@file" = "/home/anon/ISO/nixos-crocuda.qcow2"
-target."@dev" = "hda"
+# [[domain.devices.disk]]
+# "@type" = "file"
+# "@device" = "disk"
+# "@bus" = "virtio"
+# "@size" = 16
+# source."@file" = "/home/anon/ISO/nixos-crocuda.qcow2"
+# target."@dev" = "hda"
 
 # [[domain.devices.interface]]
 # "@type" = "network"

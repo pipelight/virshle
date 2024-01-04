@@ -1,7 +1,6 @@
 # Virshle - An unabstrative libvirt wrapper.
 
-A wrapper around the virsh cli.
-It makes it possible to define your virtual
+A wrapper around the virsh cli. It makes it possible to define your virtual
 machines in readable formats like **TOML, YAML and JSON** instead of XML.
 
 ## Motivations
@@ -117,6 +116,24 @@ Replace the usual virsh by virshle.
 
 ```sh
 virshle domain create file.toml
+```
+
+## Develope
+
+Update dependencies
+
+```sh
+deno cache --reload ./mod.ts
+```
+Run main script.
+
+```sh
+deno run -A mod.ts
+```
+Run tests.
+
+```sh
+deno test
 ```
 
 ## S/O

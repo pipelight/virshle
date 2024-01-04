@@ -72,11 +72,16 @@ const edit = [
   "pool-edit",
 ];
 
+const special = [
+  "validate",
+];
+
 const virsh: any = {};
 virsh.cmds = {
   define,
   dump,
   edit,
+  special,
 };
 
 export { virsh };
