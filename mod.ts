@@ -1,13 +1,22 @@
 #!/usr/bin/env -S deno run -A
 
-import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
-import { convert } from "./utils/mod.ts";
-import { optionGuardSwitch } from "./actions/mod.ts";
+import { cli } from "./actions/map.ts";
+import { verbosity } from "./utils/mod.ts";
+import { parseFlags } from "https://deno.land/x/cliffy/flags/mod.ts";
 
-const cli = new Command()
-  .name("virshle")
-  .version("0.1.0")
-  .description("A virsh YAML/TOML wrapper");
+// Set verbosity
+const ctx = Deno.args.filter((e) => e.includes("-v"));
+export const { flags } = parseFlags(ctx, {
+  flags: [{
+    name: "verbosity",
+    aliases: ["v"],
+    collect: true,
+    value: (val: boolean, previous = 0) => val ? previous + 1 : 0,
+  }],
+});
+const args = Deno.args.filter((e) => !e.includes("-v"));
 
-// Subcommands - Getters
-await optionGuardSwitch(Deno.args);
+verbosity.set(flags.verbosity);
+
+// Run cli
+cli.parse(args);

@@ -1,6 +1,6 @@
 import { parseFlags } from "https://deno.land/x/cliffy/flags/mod.ts";
-import { verbosity, virsh } from "./mod.ts";
-import { convert } from "../utils/mod.ts";
+import { virsh } from "./mod.ts";
+import { convert, verbosity } from "../utils/mod.ts";
 import { define, dump, raw, validate } from "../utils/mod.ts";
 import type { DefineArgs, DumpArgs } from "../types.ts";
 //Guards
@@ -34,6 +34,7 @@ export const optionGuardSwitch = async (deno_args: any) => {
     console.debug("Please provide a command: virsh --help");
     return;
   }
+
 
   const is_define = unknown.some((e: string) => virsh.cmds.define.includes(e));
   const is_special = unknown.some((e: string) =>
@@ -73,7 +74,6 @@ export const optionGuardSwitch = async (deno_args: any) => {
       cmd: unknown.shift(),
       item: unknown.shift(),
     };
-
     const data = await dump(args);
     const res = await convert.xml2toml(data);
     console.log(res);

@@ -20,7 +20,7 @@ import {
 import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
 
 import type { DefineArgs, DumpArgs } from "../types.ts";
-import { verbosity } from "../actions/mod.ts";
+import { verbosity } from "./mod.ts";
 
 import { removeEmpty } from "./clean.ts";
 
@@ -77,18 +77,17 @@ const xml2toml = async (input: string): Promise<string> => {
     console.debug(success(`-------------input:${origin_format}--------------`));
     console.debug(input);
     console.debug(success(`------------------------------------------`));
-    console.debug(success("-------------output:xml-------------------"));
+    console.debug(success("-------------output:toml------------------"));
     console.debug(output);
     console.debug(success(`------------------------------------------`));
   }
   return output;
 };
 
-const toml2xml = async ({
-  file,
-}: DefineArgs): Promise<
-  | DefineArgs
-  | undefined
+const toml2xml = async (
+  file: string,
+): Promise<
+  string
 > => {
   // Convert
   const text = await Deno.readTextFile(file!);

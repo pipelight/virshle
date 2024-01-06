@@ -1,13 +1,3 @@
-let VERBOSITY = 0;
-
-export const verbosity = {
-  get: () => {
-    return VERBOSITY;
-  },
-  set: (n: number) => {
-    VERBOSITY = n;
-  },
-};
 // A list of virsh commands that require an XML file as argument
 const define = [
   "attach-device",
