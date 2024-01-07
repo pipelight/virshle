@@ -1,0 +1,74 @@
+
+[domain]
+"@type" = "kvm"
+name = "nixos"
+uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
+vcpu = 2
+
+[domain.memory]
+"@unit" = "GiB"
+"#text" = 4
+
+# [domain.os]
+# "@firmware" = 'efi'
+# boot."@dev" = "cdrom"
+# bootmenu."@enable" = "yes"
+# bootmenu."@timeout" = '3000'
+# smbios."@mode" = 'sysinfo'
+# bios."@useserial" = 'yes'
+# bios."@rebootTimeout" = '0'
+
+# [domain.os.loader]
+# "@secure" = "yes"
+
+[domain.os.type]
+"@arch" = "x86_64"
+"#text" = "hvm"
+
+[domain.clock]
+"@sync" = "localtime"
+
+# [domain.devices]
+# emulator = "/usr/bin/qemu-kvm"
+
+[[domain.devices.disk]]
+"@type" = "file"
+"@device" = "disk"
+driver."@name" = "qemu"
+driver."@type" = "qcow2"
+
+"@bus" = "virtio"
+"@size" = 20
+
+# source."@file" = "~/ISO/nixos-crocuda.qcow2"
+source."@file" = "/home/anon/ISO/nixos.qcow2"
+target."@dev" = "hda"
+# target."@bus" = "ide"
+target."@bus" = "virtio"
+
+# [[domain.devices.interface]]
+# "@type" = "network"
+# source."@network" = "default"
+
+
+## Redirect guest output to host
+
+[domain.serial]
+"@type" = "pty"
+source."@path" = "/dev/pts/0"
+alias."@name" = 'serial0'
+
+[domain.serial.target]
+"@type" = "isa-serial"
+"@port" = 0
+model."@name" = "isa-serial"
+
+[domain.console]
+"@type" = "pty"
+"@tty" = "/dev/pts/0"
+source."@path" = "/dev/pts/0"
+alias."@name" = "serial0"
+
+[domain.console.target]
+"@type" = "serial"
+"@port" = 0

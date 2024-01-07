@@ -1,9 +1,17 @@
-
-type Command = {
+export type Command = {
   cmd: string;
   args: string[];
 };
-export const raw = async ({ cmd, args }: Command): Promise<string> => {
+export enum Status {
+  Success,
+  Fail,
+}
+export type Result = {
+  status: Status;
+  stdout: string;
+  stderr: string;
+};
+export const raw = async ({ cmd, args }: Command): Promise<Result> => {
   // Sub-process
   const str = Object.values(args);
   const command = new Deno.Command(cmd, {
@@ -12,22 +20,23 @@ export const raw = async ({ cmd, args }: Command): Promise<string> => {
     stderr: "piped",
   });
   const child = command.spawn();
-
   const output = await child.output();
 
-  const stdout = new TextDecoder().decode(output.stdout);
-  const stderr = new TextDecoder().decode(output.stderr);
+  const res = {
+    stdout: new TextDecoder().decode(output.stdout),
+    stderr: new TextDecoder().decode(output.stderr),
+    status: output.success ? Status.Success : Status.Fail,
+  };
 
   if (output.success) {
-    console.log(stdout);
-    return stdout;
+    console.log(res.stdout);
   } else {
-    console.log(stderr);
-    return stderr;
+    console.log(res.stderr);
   }
+  return res;
 };
 
-export const pipe = async ({ cmd, args }: Command): Promise<string> => {
+export const pipe = async ({ cmd, args }: Command): Promise<Result> => {
   // Sub-process
   const command = new Deno.Command(cmd, {
     stdout: "piped",
@@ -35,17 +44,14 @@ export const pipe = async ({ cmd, args }: Command): Promise<string> => {
     args: args,
   });
   const child = command.spawn();
-
   const output = await child.output();
 
-  const stdout = new TextDecoder().decode(output.stdout);
-  const stderr = new TextDecoder().decode(output.stderr);
-
-  if (output.success) {
-    return stdout;
-  } else {
-    return stderr;
-  }
+  const res = {
+    stdout: new TextDecoder().decode(output.stdout),
+    stderr: new TextDecoder().decode(output.stderr),
+    status: output.success ? Status.Success : Status.Fail,
+  };
+  return res;
 };
 
 export const exec = {

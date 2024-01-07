@@ -1,6 +1,6 @@
 #!/usr/bin/env -S deno run -A
 
-import { cli } from "./actions/map.ts";
+import { cli } from "./cli/mod.ts";
 import { verbosity } from "./utils/mod.ts";
 import { parseFlags } from "https://deno.land/x/cliffy/flags/mod.ts";
 

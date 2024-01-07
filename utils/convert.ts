@@ -19,10 +19,7 @@ import {
 // Colors
 import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
 
-import type { DefineArgs, DumpArgs } from "../types.ts";
-import { verbosity } from "./mod.ts";
-
-import { removeEmpty } from "./clean.ts";
+import { removeEmpty, verbosity } from "./mod.ts";
 
 type ConvertionResult = {
   origin_format: string;
@@ -70,16 +67,24 @@ const to_TOML = async (input: string): Promise<ConvertionResult> => {
 };
 
 const xml2toml = async (input: string): Promise<string> => {
+  const { columns, rows } = Deno.consoleSize();
+  let indent = "-".repeat(columns / 3);
+
   const { origin_format, output } = await to_TOML(input);
 
   const success = colors.bold.green;
   if (!!verbosity.get()) {
-    console.debug(success(`-------------input:${origin_format}--------------`));
+    console.debug(
+      success(
+        indent + `input:${origin_format}` + indent,
+      ),
+    );
     console.debug(input);
-    console.debug(success(`------------------------------------------`));
-    console.debug(success("-------------output:toml------------------"));
+    console.debug(success(indent.repeat(2)));
+
+    console.debug(success(indent + `output:toml` + indent));
     console.debug(output);
-    console.debug(success(`------------------------------------------`));
+    console.debug(success(indent.repeat(2)));
   }
   return output;
 };
@@ -113,7 +118,7 @@ const toml2xml = async (
     console.debug(success(`------------------------------------------`));
   }
 
-  return { file: tmp.file };
+  return tmp.file;
 };
 
 export const convert = {
