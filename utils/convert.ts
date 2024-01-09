@@ -19,7 +19,7 @@ import {
 // Colors
 import { colors, tty } from "https://deno.land/x/cliffy/ansi/mod.ts";
 
-import { removeEmpty, verbosity } from "./mod.ts";
+import { removeEmpty, replaceRelativePaths, verbosity } from "./mod.ts";
 
 type ConvertionResult = {
   origin_format: string;
@@ -42,6 +42,7 @@ const to_XML = async (input: string): Promise<ConvertionResult> => {
     const msg = "Could not convert the provided file";
     throw new Error(msg);
   }
+  data = await replaceRelativePaths(removeEmpty(data));
   const output = to_xml(data);
   return {
     origin_format,
@@ -53,7 +54,7 @@ const to_TOML = async (input: string): Promise<ConvertionResult> => {
   let origin_format;
   if (from_xml(input!)) {
     data = from_xml(input!);
-    data = removeEmpty(data);
+    data = await replaceRelativePaths(removeEmpty(data));
     origin_format = "xml";
   } else {
     const msg = "Could not convert the provided file";
@@ -103,6 +104,7 @@ const toml2xml = async (
 
   const encoder = new TextEncoder();
   const data = encoder.encode(xml);
+
   await Deno.mkdir(tmp.dir, { recursive: true });
   await Deno.writeFile(`${tmp.file}`, data);
 

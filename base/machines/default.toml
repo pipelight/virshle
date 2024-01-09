@@ -1,7 +1,11 @@
+# Default machine configuration
+# 
+# virshle domain create <vm_definition.toml>
+#
 [domain]
-"@type" = "kvm"
 name = "nixos"
 uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
+"@type" = "kvm"
 vcpu = 2
 
 [domain.memory]
@@ -15,9 +19,6 @@ vcpu = 2
 [domain.clock]
 "@sync" = "localtime"
 
-# [domain.devices]
-# emulator = "/usr/bin/env qemu-kvm"
-
 [[domain.devices.disk]]
 "@type" = "file"
 "@device" = "disk"
@@ -27,17 +28,11 @@ driver."@type" = "qcow2"
 "@bus" = "virtio"
 "@size" = 20
 
-# source."@file" = "~/ISO/nixos-crocuda.qcow2"
-source."@file" = "/home/anon/ISO/nixos.qcow2"
+source."@file" = "~/ISO/nixos.qcow2"
 target."@dev" = "hda"
-# target."@bus" = "virtio"
+target."@bus" = "virtio"
 
 [[domain.devices.interface]]
 "@type" = "network"
-source."@network" = "default4"
+source."@network" = "default_6"
 model."@type" = "virtio"
-
-# [[domain.devices.interface]]
-# "@type" = "network"
-# source."@network" = "default6"
-# model."@type" = "virtio"

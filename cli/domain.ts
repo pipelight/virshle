@@ -108,6 +108,18 @@ export const domain = new Command()
     });
     await Deno.remove(xmlfile);
   })
+  .command("validate", "validate the domain file definition")
+  .arguments("<file:string>")
+  .useRawArgs()
+  .stopEarly()
+  .action(async (options: any, file: string, ...args: string[]) => {
+    const xmlfile = await convert.toml2xml(file);
+    await exec.raw({
+      cmd: "virt-xml-validate",
+      args: [xmlfile, ...args],
+    });
+    await Deno.remove(xmlfile);
+  })
   .command("list", "list domains(vms)")
   .useRawArgs()
   .stopEarly()
