@@ -2,11 +2,14 @@
 name = "tests"
 
 [[pipelines.steps]]
-name = "deno internal tests"
+name = "display help"
 commands = [
   "deno run -A ./mod.ts ",
-  "deno run -A ./mod.ts define ./examples/machine.toml -vvv",
 ]
+
+[[pipelines.steps]]
+name = "clean c"
+commands = ["deno run -A ./mod.ts define ./base/domain/default.toml -vvv"]
 
 [[pipelines.steps]]
 name = "virsh integration tests"

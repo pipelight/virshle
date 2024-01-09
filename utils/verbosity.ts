@@ -4,9 +4,13 @@ declare global {
     loggy: Console;
   }
 }
+const console_clone = JSON.parse(
+  JSON.stringify(console),
+);
+
 const { log, error, warn, info, debug, trace } = console;
 const backup = { log, error, warn, info, debug, trace };
-window.loggy = console;
+window.loggy = backup;
 
 // Global
 const VERBOSITY = { value: 0 };
@@ -14,15 +18,17 @@ const VERBOSITY = { value: 0 };
 const disable = function () {
   // Disable console log statements
   for (const [key, _value] of Object.entries(backup)) {
-    loggy[key as any] = () => undefined;
+    loggy[key] = () => undefined;
   }
 };
+
 // Enable console
 const enable = function () {
   loggy = {
     ...loggy,
   };
 };
+
 // Getter/Setter
 export const verbosity = {
   // Disable console
