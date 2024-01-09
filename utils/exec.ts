@@ -29,9 +29,9 @@ export const raw = async ({ cmd, args }: Command): Promise<Result> => {
   };
 
   if (output.success) {
-    console.log(res.stdout);
+    loggy.log(res.stdout);
   } else {
-    console.log(res.stderr);
+    loggy.log(res.stderr);
   }
   return res;
 };

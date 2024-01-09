@@ -73,19 +73,17 @@ const xml2toml = async (input: string): Promise<string> => {
   const { origin_format, output } = await to_TOML(input);
 
   const success = colors.bold.green;
-  if (!!verbosity.get()) {
-    console.debug(
-      success(
-        indent + `input:${origin_format}` + indent,
-      ),
-    );
-    console.debug(input);
-    console.debug(success(indent.repeat(2)));
+  loggy.info(
+    success(
+      indent + `input:${origin_format}` + indent,
+    ),
+  );
+  loggy.info(input);
+  loggy.info(success(indent.repeat(2)));
 
-    console.debug(success(indent + `output:toml` + indent));
-    console.debug(output);
-    console.debug(success(indent.repeat(2)));
-  }
+  loggy.info(success(indent + `output:toml` + indent));
+  loggy.info(output);
+  loggy.info(success(indent.repeat(2)));
   return output;
 };
 
@@ -109,14 +107,12 @@ const toml2xml = async (
   await Deno.writeFile(`${tmp.file}`, data);
 
   const success = colors.bold.green;
-  if (!!verbosity.get()) {
-    console.debug(success(`-------------input:${origin_format}--------------`));
-    console.debug(text);
-    console.debug(success(`------------------------------------------`));
-    console.debug(success("-------------output:xml-------------------"));
-    console.debug(xml);
-    console.debug(success(`------------------------------------------`));
-  }
+  loggy.info(success(`-------------input:${origin_format}--------------`));
+  loggy.info(text);
+  loggy.info(success(`------------------------------------------`));
+  loggy.info(success("-------------output:xml-------------------"));
+  loggy.info(xml);
+  loggy.info(success(`------------------------------------------`));
 
   return tmp.file;
 };

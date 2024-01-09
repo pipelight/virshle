@@ -1,43 +1,27 @@
-# Virshle - An unabstrative libvirt wrapper.
+# Virshle - Dig out Virtual machines with TOML/YAML/JSON.
 
-A wrapper around the virsh cli. It makes it possible to define your virtual
-machines in readable formats like **TOML, YAML and JSON** instead of XML.
+Define your virtual machines, network and volumes **TOML, YAML and JSON**.
 
-## Motivations
+Written in typescript/deno. Based on libvirt (virsh command line tool).
 
-There is actually a lot of tool that enable abstraction around libvirt which is
-itself an abstraction for many virtualization tool like qemu.
+- Keep commands concise with few options and arguments (ex:
+  `virshle vm create ./base/vm/default.toml`)
+- Readable definitions in markup.
 
-You may ask why another ?
+## Debug
 
-Virshle is not abstraction, it is a convenience wrapper for those who want to
-use libvirt to keep control on there vm but with more readable files.
-
-## Warning - Deno bundle size
-
-Virshle is a very small piece of software written in deno wich means it depends
-on the deno runtime which weights around **30Mb**. It is light still but quite
-heavy for what it does and may be refactor in Rust or Go.
-
-## Convert xml to toml
-
-Replace xml inner tag argumemts by prefixing them with a "@":
-
-```xml
-<domain type="kvm" />
-```
-
-```toml
-[domain]
-"@type" = "kvm"
-```
-
-Virshle adds a verbose flag `-vvvv` on every virsh commands for you to see
-underneath input and outputf files.
+Virshle adds a verbose flag `-vvvv` for you to see the underlying Markup to XML
+convertion.
 
 ## Example
 
-This is how you would define a domain.
+This is how you would define a domain (VMs).
+
+The following defines a VM called "nixos",
+
+- with 2cpu and 4GiB of RAM
+- attached to the default network
+- based on a custom nixos image
 
 ```toml
 [domain]
@@ -97,7 +81,7 @@ forward."@mode" = 'nat'
 "@address" = "192.168.122.1"
 "@netmask" = "255.255.255.0"
 
-[network.ip.dhcpcd.range]
+[network.ip.dhcp.range]
 "@start" = "192.168.122.2"
 "@end" = "192.168.122.254"
 ```
@@ -125,16 +109,28 @@ Update dependencies
 ```sh
 deno cache --reload ./mod.ts
 ```
+
 Run main script.
 
 ```sh
 deno run -A mod.ts
 ```
+
 Run tests.
 
 ```sh
 deno test
 ```
+
+## Nasty purposes 😈
+
+The goal here is to be able to dig out shit tons personnalized virtual machines.
+
+The combination of a custom nixos image and an already provisionned volume for
+secret storage allow for extremly fast deployment bypassing the usual provisionning
+
+
+Nixos has bultin features to build iso based on configuration file.
 
 ## S/O
 
