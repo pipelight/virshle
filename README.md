@@ -13,7 +13,7 @@ Written in typescript/deno. Based on libvirt (virsh command line tool).
 Virshle adds a verbose flag `-vvvv` for you to see the underlying Markup to XML
 convertion.
 
-## Example
+## Usage
 
 This is how you would define a domain (VMs).
 
@@ -86,23 +86,19 @@ forward."@mode" = 'nat'
 "@end" = "192.168.122.254"
 ```
 
-Plus some extra features
+On the command line things get a bit different too.
 
-## Usage
+```sh
+virshle vm create file.toml
+```
 
-Instead of typing
+is translated to
 
 ```sh
 virsh domain create file.xml
 ```
 
-Replace the usual virsh by virshle.
-
-```sh
-virshle domain create file.toml
-```
-
-## Develope
+## Contribute
 
 Update dependencies
 
@@ -116,6 +112,12 @@ Run main script.
 deno run -A mod.ts
 ```
 
+or
+
+```sh
+./mod.ts
+```
+
 Run tests.
 
 ```sh
@@ -126,11 +128,12 @@ deno test
 
 The goal here is to be able to dig out shit tons personnalized virtual machines.
 
+Nixos has bultin features to build iso based on configuration file. This
+bypasses the usual provisionning.
+
 The combination of a custom nixos image and an already provisionned volume for
-secret storage allow for extremly fast deployment bypassing the usual provisionning
-
-
-Nixos has bultin features to build iso based on configuration file.
+secret storage allow for extremly fast deployments (~20 seconds) of complete up
+and running machines.
 
 ## S/O
 
