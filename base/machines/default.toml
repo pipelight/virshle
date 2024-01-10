@@ -28,7 +28,7 @@ driver."@type" = "qcow2"
 "@bus" = "virtio"
 "@size" = 20
 
-source."@file" = "~/ISO/nixos.qcow2"
+source."@file" = "./iso/nixos.qcow2"
 target."@dev" = "hda"
 target."@bus" = "virtio"
 

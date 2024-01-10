@@ -75,7 +75,12 @@ export const verbosity = {
         disable();
         loggy = {
           ...loggy,
-          ...backup,
+          log,
+          error,
+          warn,
+          info,
+          debug,
+          trace
         };
         break;
     }

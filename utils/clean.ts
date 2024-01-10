@@ -16,7 +16,7 @@ const home = Deno.env.get("HOME");
 export const replaceRelativePaths = async (obj: any) => {
   for (const [key, value] of Object.entries(obj)) {
     if (value && typeof value === "object") {
-      replaceRelativePaths(obj[key]);
+      obj[key] = await replaceRelativePaths(obj[key]);
     } else if (value && typeof obj[key] === "string") {
       if (
         (value as string).includes("~")
@@ -28,12 +28,10 @@ export const replaceRelativePaths = async (obj: any) => {
         (value as string).includes("../")
       ) {
         try {
-          obj[key] = await Deno.readLink(value as string);
+          obj[key] = await Deno.realPath(value as string);
         } catch (err) {
-          console.error(
-            red("[Error] ") +
-              `The relative path: ${value} resolves to nothing`,
-          );
+          const msg = `The relative path: ${value} resolves to nothing`;
+          throw new Error(err);
         }
       }
     }

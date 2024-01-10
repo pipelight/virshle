@@ -1,6 +1,9 @@
 # Pipelight internal directory
 .pipelight/
 .virshle/
+
+# Build dir
 virshle
+iso
 result
 
