@@ -3,7 +3,7 @@
 # virshle domain create <vm_definition.toml>
 #
 [domain]
-name = "nixos"
+name = "vm-nixos"
 uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
 "@type" = "kvm"
 vcpu = 2
