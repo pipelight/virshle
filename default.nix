@@ -6,7 +6,7 @@ stdenv.mkDerivation rec {
   __noChroot = true;
 
   name = "virshle";
-  version = "0.1.3";
+  version = "0.1.4";
   src = ./.;
 
   nativeBuildInputs = with pkgs; [
