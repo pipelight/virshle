@@ -1,6 +1,7 @@
 {
   "version": "3",
   "redirects": {
+    "https://deno.land/std/assert/mod.ts": "https://deno.land/std@0.208.0/assert/mod.ts",
     "https://deno.land/std/flags/mod.ts": "https://deno.land/std@0.208.0/flags/mod.ts",
     "https://deno.land/std/fmt/printf.ts": "https://deno.land/std@0.208.0/fmt/printf.ts",
     "https://deno.land/std/path/mod.ts": "https://deno.land/std@0.208.0/path/mod.ts",

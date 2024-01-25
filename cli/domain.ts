@@ -20,8 +20,8 @@ export const domain = new Command()
       args: [map.domain.dump, name],
     });
     if (status == Status.Success) {
-      const res = await convert.xml2toml(stdout);
-      console.log(res);
+      const file = await convert.any2toml(stdout);
+      console.log(file.raw);
     } else if (status == Status.Fail) {
       console.log(stderr);
     }
@@ -85,40 +85,43 @@ export const domain = new Command()
     }
   })
   .command("define", "define (but don,t start) a domain(vm) from a file")
-  .arguments("<file:string>")
+  .arguments("<path:string>")
   .useRawArgs()
   .stopEarly()
-  .action(async (options: any, file: string, ...args: string[]) => {
-    const xmlfile = await convert.toml2xml(file);
+  .action(async (options: any, path: string, ...args: string[]) => {
+    const file = await convert.any2xml(path);
     await exec.raw({
       cmd: "virsh",
-      args: [map.domain.define, xmlfile, ...args],
+      args: [map.domain.define, file.path!, ...args],
     });
-    await Deno.remove(xmlfile);
+    // Clean uo
+    await Deno.remove(file.path!);
   })
   .command("create", "create a domain(vm) from a file")
-  .arguments("<file:string>")
+  .arguments("<path:string>")
   .useRawArgs()
   .stopEarly()
-  .action(async (options: any, file: string, ...args: string[]) => {
-    const xmlfile = await convert.toml2xml(file);
+  .action(async (options: any, path: string, ...args: string[]) => {
+    const file = await convert.any2xml(path);
     await exec.raw({
       cmd: "virsh",
-      args: [map.domain.create, xmlfile, ...args],
+      args: [map.domain.create, file.path!, ...args],
     });
-    await Deno.remove(xmlfile);
+    // Clean up
+    await Deno.remove(file.path!);
   })
   .command("validate", "validate the domain file definition")
-  .arguments("<file:string>")
+  .arguments("<path:string>")
   .useRawArgs()
   .stopEarly()
-  .action(async (options: any, file: string, ...args: string[]) => {
-    const xmlfile = await convert.toml2xml(file);
+  .action(async (options: any, path: string, ...args: string[]) => {
+    const file = await convert.any2xml(path);
     await exec.raw({
       cmd: "virt-xml-validate",
-      args: [xmlfile, ...args],
+      args: [file.path!, ...args],
     });
-    await Deno.remove(xmlfile);
+    // Clean up
+    await Deno.remove(file.path!);
   })
   .command("list", "list domains(vms)")
   .useRawArgs()
@@ -126,4 +129,43 @@ export const domain = new Command()
   .action(async (options: any, ...args: string[]) => {
     await exec.raw({ cmd: "virsh", args: [map.domain.list, ...args] });
   })
-  .command("edit", "edit a domain(vm) configuration");
+  // Edit a configuration with nvim
+  .command("edit", "edit a domain(vm) configuration")
+  .arguments("<name:string>")
+  .useRawArgs()
+  .stopEarly()
+  .action(async (options: any, name: string) => {
+    // Try destroy vm
+    const dumpAction = await exec.pipe({
+      cmd: "virsh",
+      args: [
+        map.domain.dump,
+        name,
+      ],
+    });
+    if (dumpAction.status == Status.Success) {
+      const file = await convert.any2toml(dumpAction.stdout);
+      await exec.simple({
+        cmd: Deno.env.has("EDITOR") ? Deno.env.get("EDITOR")! : "nvim",
+        args: [
+          file.path!,
+        ],
+      });
+
+      const res = await convert.any2xml(file.path!);
+      const defineAction = await exec.pipe({
+        cmd: "virsh",
+        args: [
+          map.domain.define,
+          res.path!,
+        ],
+      });
+      if (defineAction.status == Status.Success) {
+        console.log(defineAction.stdout);
+      } else if (defineAction.status == Status.Fail) {
+        console.log(defineAction.stderr);
+      }
+    } else if (dumpAction.status == Status.Fail) {
+      console.log(dumpAction.stderr);
+    }
+  });

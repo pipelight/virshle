@@ -21,5 +21,7 @@ export const map = {
     remove: "net-destroy",
     undefine: "net-undefine",
     edit: "net-edit", // Deprecated
+    info: "net-info",
+    dhcp: "net-dhcp-leases",
   },
 };

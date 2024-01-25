@@ -1,10 +1,5 @@
 // An intuitive remap of virsh commands
-//
 import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
-
-import { convert, exec, verbosity } from "../utils/mod.ts";
-import { Status } from "../utils/mod.ts";
-import { map } from "./map.ts";
 
 import { domain } from "./domain.ts";
 import { network } from "./network.ts";

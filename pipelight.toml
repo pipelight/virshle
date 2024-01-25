@@ -1,5 +1,4 @@
-
-## Run tests
+## Tests
 [[pipelines]]
 name = "tests"
 [[pipelines.steps]]
@@ -7,18 +6,15 @@ name = "display help"
 commands = ["deno run -A ./mod.ts "]
 [[pipelines.steps]]
 name = "create vm"
-commands = [
-"""
+commands = ["""
 deno run -A ./mod.ts \
   net create \
   ./base/networks/default.toml -vvv
-""",
-"""
+""", """
 deno run -A ./mod.ts \
   vm create \
   ./base/machines/default.toml -vvv
-"""
-]
+"""]
 [[pipelines.steps]]
 name = "clean environment"
 commands = ["""
@@ -38,3 +34,20 @@ commands = [
   "nix build /etc/nixos/modules/crocuda",
   "cp -r /etc/nixos/modules/crocuda/result/* ./iso/",
 ]
+## Create
+[[pipelines]]
+name = "create_vm"
+[[pipelines.steps]]
+name = "display help"
+commands = ["deno run -A ./mod.ts "]
+[[pipelines.steps]]
+name = "create vm"
+commands = ["""
+deno run -A ./mod.ts \
+  net create \
+  ./base/networks/default.toml -vvv
+""", """
+deno run -A ./mod.ts \
+  vm create \
+  ./base/machines/default.toml -vvv
+"""]

@@ -11,13 +11,28 @@ export type Result = {
   stdout: string;
   stderr: string;
 };
-export const raw = async ({ cmd, args }: Command): Promise<Result> => {
+export const simple = async ({ cmd, args }: Command): Promise<Partial<Result>> => {
   // Sub-process
   const str = Object.values(args);
   const command = new Deno.Command(cmd, {
     args: str,
+  });
+  const child = command.spawn();
+  const output = await child.output();
+
+  const res = {
+    status: output.success ? Status.Success : Status.Fail,
+  };
+
+  return res;
+};
+export const raw = async ({ cmd, args }: Command): Promise<Result> => {
+  // Sub-process
+  const str = Object.values(args);
+  const command = new Deno.Command(cmd, {
     stdout: "piped",
     stderr: "piped",
+    args: str,
   });
   const child = command.spawn();
   const output = await child.output();
@@ -57,4 +72,5 @@ export const pipe = async ({ cmd, args }: Command): Promise<Result> => {
 export const exec = {
   raw,
   pipe,
+  simple,
 };
