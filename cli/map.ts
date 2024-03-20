@@ -6,9 +6,11 @@ export const map = {
   domain: {
     dump: "dumpxml",
     create: "create",
+    start: "start",
+    stop: "shutdown",
     define: "define",
     list: "list",
-    destroy: "destroy",
+    delete: "destroy",
     shutdown: "shutdown",
     undefine: "undefine",
     edit: "edit", // Deprecated

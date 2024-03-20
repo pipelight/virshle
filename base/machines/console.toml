@@ -35,13 +35,13 @@ vcpu = 2
 "@type" = "file"
 "@device" = "disk"
 driver."@name" = "qemu"
-driver."@type" = "qcow2"
+driver."@type" = "raw"
 
 "@bus" = "virtio"
 "@size" = 20
 
 # source."@file" = "~/ISO/nixos-crocuda.qcow2"
-source."@file" = "/home/anon/ISO/nixos.qcow2"
+source."@file" = "./iso/nixos.iso"
 target."@dev" = "hda"
 # target."@bus" = "ide"
 target."@bus" = "virtio"

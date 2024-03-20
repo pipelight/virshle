@@ -1,0 +1,38 @@
+# Default machine configuration
+# 
+# virshle domain create <vm_definition.toml>
+#
+[domain]
+name = "vm-nixos"
+uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
+"@type" = "kvm"
+vcpu = 2
+
+[domain.memory]
+"@unit" = "GiB"
+"#text" = 4
+
+[domain.os.type]
+"@arch" = "x86_64"
+"#text" = "hvm"
+
+[domain.clock]
+"@sync" = "localtime"
+
+[[domain.devices.disk]]
+"@type" = "file"
+"@device" = "disk"
+driver."@name" = "qemu"
+driver."@type" = "raw"
+
+"@bus" = "virtio"
+"@size" = 20
+
+source."@file" = "./iso/nixos.iso"
+target."@dev" = "hda"
+target."@bus" = "virtio"
+
+[[domain.devices.interface]]
+"@type" = "network"
+source."@network" = "default_6"
+model."@type" = "virtio"

@@ -163,7 +163,8 @@ export class File {
 
     // Logs
     // Global indent values for logs printing
-    const { columns } = Deno.consoleSize();
+    // const { columns } = Deno.consoleSize();
+    const columns = 30;
     const indent = "-".repeat(columns / 3);
     const success = colors.bold.green;
     loggy.info(

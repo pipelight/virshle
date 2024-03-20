@@ -124,12 +124,13 @@ Run tests.
 deno test
 ```
 
-## Nasty purposes 😈
+## Motivations
 
-The goal here is to be able to dig out shit tons personnalized virtual machines.
+The goal here is to be able to dig out big amouts of personnalized virtual
+machines.
 
 Nixos has bultin features to build iso based on configuration file. This
-bypasses the usual provisionning.
+bypasses the usual provisionning methods.
 
 The combination of a custom nixos image and an already provisionned volume for
 secret storage allow for extremly fast deployments (~20 seconds) of complete up

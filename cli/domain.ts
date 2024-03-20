@@ -38,14 +38,14 @@ export const domain = new Command()
 
   - Delete hypervisor optionnal backups
   */
-  .command("crunch", "hard delete the vm (hypervisor definition and storage)")
+  .command("delete", "hard delete the vm (hypervisor definition and storage)")
   .arguments("<name:string>")
   .action(async (options: any, name: string) => {
     // Try destroy vm
     let { status, stdout, stderr } = await exec.pipe({
       cmd: "virsh",
       args: [
-        map.domain.destroy,
+        map.domain.delete,
         name,
       ],
     });
@@ -109,6 +109,16 @@ export const domain = new Command()
     });
     // Clean up
     await Deno.remove(file.path!);
+  })
+  .command("start", "start a previously defined vm")
+  .arguments("<name:string>")
+  .useRawArgs()
+  .stopEarly()
+  .action(async (options: any, name: string, ...args: string[]) => {
+    await exec.raw({
+      cmd: "virsh",
+      args: [map.domain.start, name, ...args],
+    });
   })
   .command("validate", "validate the domain file definition")
   .arguments("<path:string>")

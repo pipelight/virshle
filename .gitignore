@@ -4,6 +4,6 @@
 
 # Build dir
 virshle
-iso
+iso/*
 result
 
