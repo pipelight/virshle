@@ -139,6 +139,16 @@ export const domain = new Command()
   .action(async (options: any, ...args: string[]) => {
     await exec.raw({ cmd: "virsh", args: [map.domain.list, ...args] });
   })
+  .command("dominfo", "domain(vm) information")
+  .arguments("<path:string>")
+  .useRawArgs()
+  .stopEarly()
+  .action(async (options: any, path: string, ...args: string[]) => {
+    await exec.raw({
+      cmd: "virsh",
+      args: [map.domain.info, name, ...args],
+    });
+  })
   // Edit a configuration with nvim
   .command("edit", "edit a domain(vm) configuration")
   .arguments("<name:string>")

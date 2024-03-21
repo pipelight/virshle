@@ -17,7 +17,7 @@ const build_image = pipeline("build_image", () => [
     "sudo chown anon:users ./iso/*",
     "sudo chmod u+w ./iso/*",
   ]),
-]);
+]).detach();
 
 const create_vm = pipeline("create_vm", () => [
   step("ensure network", () => [
@@ -32,7 +32,7 @@ const create_vm = pipeline("create_vm", () => [
 
 const clean_env = pipeline("clean_env", () => [
   step("delete vm(domain)", () => [
-    `${bin.test} vm crunch vm-nixos -vvv`,
+    `${bin.test} vm delete vm-nixos -vvv`,
   ]),
   step("delete network", () => [
     `${bin.test} net remove default_6 -vvv`,
@@ -40,6 +40,9 @@ const clean_env = pipeline("clean_env", () => [
 ]);
 
 const config = {
+  options: {
+    attach: true,
+  },
   pipelines: [
     build_image,
     create_vm,

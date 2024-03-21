@@ -2,6 +2,8 @@
 import { Command } from "https://deno.land/x/cliffy/command/mod.ts";
 
 import { domain } from "./domain.ts";
+import { pool } from "./pool.ts";
+import { volume } from "./volume.ts";
 import { network } from "./network.ts";
 
 export const cli = new Command()
@@ -15,4 +17,6 @@ export const cli = new Command()
     { default: 0 },
   )
   .command("vm", domain)
+  .command("pool", pool)
+  .command("vol", volume)
   .command("net", network);

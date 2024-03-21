@@ -1,0 +1,13 @@
+[volume]
+name = "vol_10G"
+allocation = "0"
+
+[volume.capacity]
+"#text" = 10
+"@unit" = "GiB"
+
+[volume.target]
+path = "~/.libvirt/volumes/10G.img"
+
+# Virshle convenience tag
+pool = "default"

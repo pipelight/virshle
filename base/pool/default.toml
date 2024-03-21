@@ -1,0 +1,6 @@
+[pool]
+"@type" = "dir"
+name = "default"
+
+[pool.target]
+path = "~/.libvirt/pools/default/"
