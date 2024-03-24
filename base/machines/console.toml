@@ -44,23 +44,40 @@ emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 "@firmware" = 'efi'
 
 #################################
-# Iso
+# OS
 
 [[domain.devices.disk]]
 
 "@type" = "file"
 "@device" = "cdrom"
 source."@file" = "./iso/nixos.iso"
-# source."@file" = "./iso/nixos.qcow2"
-# source."@file" = "./iso/nixos-minimal.iso"
-
 [domain.devices.disk.target]
 "@bus" = "ide"
 "@dev" = "hdc"
 
-# [domain.devices.disk.driver]
-# "@name" = "qemu"
-# "@type" = "raw"
+#################################
+# Cloud-init
+
+# [[domain.devices.disk]]
+#
+# "@type" = "file"
+# "@device" = "cdrom"
+# source."@file" = "./iso/cidata.iso"
+# [domain.devices.disk.target]
+# "@bus" = "ide"
+# "@dev" = "hdd"
+
+#################################
+# Configuration storage
+
+[[domain.devices.disk]]
+
+"@type" = "file"
+"@device" = "disk"
+source."@file" = "~/.libvirt/volumes/20M.img"
+[domain.devices.disk.target]
+"@dev" = "hdb"
+"@bus" = "virtio"
 
 #################################
 # Storage
@@ -69,19 +86,19 @@ source."@file" = "./iso/nixos.iso"
 
 "@type" = "file"
 "@device" = "disk"
-
 source."@file" = "~/.libvirt/volumes/10G.img"
 
-target."@dev" = "hdb"
-target."@bus" = "virtio"
+[domain.devices.disk.target]
+"@dev" = "hda"
+"@bus" = "virtio"
 
 #################################
 # Network
 
-# [[domain.devices.interface]]
-# "@type" = "network"
-# source."@network" = "default_6"
-# model."@type" = "virtio"
+[[domain.devices.interface]]
+"@type" = "network"
+source."@network" = "default_6"
+model."@type" = "virtio"
 
 #################################
 # Utils

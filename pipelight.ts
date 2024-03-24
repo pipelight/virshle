@@ -13,7 +13,7 @@ const build_image = pipeline("build_image", () => [
     "nix build ~/Fast/nixos/vm",
   ]),
   step("copy result to pwd", () => [
-    "sudo cp -r ~/Fast/nixos/vm/result/iso/* ./iso/",
+    "sudo cp -r ./result/iso/* ./iso/",
     "sudo chown anon:users ./iso/*",
     "sudo chmod u+w ./iso/*",
   ]),

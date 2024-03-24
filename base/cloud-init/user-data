@@ -1,0 +1,5 @@
+#cloud-config
+users:
+  - name: 'anon'
+    ssh_authorized_keys:
+      - ''

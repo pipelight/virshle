@@ -91,7 +91,7 @@ export const network = new Command()
   .action(async (options: any, ...args: string[]) => {
     await exec.raw({ cmd: "virsh", args: [map.network.list, ...args] });
   })
-  // Edit a configuration with nvim
+  // Edit a configuration with editor
   .command("edit", "edit a network configuration")
   .arguments("<name:string>")
   .useRawArgs()
@@ -123,7 +123,6 @@ export const network = new Command()
         ],
       });
       if (defineAction.status == Status.Success) {
-
         console.log(defineAction.stdout);
       } else if (defineAction.status == Status.Fail) {
         console.log(defineAction.stderr);
