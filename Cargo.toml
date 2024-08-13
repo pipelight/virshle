@@ -1,0 +1,8 @@
+[package]
+name = "virshle2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pipelight_utils = "0.2.3"
+serde_json = "1.0.124"

@@ -1,0 +1,133 @@
+
+[domain]
+"@type" = "kvm"
+name = "vm-nixos"
+uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
+
+# Ressources
+vcpu = 2
+[domain.memory]
+"@unit" = "GiB"
+"#text" = 4
+
+[domain.clock]
+"@sync" = "localtime"
+
+[domain.devices]
+emulator = "/run/libvirt/nix-emulators/qemu-kvm"
+
+#################################
+## SMBIOS
+
+# [domain.os]
+# type = "hvm"
+#
+# [domain.os.bios]
+# "@useserial" = "yes"
+# "@rebootTimeout" = "0"
+#
+# [domain.os.bootmenu]
+# "@enable" = "yes"
+# "@timeout" = "3000"
+
+
+#################################
+## EFI
+
+[[domain.os.boot]]
+"@dev" = "hd"
+[[domain.os.boot]]
+"@dev" = "cdrom"
+
+[domain.os.type]
+"#text" = "hvm"
+"@type" = "x86_64"
+"@firmware" = 'efi'
+
+#################################
+# OS
+
+[[domain.devices.disk]]
+
+"@type" = "file"
+"@device" = "cdrom"
+source."@file" = "./iso/nixos.iso"
+[domain.devices.disk.target]
+"@dev" = "hdc"
+"@bus" = "ide"
+
+#################################
+# Pipelight-init
+
+[[domain.devices.disk]]
+
+
+"@type" = "file"
+"@device" = "disk"
+source."@file" = "./iso/pipelight-init.img"
+
+# Bug: Target is gnored by libvirt
+# Fix: Use serial instead and retrieve at path:
+# /dev/disk/by-id/<bus>-<serial>
+serial = "pipelight-init"
+[domain.devices.disk.target]
+"@dev" = "vdd"
+"@bus" = "virtio"
+
+
+#################################
+# Configuration storage
+
+[[domain.devices.disk]]
+
+"@type" = "file"
+"@device" = "disk"
+source."@file" = "~/.libvirt/volumes/standard/20M.img"
+[domain.devices.disk.target]
+"@dev" = "hdb"
+"@bus" = "virtio"
+
+#################################
+# Storage
+
+[[domain.devices.disk]]
+
+"@type" = "file"
+"@device" = "disk"
+source."@file" = "~/.libvirt/volumes/standard/10G.img"
+
+[domain.devices.disk.target]
+"@dev" = "hda"
+"@bus" = "virtio"
+
+#################################
+# Network
+
+[[domain.devices.interface]]
+"@type" = "network"
+source."@network" = "default_6"
+model."@type" = "virtio"
+
+#################################
+# Utils
+## Redirect guest output to host
+
+[domain.devices.serial]
+"@type" = "pty"
+source."@path" = "/dev/pts/0"
+alias."@name" = 'serial0'
+
+[domain.devices.serial.target]
+"@type" = "isa-serial"
+"@port" = 0
+model."@name" = "isa-serial"
+
+[domain.devices.console]
+"@type" = "pty"
+"@tty" = "/dev/pts/0"
+source."@path" = "/dev/pts/0"
+alias."@name" = "serial0"
+
+[domain.devices.console.target]
+"@type" = "serial"
+"@port" = 0
