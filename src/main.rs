@@ -88,21 +88,31 @@ pub fn get_text(map: &mut Map<String, Value>) -> Result<Option<String>> {
 //     Ok(())
 // }
 
-pub fn read_value(tuple: &mut Value) -> Result<()> {
-    for (key, value) in tuple.as_object_mut().unwrap() {
-        if value.is_object() {
-            let attributes = get_attributes(value.as_object_mut().unwrap())?;
-            let text = get_text(value.as_object_mut().unwrap())?;
+pub fn read_value(value: &mut Value) -> Result<()> {
+    match value {
+        Value::Object(map) => {
+            for (key, value) in map {
+                if value.is_object() {
+                    let attributes = get_attributes(value.as_object_mut().unwrap())?;
+                    let text = get_text(value.as_object_mut().unwrap())?;
 
-            print_open_tag(key, &attributes)?;
+                    print_open_tag(key, &attributes)?;
 
-            // if it is an object, check recursively
-            read_value(value)?;
+                    // if it is an object, check recursively
+                    read_value(value)?;
 
-            print_close_tag(key)?;
-        } else {
-            println!("<{}>: {}", key, value);
+                    print_close_tag(key)?;
+                } else {
+                    println!("<{}>: {}", key, value);
+                }
+            }
         }
+        Value::String(string) => {}
+        Value::Number(number) => {}
+        Value::Array(array) => {}
+        Value::Bool(e) => {}
+        Value::Null => {}
+        _ => {}
     }
     Ok(())
 }
