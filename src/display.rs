@@ -106,6 +106,17 @@ pub fn read_value(key: &str, value: &mut Value, ident_level: &mut i64) -> Result
     Ok(())
 }
 
+pub fn to_xml(value: &Value) -> Result<String> {
+    let mut w_root = Map::new();
+    w_root.insert("root".to_owned(), value.to_owned());
+
+    let value = Value::Object(w_root);
+    // println!("{:#?}", value);
+
+    let res = quick_xml::se::to_string(&value).into_diagnostic()?;
+    Ok(res)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

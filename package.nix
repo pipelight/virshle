@@ -20,6 +20,14 @@ pkgs.rustPlatform.buildRustPackage rec {
     installShellFiles
     pkg-config
   ];
+  buildInputs = with pkgs; [
+    openssl
+    pkg-config
+    libvirt
+    libvirt-glib
+    rust-bin.nightly.latest.default
+    llvmPackages_latest.bintools
+  ];
 
   postInstall = with lib; ''
     installShellCompletion --cmd ${pname}\

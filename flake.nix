@@ -27,9 +27,14 @@
         pkgs,
         system,
         ...
-      }: {
-        packages.default = pkgs.callPackage ./package.nix {};
+      }: let
+        overlays = [(import rust-overlay)];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+      in {
         devShells.default = pkgs.callPackage ./shell.nix {};
+        packages.default = pkgs.callPackage ./package.nix {};
       };
     };
 }
