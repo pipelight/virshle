@@ -16,3 +16,7 @@ radicle-term = { version = "0.10.0", package = "radicle-term" }
 log = "0.4.22"
 clap-verbosity-flag = "2.2.1"
 virt = "0.4.0"
+thiserror = "1.0.63"
+serde = { version = "1.0.208", features = ["derive"] }
+bevy_reflect = "0.14.1"
+vec_to_array = "0.2.3"

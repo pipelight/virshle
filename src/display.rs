@@ -1,170 +1,64 @@
-use serde_json::{json, Map, Value};
-use std::fs;
+use bevy_reflect::{FieldIter, Reflect, Struct};
 // Error Handling
 use log::trace;
 use miette::{IntoDiagnostic, Result};
 
-pub fn get_text(map: &mut Map<String, Value>) -> Result<Option<String>> {
-    let prefix = "#";
-    let mut text: Option<String> = None;
-    for key in map.clone().keys() {
-        if key.starts_with(prefix) {
-            let value = map.get(key).unwrap();
-            text = Some(value.to_string().trim_matches('"').to_owned());
+use crate::{error::VirshleError, resources::Vm};
+use vec_to_array::vec_to_array;
+
+use radicle_term::{Color, Constraint, Element, Table, TableOptions};
+use std::fmt;
+use std::fmt::Display;
+
+impl Vm {
+    pub fn display(vms: Vec<Vm>) -> Result<String> {
+        let mut t = Table::new(TableOptions {
+            border: Some(Color::Unset),
+            spacing: 3,
+            ..TableOptions::default()
+        });
+        t.push([
+            "id".to_owned(),
+            "name".to_owned(),
+            "vcpu".to_owned(),
+            "vram".to_owned(),
+        ]);
+        t.divider();
+        for vm in vms {
+            let values: [String; 4] = [
+                vm.id.to_string(),
+                vm.name,
+                vm.vcpu.to_string(),
+                vm.vram.to_string(),
+            ];
+            t.push(values);
         }
+        let res = t.display(Constraint::UNBOUNDED);
+        Ok(res)
     }
-    Ok(text)
-}
-
-pub fn get_attributes(map: &mut Map<String, Value>) -> Result<Option<Vec<(String, String)>>> {
-    let prefix = "@";
-    let mut attributes: Vec<(String, String)> = vec![];
-
-    for key in map.clone().keys() {
-        if key.starts_with(prefix) {
-            let attribute: (String, String) = (
-                key.strip_prefix(prefix).unwrap().to_owned(),
-                map.get(key).unwrap().to_string(),
-            );
-            map.shift_remove_entry(key);
-            attributes.push(attribute);
-        }
-    }
-    if attributes.is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(attributes))
-    }
-}
-
-pub fn print_open_tag(
-    name: &str,
-    attributes: Option<Vec<(String, String)>>,
-    text: Option<String>,
-    indent_level: &mut i64,
-) -> Result<()> {
-    let ident = "  ".repeat(*indent_level as usize);
-    let mut open_tag = format!("{ident}<{name}");
-
-    if let Some(attributes) = attributes {
-        let attributes = attributes
-            .iter()
-            // Separate attributes with a space
-            .map(|(k, v)| format!(" {k}={v}"))
-            .collect::<Vec<String>>()
-            .join("");
-        open_tag += &attributes;
-    }
-
-    open_tag += ">";
-
-    if let Some(text) = text {
-        open_tag += &format!("{}", text);
-    }
-
-    println!("{}", open_tag);
-    Ok(())
-}
-
-pub fn print_close_tag(name: &str, ident_level: &mut i64) -> Result<()> {
-    let ident = "  ".repeat(*ident_level as usize);
-    let close_tag = format!("{ident}</{name}>");
-    println!("{}", close_tag);
-    Ok(())
-}
-
-// pub fn get_element(map: &mut Map<String, Value>) -> Result<(String,Value)> {
-//     Ok(())
-// }
-
-pub fn read_value(key: &str, value: &mut Value, ident_level: &mut i64) -> Result<()> {
-    match value {
-        Value::Object(map) => {
-            let mut ident_level: i64 = *ident_level + 1;
-            let text = get_text(map)?;
-            let attributes = get_attributes(map)?;
-
-            print_open_tag(key, attributes, text, &mut ident_level)?;
-            for (k, v) in map {
-                read_value(k, v, &mut ident_level)?;
-            }
-            print_close_tag(key, &mut ident_level)?;
-        }
-        Value::String(value) => {
-            print_open_tag(key, None, None, ident_level)?;
-            let ident = "  ".repeat(*ident_level as usize);
-            println!("{ident}{value}");
-            print_close_tag(key, ident_level)?;
-        }
-        Value::Array(value) => {
-            for e in value {
-                read_value(key, e, ident_level)?;
-            }
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-pub fn to_xml(value: &Value) -> Result<String> {
-    let mut w_root = Map::new();
-    w_root.insert("root".to_owned(), value.to_owned());
-
-    let value = Value::Object(w_root);
-    // println!("{:#?}", value);
-
-    let res = quick_xml::se::to_string(&value).into_diagnostic()?;
-    Ok(res)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::toml::from_toml;
-    use std::path::PathBuf;
-
-    // Error Handling
-    use miette::{IntoDiagnostic, Result};
 
     #[test]
-    fn from_toml_to_xml() -> Result<()> {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("examples/vm/base.toml");
-        let path = path.to_str().unwrap();
-
-        let string = fs::read_to_string(path).into_diagnostic()?;
-
-        let mut value = from_toml(&string)?;
-        println!("{:#?}", value);
-
-        println!("");
-        // let res = to_xml(&value)?;
-
-        read_value("root", &mut value, &mut 0)?;
-        // assert!(res.is_ok());
+    fn try_display_template() -> Result<()> {
+        let vms = vec![Vm {
+            id: 4,
+            name: "TestOs".to_owned(),
+            vcpu: 2,
+            vram: 420000,
+        }];
+        let res = Vm::display(vms)?;
+        println!("\n{}", res);
         Ok(())
     }
     #[test]
-    fn value_to_xml() -> Result<()> {
-        let mut value = json!({
-            "domain": {
-                "@type": "kvm",
-                "clock": {
-                    "@sync": "localtime",
-                },
-                "memory": {
-                    "@unit": "GiB",
-                    "#text": 4,
-                },
-            },
-        });
-
-        println!("");
-        read_value("root", &mut value, &mut 0)?;
-
-        // let res = from_toml(&string);
-        // assert!(res.is_ok());
-
+    fn try_display_real() -> Result<()> {
+        let vms = Vm::get_all()?;
+        let res = Vm::display(vms)?;
+        println!("\n{}", res);
         Ok(())
     }
 }

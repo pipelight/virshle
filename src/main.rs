@@ -1,5 +1,8 @@
 mod display;
-mod getter;
+pub mod error;
+pub mod resources;
+
+mod parse_xml;
 mod toml;
 
 use crate::toml::from_toml;
