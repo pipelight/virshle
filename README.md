@@ -1,35 +1,36 @@
-# Virshle - A cli to manage virtual machines.
+# Virshle - Virtual machines from the command line.
 
-Define your virtual machines(VM) with **TOML**.
+Virsh + Toml = Virshle.
 
-This is essentialy the virsh command line tool with some features.
+A command line interface to replace virsh.
 
-- [x] support for easy file formats (Toml)
-- [x] add support for relative paths inside vm definition
-- [ ] templates for trivial VMs.
+- [x] define vm, network and storage with **TOML**.
+- [x] use relative paths inside vm definition.
+- [x] use templates for trivial VMs creation.
+- [ ] autodetect the resource type (vm, network...).
 
-## Usage
-
-### Prerequisit
-
-Install libvirt.
-
-### Tweak existing VMs
-
-This will open the VM definition within your favorite editor.
+## 🚀 Get started!
 
 ```sh
-virshle vm edit my_machine.toml
+# Create resources
+virshle create ./template/vm/base.toml
+
+# List resources
+virshle ls
+virshle ls vm
+virshle ls network
+
+# Delete resources
+virshle delete <resource_name>
+
 ```
 
-### Define new VMs
+### Define a virtual machine (domain)
 
-This is how you would define a VM.
-
-The following defines a VM called "nixos",
+The following Toml file defines a VM called "nixos":
 
 - with 2cpu and 4GiB of RAM
-- attached to the default network
+- attached to a default network
 - based on a custom nixos image
 
 ```toml
@@ -68,10 +69,10 @@ target."@bus" = "virtio"
 source."@network" = "default"
 ```
 
-Bring it up with
+Bring the guest up with,
 
 ```sh
-virshle vm create network.toml
+virshle create ./template/vm/base.toml
 ```
 
 This is how you would define a network.
@@ -103,36 +104,58 @@ forward."@mode" = 'nat'
 Bring it up with
 
 ```sh
-virshle net create network.toml
+virshle create ./template/network/network.toml
 ```
 
-## Debug
+### Debug
 
-Virshle adds a verbose flag `-vvvv` for you to see the underlying Markup to XML
-convertion.
-
-## Contribute
-
-Update dependencies
+Increase verbosity.
 
 ```sh
-deno cache --reload ./mod.ts
+virshle create <file> -vvvv
 ```
 
-Run main script.
+## 🛠️ Install
 
-```sh
-deno run -A mod.ts
+You must have libvirt already installed.
+
+### With Cargo (the Rust package manager)
+
+```sh-vue
+cargo install --git https://github.com/pipelight/virshle
 ```
 
-or
+### With Nixos (and flakes)
 
-```sh
-./mod.ts
+Try it in an isolated shell.
+
+```nix
+nix shell github:pipelight/pipelight
 ```
 
-Run tests.
+Install it on your system.
 
-```sh
-deno test
+```nix
+{
+  description = "NixOS configuration for crocuda development";
+
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    virshle.url = "github:pipelight/pipelight";
+  };
+
+  outputs = {
+    nixpkgs,
+    pipelight,
+  }: {
+
+    # Put this somewhere in your
+    # environment system packages
+    # user packages
+    # or
+    # home manager packages
+    virshle.packages.${system}.default
+
+  };
+}
 ```
