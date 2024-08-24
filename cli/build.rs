@@ -21,14 +21,13 @@ fn main() -> Result<()> {
     fs::create_dir_all(outdir).into_diagnostic()?;
 
     let mut cmd = Cli::command();
-    let name = cmd.get_name().to_string();
+    let name = "virshle";
+    // let name = cmd.get_name().to_string();
     let shells = vec![Shell::Bash, Shell::Zsh, Shell::Fish];
     for shell in shells {
         let path = generate_to(
-            shell,
-            &mut cmd, // We need to specify what generator to use
-            name.clone(),
-            outdir, // We need to specify where to write to
+            shell, &mut cmd, // We need to specify what generator to use
+            name, outdir, // We need to specify where to write to
         )
         .into_diagnostic()?;
         println!("cargo:warning=completion file is generated: {path:?}");
