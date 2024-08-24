@@ -1,0 +1,11 @@
+[package]
+name = "virshle"
+version = "0.1.2"
+edition = "2021"
+
+[dependencies]
+cli = { path = "../cli" }
+miette = { version = "7.2.0", features = ["fancy"] }
+log = "0.4.22"
+serde = { version = "1.0.208", features = ["derive"] }
+env_logger = "0.11.5"

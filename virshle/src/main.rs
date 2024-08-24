@@ -1,34 +1,18 @@
-mod display;
-pub mod error;
-pub mod resources;
-
-mod parse_xml;
-mod toml;
-
-use crate::toml::from_toml;
-
-use pipelight_utils::files::*;
-use serde_json::{json, Map, Value};
-
-use quick_xml::events::{attributes, BytesEnd, BytesStart, Event};
-use quick_xml::reader::Reader;
-use quick_xml::writer::Writer;
-use std::io::Cursor;
-
+use cli::Cli;
 use std::{process::ExitCode, u8};
 
 // Error Handling
 use log::trace;
 use miette::{IntoDiagnostic, Result};
-use std::fs;
 
 /**
-The pipelight binary entrypoint.
-This main function is the first function to be executed when launching pipelight.
+The binary entrypoint.
+This main function is the first function to be executed when launching the binary.
 */
 fn main() -> Result<()> {
     trace!("Launch process.");
     make_handler()?;
+    Cli::run()?;
     trace!("Process clean exit.");
     Ok(())
 }

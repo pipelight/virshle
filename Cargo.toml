@@ -1,22 +1,7 @@
-[package]
-name = "virshle"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-clap = { version = "4.5.16", features = ["derive"] }
-miette = { version = "7.2.0", features = ["fancy"] }
-pipelight_utils = { version = "0.2.7", features = [] }
-quick-xml = { version = "0.36.1", features = ["serde", "serialize"] }
-schemars = "0.8.21"
-serde-xml-rs = "0.6.0"
-serde_json = { version = "1.0.125", features = ["preserve_order"] }
-toml = "0.8.19"
-radicle-term = { version = "0.10.0", package = "radicle-term" }
-log = "0.4.22"
-clap-verbosity-flag = "2.2.1"
-virt = "0.4.0"
-thiserror = "1.0.63"
-serde = { version = "1.0.208", features = ["derive"] }
-bevy_reflect = "0.14.1"
-vec_to_array = "0.2.3"
+[workspace]
+resolver = "2"
+members = [
+  "cli",          # command line definition
+  "virshle",      # binary entrypoint
+  "virshle_core",
+]
