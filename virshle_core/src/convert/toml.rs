@@ -19,6 +19,9 @@ pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
         }
     }
 }
+pub fn relpath_to_fullpath(value: Value) -> Result<Value> {
+    Ok(value)
+}
 
 #[cfg(test)]
 mod test {
