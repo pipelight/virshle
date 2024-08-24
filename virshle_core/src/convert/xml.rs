@@ -118,7 +118,7 @@ fn make_open_tag(
     if let Some(text) = text {
         open_tag.push_str(&text);
     }
-    open_tag.push_str("\n");
+    // open_tag.push_str("\n");
     Ok(open_tag)
 }
 
@@ -127,7 +127,13 @@ fn make_open_tag(
 */
 fn make_close_tag(name: &str, ident_level: &mut i64) -> Result<String, VirshleError> {
     let ident = "  ".repeat(*ident_level as usize);
-    let close_tag = format!("{ident}</{name}>");
+    let mut close_tag = format!("{ident}</{name}>");
+    close_tag.push_str("\n");
+    Ok(close_tag)
+}
+fn make_direct_close_tag(name: &str) -> Result<String, VirshleError> {
+    let mut close_tag = format!("</{name}>");
+    close_tag.push_str("\n");
     Ok(close_tag)
 }
 
@@ -145,14 +151,21 @@ pub fn make_xml_tree(
             let mut ident_level: i64 = *ident_level + 1;
             let text = get_text(map)?;
             let attributes = get_attributes(map)?;
-
-            base_string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
-            // base_string.push_str("\n");
-            for (k, v) in map {
-                make_xml_tree(k, v, &mut ident_level, base_string)?;
+            if !map.is_empty() {
+                base_string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
+                base_string.push_str("\n");
+                for (k, v) in map {
+                    make_xml_tree(k, v, &mut ident_level, base_string)?;
+                }
+                base_string.push_str(&make_close_tag(key, &mut ident_level)?);
+            } else {
+                base_string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
+                // base_string.push_str("\n");
+                for (k, v) in map {
+                    make_xml_tree(k, v, &mut ident_level, base_string)?;
+                }
+                base_string.push_str(&make_direct_close_tag(key)?);
             }
-            base_string.push_str(&make_close_tag(key, &mut ident_level)?);
-            base_string.push_str("\n");
         }
         Value::String(value) => {
             let mut ident_level: i64 = *ident_level + 1;
@@ -164,21 +177,17 @@ pub fn make_xml_tree(
                 &mut ident_level,
             )?);
 
-            base_string.push_str(&make_close_tag(key, &mut ident_level)?);
-            base_string.push_str("\n");
+            base_string.push_str(&make_direct_close_tag(key)?);
         }
         Value::Number(value) => {
             let mut ident_level: i64 = *ident_level + 1;
-            // println!("{key}{value}");
             base_string.push_str(&make_open_tag(
                 key,
                 None,
                 Some(value.to_string()),
                 &mut ident_level,
             )?);
-
-            base_string.push_str(&make_close_tag(key, &mut ident_level)?);
-            base_string.push_str("\n");
+            base_string.push_str(&make_direct_close_tag(key)?);
         }
         Value::Array(value) => {
             for e in value {

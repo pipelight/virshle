@@ -98,10 +98,20 @@ impl Vm {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn fetch_domains() -> Result<()> {
         let items = Vm::get_all();
+        println!("{:#?}", items);
+        Ok(())
+    }
+    #[test]
+    fn create_domain() -> Result<()> {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("../templates/vm/base.toml");
+
+        let items = Vm::set(&path.display().to_string());
         println!("{:#?}", items);
         Ok(())
     }

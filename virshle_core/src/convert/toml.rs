@@ -34,7 +34,6 @@ mod test {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("../templates/vm/base.toml");
         let path = path.to_str().unwrap();
-
         let string = fs::read_to_string(path).into_diagnostic()?;
         Ok(())
     }
@@ -47,9 +46,8 @@ mod test {
 
         let string = fs::read_to_string(path).into_diagnostic()?;
 
-        let res = from_toml(&string);
-        // println!("{:#?}", res);
-        assert!(res.is_ok());
+        let res = from_toml(&string)?;
+        println!("{:#?}", res);
 
         Ok(())
     }
