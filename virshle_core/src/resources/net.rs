@@ -64,6 +64,11 @@ impl Net {
         }
         Ok(list)
     }
+    pub fn set(filepath: &str) -> Result<(), VirshleError> {
+        let conn = connect()?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

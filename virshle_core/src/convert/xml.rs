@@ -1,15 +1,51 @@
 use serde_json::{json, Map, Value};
 use std::fs;
+
 // Error Handling
+use crate::error::VirshleError;
 use log::trace;
 use miette::{IntoDiagnostic, Result};
+
+pub fn to_xml(value: &Value) -> Result<String, VirshleError> {
+    let mut string = "".to_owned();
+    if let Some(map) = value.as_object() {
+        for key in map.keys() {
+            if let Some((k, v)) = map.get_key_value(key) {
+                let mut v = v.to_owned();
+                make_xml_tree(k, &mut v, &mut -1, &mut string)?;
+            }
+        }
+    }
+    Ok(string)
+}
+
+pub fn get_ressource_definitions(value: &Value) -> Result<(), VirshleError> {
+    let mut base_string = "".to_owned();
+
+    if let Some(map) = value.as_object() {
+        for key in map.keys() {
+            if let Some((k, v)) = map.get_key_value("domain") {
+                let mut v = v.to_owned();
+                make_xml_tree(k, &mut v, &mut -1, &mut base_string)?;
+                println!("\n{}", base_string);
+            }
+            if let Some((k, v)) = map.get_key_value("network") {
+                let mut v = v.to_owned();
+                make_xml_tree(k, &mut v, &mut -1, &mut base_string)?;
+                println!("\n{}", base_string);
+            }
+        }
+    }
+
+    Ok(())
+}
 
 /**
 * Detect "#text" fields from a Value/Node
 * to be parsed as xml text.
 * Returns an list of text (value)
 */
-fn get_text(map: &mut Map<String, Value>) -> Result<Option<String>> {
+fn get_text(map: &mut Map<String, Value>) -> Result<Option<String>, VirshleError> {
     let prefix = "#";
     let mut text: Option<String> = None;
     for key in map.clone().keys() {
@@ -27,7 +63,9 @@ fn get_text(map: &mut Map<String, Value>) -> Result<Option<String>> {
 * to be parsed as xml attributes.
 * Returns an list of attributes (name, value)
 */
-fn get_attributes(map: &mut Map<String, Value>) -> Result<Option<Vec<(String, String)>>> {
+fn get_attributes(
+    map: &mut Map<String, Value>,
+) -> Result<Option<Vec<(String, String)>>, VirshleError> {
     let prefix = "@";
     let mut attributes: Vec<(String, String)> = vec![];
 
@@ -61,7 +99,7 @@ fn make_open_tag(
     attributes: Option<Vec<(String, String)>>,
     text: Option<String>,
     indent_level: &mut i64,
-) -> Result<String> {
+) -> Result<String, VirshleError> {
     let ident = "  ".repeat(*indent_level as usize);
     let mut open_tag = format!("{ident}<{name}");
 
@@ -87,7 +125,7 @@ fn make_open_tag(
 /**
 * Print the closing tag from a Value/Node
 */
-fn make_close_tag(name: &str, ident_level: &mut i64) -> Result<String> {
+fn make_close_tag(name: &str, ident_level: &mut i64) -> Result<String, VirshleError> {
     let ident = "  ".repeat(*ident_level as usize);
     let close_tag = format!("{ident}</{name}>");
     Ok(close_tag)
@@ -96,12 +134,12 @@ fn make_close_tag(name: &str, ident_level: &mut i64) -> Result<String> {
 /**
 * Recursive function that navigates the Value and return and mutate a string to xml.
 */
-pub fn read_value(
+pub fn make_xml_tree(
     key: &str,
     value: &mut Value,
     ident_level: &mut i64,
     base_string: &mut String,
-) -> Result<()> {
+) -> Result<(), VirshleError> {
     match value {
         Value::Object(map) => {
             let mut ident_level: i64 = *ident_level + 1;
@@ -111,7 +149,7 @@ pub fn read_value(
             base_string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
             // base_string.push_str("\n");
             for (k, v) in map {
-                read_value(k, v, &mut ident_level, base_string)?;
+                make_xml_tree(k, v, &mut ident_level, base_string)?;
             }
             base_string.push_str(&make_close_tag(key, &mut ident_level)?);
             base_string.push_str("\n");
@@ -144,7 +182,7 @@ pub fn read_value(
         }
         Value::Array(value) => {
             for e in value {
-                read_value(key, e, ident_level, base_string)?;
+                make_xml_tree(key, e, ident_level, base_string)?;
             }
         }
         _ => {}
@@ -152,51 +190,14 @@ pub fn read_value(
     Ok(())
 }
 
-pub fn get_ressource_definitions(value: &Value) -> Result<()> {
-    let mut base_string = "".to_owned();
-    if let Some(map) = value.as_object() {
-        if let Some((k, v)) = map.get_key_value("domain") {
-            let mut v = v.to_owned();
-            read_value(k, &mut v, &mut 0, &mut base_string)?;
-            println!("\n{}", base_string);
-        }
-        if let Some((k, v)) = map.get_key_value("network") {
-            let mut v = v.to_owned();
-            read_value(k, &mut v, &mut 0, &mut base_string)?;
-            println!("\n{}", base_string);
-        }
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::toml::from_toml;
+    use crate::convert::toml::from_toml;
     use std::path::PathBuf;
 
     // Error Handling
     use miette::{IntoDiagnostic, Result};
-
-    #[test]
-    fn from_toml_to_xml() -> Result<()> {
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("templates/vm/base.toml");
-        let path = path.to_str().unwrap();
-
-        let string = fs::read_to_string(path).into_diagnostic()?;
-
-        // Check toml parsed struct
-        let mut value = from_toml(&string)?;
-        println!("{:#?}", value);
-
-        // Check xml result
-        let mut base_string = "".to_owned();
-        read_value("root", &mut value, &mut 0, &mut base_string)?;
-        println!("\n{}", base_string);
-
-        Ok(())
-    }
 
     #[test]
     fn value_to_xml() -> Result<()> {
@@ -212,6 +213,8 @@ mod test {
                 },
             },
         });
+        let xml = to_xml(&value)?;
+        println!("\n{}", xml);
 
         Ok(())
     }

@@ -1,4 +1,6 @@
 use miette::{Diagnostic, Report};
+use pipelight_utils::files::{CastError, HclError, TomlError, YamlError};
+
 use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
@@ -18,6 +20,10 @@ pub enum VirshleError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     LibError(#[from] LibError),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    CastError(#[from] CastError),
 }
 
 /**

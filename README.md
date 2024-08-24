@@ -4,12 +4,12 @@ Virsh + Toml = Virshle.
 
 A command line interface to replace virsh.
 
-- [x] define vm, network and storage with **TOML**.
-- [x] use relative paths inside vm definition.
-- [x] use templates for trivial VMs creation.
-- [ ] autodetect the resource type (vm, network...).
+> [!IMPORTANT]  
+> Tool in early development stages
 
 ## 🚀 Get started!
+
+### A quick command tour
 
 ```sh
 # Create resources
@@ -130,7 +130,7 @@ cargo install --git https://github.com/pipelight/virshle
 Try it in an isolated shell.
 
 ```nix
-nix shell github:pipelight/pipelight
+nix shell github:pipelight/virshle
 ```
 
 Install it on your system.
@@ -141,12 +141,12 @@ Install it on your system.
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    virshle.url = "github:pipelight/pipelight";
+    virshle.url = "github:pipelight/virshle";
   };
 
   outputs = {
     nixpkgs,
-    pipelight,
+    virshle,
   }: {
 
     # Put this somewhere in your
@@ -159,3 +159,36 @@ Install it on your system.
   };
 }
 ```
+
+## Roadmap
+
+v0.4.0
+
+- [ ] Toml/Xml: automaticaly guess what resource to manipulate based on file root element
+
+- cli add base commandes,
+
+  - [x] list:
+    - [x] vms
+    - [x] networks
+  - [ ] create:
+    - [ ] vms,
+    - [ ] networks
+  - [ ] delete:
+    - [ ] vms,
+    - [ ] networks
+  - [ ] update:
+    - [ ] vms,
+    - [ ] networks
+
+- [ ] cli better autocomplete value hints
+
+v1.0.0
+
+- [ ] Create multiple machines based on same template
+
+## Community/Contrib
+
+Join the matrix room.
+
+https://matrix.to/#/#virshle:matrix.org

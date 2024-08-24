@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fs;
 use tabled::Tabled;
 
 // Error Handling
@@ -8,6 +9,7 @@ use miette::{IntoDiagnostic, Result};
 
 // libvirt
 use super::connect;
+use crate::convert::from_toml_to_xml;
 use convert_case::{Case, Casing};
 use strum::EnumIter;
 use virt::domain::Domain;
@@ -73,14 +75,23 @@ impl Vm {
         };
         Ok(vm)
     }
-    pub fn get_all() -> Result<Vec<Self>> {
+    pub fn get_all() -> Result<Vec<Self>, VirshleError> {
         let conn = connect()?;
-        let ids = conn.list_domains().into_diagnostic()?;
+        let ids = conn.list_domains()?;
         let mut list = vec![];
         for id in ids {
             list.push(Vm::get(id)?);
         }
         Ok(list)
+    }
+    pub fn set(path: &str) -> Result<(), VirshleError> {
+        let toml = fs::read_to_string(path)?;
+        let xml = from_toml_to_xml(&toml)?;
+
+        let conn = connect()?;
+        Domain::create_xml(&conn, &xml, 0)?;
+
+        Ok(())
     }
 }
 
