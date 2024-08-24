@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use virshle_core::{display, resources::Vm};
+use virshle_core::{
+    display,
+    resources::{Net, Vm},
+};
 
 use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
