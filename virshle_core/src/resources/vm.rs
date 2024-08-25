@@ -9,7 +9,7 @@ use miette::{IntoDiagnostic, Result};
 
 // libvirt
 use super::connect;
-use crate::convert::from_toml_to_xml;
+use crate::convert;
 use convert_case::{Case, Casing};
 use strum::EnumIter;
 use virt::domain::Domain;
@@ -86,7 +86,7 @@ impl Vm {
     }
     pub fn set(path: &str) -> Result<(), VirshleError> {
         let toml = fs::read_to_string(path)?;
-        let xml = from_toml_to_xml(&toml)?;
+        let xml = convert::from_toml_to_xml(&toml)?;
 
         let conn = connect()?;
         Domain::create_xml(&conn, &xml, 0)?;
@@ -110,8 +110,9 @@ mod test {
     fn create_domain() -> Result<()> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("../templates/vm/base.toml");
+        let path = path.display().to_string();
 
-        let items = Vm::set(&path.display().to_string());
+        let items = Vm::set(&path);
         println!("{:#?}", items);
         Ok(())
     }

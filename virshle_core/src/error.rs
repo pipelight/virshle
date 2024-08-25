@@ -1,5 +1,7 @@
+use std::error::Error;
+
 use miette::{Diagnostic, Report};
-use pipelight_utils::files::{CastError, HclError, TomlError, YamlError};
+use pipelight_error::CastError;
 
 use thiserror::Error;
 
@@ -10,8 +12,12 @@ pub enum VirshleError {
     IoError(#[from] std::io::Error),
 
     #[error(transparent)]
-    #[diagnostic(code(virshle::virt::error))]
-    VirtError(#[from] virt::error::Error),
+    #[diagnostic(transparent)]
+    VirtError(#[from] VirtError),
+
+    #[error(transparent)]
+    #[diagnostic(code(virshle::libvirt::error))]
+    LibVirtError(#[from] virt::error::Error),
 
     #[error(transparent)]
     #[diagnostic(transparent)]
@@ -51,4 +57,29 @@ pub struct LibError {
     pub message: String,
     #[help]
     pub help: String,
+}
+
+/**
+A root cause error with no inner origin
+*/
+#[derive(Debug, Error, Diagnostic)]
+#[error("{}", message)]
+#[diagnostic(code(vishle::virt::error))]
+pub struct VirtError {
+    pub message: String,
+    #[help]
+    pub help: String,
+    #[source]
+    origin: virt::error::Error,
+    pub code: u32,
+}
+impl VirtError {
+    pub fn new(message: &str, help: &str, e: virt::error::Error) -> Self {
+        Self {
+            code: e.code().to_raw(),
+            origin: e.clone(),
+            message: message.to_owned(),
+            help: help.to_owned(),
+        }
+    }
 }

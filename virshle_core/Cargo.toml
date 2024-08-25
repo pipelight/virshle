@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 miette = { version = "7.2.0", features = ["fancy"] }
-pipelight_utils = { version = "0.2.7", features = [] }
+pipelight_error = { version = "0.2.8" }
 quick-xml = { version = "0.36.1", features = ["serde", "serialize"] }
 serde_json = { version = "1.0.125", features = ["preserve_order"] }
 toml = "0.8.19"
@@ -18,4 +18,4 @@ strum = { version = "0.26.3", features = ["derive"] }
 convert_case = "0.6.0"
 owo-colors = "4.0.0"
 env_logger = "0.11.5"
-uuid = "1.10.0"
+uuid = { version = "1.10.0", features = ["serde", "v4"] }

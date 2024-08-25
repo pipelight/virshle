@@ -19,26 +19,21 @@ pub fn to_xml(value: &Value) -> Result<String, VirshleError> {
     Ok(string)
 }
 
-pub fn get_ressource_definitions(value: &Value) -> Result<(), VirshleError> {
-    let mut base_string = "".to_owned();
-
-    if let Some(map) = value.as_object() {
-        for key in map.keys() {
-            if let Some((k, v)) = map.get_key_value("domain") {
-                let mut v = v.to_owned();
-                make_xml_tree(k, &mut v, &mut -1, &mut base_string)?;
-                println!("\n{}", base_string);
-            }
-            if let Some((k, v)) = map.get_key_value("network") {
-                let mut v = v.to_owned();
-                make_xml_tree(k, &mut v, &mut -1, &mut base_string)?;
-                println!("\n{}", base_string);
-            }
-        }
-    }
-
-    Ok(())
-}
+// pub fn get_ressource_definitions(value: &Value) -> Result<(), VirshleError> {
+//     if let Some(map) = value.as_object() {
+//         for key in map.keys() {
+//             if let Some((k, v)) = map.get_key_value("domain") {
+//                 return enum
+//
+//             }
+//             if let Some((k, v)) = map.get_key_value("network") {
+//
+//             }
+//         }
+//     }
+//
+//     Ok(())
+// }
 
 /**
 * Detect "#text" fields from a Value/Node
@@ -144,7 +139,7 @@ pub fn make_xml_tree(
     key: &str,
     value: &mut Value,
     ident_level: &mut i64,
-    base_string: &mut String,
+    string: &mut String,
 ) -> Result<(), VirshleError> {
     match value {
         Value::Object(map) => {
@@ -152,46 +147,44 @@ pub fn make_xml_tree(
             let text = get_text(map)?;
             let attributes = get_attributes(map)?;
             if !map.is_empty() {
-                base_string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
-                base_string.push_str("\n");
+                string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
+                string.push_str("\n");
                 for (k, v) in map {
-                    make_xml_tree(k, v, &mut ident_level, base_string)?;
+                    make_xml_tree(k, v, &mut ident_level, string)?;
                 }
-                base_string.push_str(&make_close_tag(key, &mut ident_level)?);
+                string.push_str(&make_close_tag(key, &mut ident_level)?);
             } else {
-                base_string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
-                // base_string.push_str("\n");
+                string.push_str(&make_open_tag(key, attributes, text, &mut ident_level)?);
                 for (k, v) in map {
-                    make_xml_tree(k, v, &mut ident_level, base_string)?;
+                    make_xml_tree(k, v, &mut ident_level, string)?;
                 }
-                base_string.push_str(&make_direct_close_tag(key)?);
+                string.push_str(&make_direct_close_tag(key)?);
             }
         }
         Value::String(value) => {
             let mut ident_level: i64 = *ident_level + 1;
-            // println!("{key}{value}");
-            base_string.push_str(&make_open_tag(
+            string.push_str(&make_open_tag(
                 key,
                 None,
                 Some(value.to_owned()),
                 &mut ident_level,
             )?);
 
-            base_string.push_str(&make_direct_close_tag(key)?);
+            string.push_str(&make_direct_close_tag(key)?);
         }
         Value::Number(value) => {
             let mut ident_level: i64 = *ident_level + 1;
-            base_string.push_str(&make_open_tag(
+            string.push_str(&make_open_tag(
                 key,
                 None,
                 Some(value.to_string()),
                 &mut ident_level,
             )?);
-            base_string.push_str(&make_direct_close_tag(key)?);
+            string.push_str(&make_direct_close_tag(key)?);
         }
         Value::Array(value) => {
             for e in value {
-                make_xml_tree(key, e, ident_level, base_string)?;
+                make_xml_tree(key, e, ident_level, string)?;
             }
         }
         _ => {}

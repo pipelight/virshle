@@ -1,4 +1,5 @@
-
+# Default vm configuration
+# virshle create <vm_definition.toml>
 [domain]
 "@type" = "kvm"
 name = "vm-nixos"
