@@ -8,7 +8,7 @@ Features:
 
 - Colorful outputs.
 
-![tables comparison](https://github.com/pipelight/virshle/public/images/table.png)
+![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table.png)
 
 > [!IMPORTANT]  
 > Tool very early development stage.
