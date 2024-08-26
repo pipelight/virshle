@@ -4,9 +4,9 @@ A Cli to supersede [virsh](https://github.com/libvirt/libvirt).
 
 Features:
 
-- Uses TOML instead of XML.
+- Resource definitions takse **TOML** instead of XML.
 
-- Colorful outputs.
+- More intuitive commands and colorful outputs.
 
 ![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table.png)
 
