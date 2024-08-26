@@ -1,0 +1,14 @@
+[[pipelines]]
+name = "provision_vm"
+
+[[pipelines.steps]]
+name = "set_hostname"
+commands = []
+
+[[pipelines.steps]]
+name = "set_ssh_authorized_keys"
+commands = []
+
+[[pipelines.steps]]
+name = "set_network_parameters"
+commands = []

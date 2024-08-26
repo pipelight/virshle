@@ -4,7 +4,7 @@ A Cli to supersede [virsh](https://github.com/libvirt/libvirt).
 
 Features:
 
-- Resource definitions takse **TOML** instead of XML.
+- Resource definitions take **TOML** instead of XML.
 
 - More intuitive commands and colorful outputs.
 
