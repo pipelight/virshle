@@ -1,18 +1,16 @@
+## Cicd
 # Pipelight internal api folder
 .pipelight
-
-# Test artifacts
-test/*pipelight*
-test_*
-
-## Build directories
-/packages
-/autocompletion
-/target
 # Nixos
 /result
-gifs/
-
-## Nixos direnv cache
 .direnv
+
+## Rust
+/target
+# Build directories
+/autocompletion
+
+## Virshle
+# Isos
+/iso
 

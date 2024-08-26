@@ -25,7 +25,7 @@ pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
     }
 }
 pub fn make_path(key: &str, value: &mut Value) -> Result<(), VirshleError> {
-    let tags = ["#text".to_owned(), "@source".to_owned(), "@file".to_owned()];
+    let tags = ["@file".to_owned()];
     match value {
         Value::Object(map) => {
             for (k, mut v) in map {
@@ -39,7 +39,9 @@ pub fn make_path(key: &str, value: &mut Value) -> Result<(), VirshleError> {
         }
         Value::String(string) => {
             if tags.contains(&key.to_string()) {
-                let path = Path::new(string);
+                let string = shellexpand::tilde(string).to_string();
+                let path = Path::new(&string);
+
                 if path.exists() {
                     let abs_path = path.canonicalize()?;
                     let abs_path = abs_path.display().to_string();
