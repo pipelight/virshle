@@ -20,7 +20,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub commands: Commands,
     #[command(flatten)]
-    pub verbose: Verbosity<InfoLevel>,
+    pub verbose: Verbosity,
 }
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
@@ -59,7 +59,7 @@ impl Cli {
         match cli.commands {
             Commands::Create(args) => {
                 let toml = fs::read_to_string(args.file).into_diagnostic()?;
-                create_resources(&convert::from_toml(&toml)?)?;
+                create_resources(&toml)?;
             }
             Commands::Vm(args) => match args {
                 Crud::Ls => {

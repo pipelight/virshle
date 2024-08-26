@@ -19,3 +19,5 @@ convert_case = "0.6.0"
 owo-colors = "4.0.0"
 env_logger = "0.11.5"
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
+bat = "0.24.0"
+crossterm = "0.28.1"

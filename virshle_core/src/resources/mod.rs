@@ -1,8 +1,12 @@
 pub mod net;
 pub mod vm;
+use crossterm::{execute, style::Stylize, terminal::size};
+use owo_colors::OwoColorize;
 
 use crate::convert;
+use log::{info, log_enabled, Level};
 
+use bat::PrettyPrinter;
 pub use net::Net;
 use serde_json::{Map, Value};
 pub use vm::Vm;
@@ -25,19 +29,41 @@ pub enum ResourceType {
     Vm(String),
 }
 
-pub fn create_resources(value: &Value) -> Result<()> {
+pub fn create_resources(toml: &str) -> Result<()> {
+    let (cols, rows) = size().into_diagnostic()?;
+    let divider = "-".repeat((cols / 3).into());
+
+    if log_enabled!(Level::Info) {
+        println!("{}", format!("{divider}toml{divider}").green());
+        PrettyPrinter::new()
+            .input_from_bytes(toml.as_bytes())
+            .language("toml")
+            .print()
+            .into_diagnostic()?;
+        println!("");
+    }
+
+    let value = convert::from_toml(&toml)?;
     if let Some(map) = value.as_object() {
         for key in map.keys() {
+            let mut new_map = Map::new();
+            new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
+            let xml = convert::to_xml(&Value::Object(new_map))?;
+
+            if log_enabled!(Level::Info) {
+                println!("{}", format!("{divider}xml{divider}").green());
+                PrettyPrinter::new()
+                    .input_from_bytes(xml.as_bytes())
+                    .language("xml")
+                    .print()
+                    .into_diagnostic()?;
+                println!("");
+            }
+
             if key == "domain" {
-                let mut new_map = Map::new();
-                new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
-                let xml = convert::to_xml(&Value::Object(new_map))?;
                 Vm::set_xml(&xml)?;
             }
             if key == "network" {
-                let mut new_map = Map::new();
-                new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
-                let xml = convert::to_xml(&Value::Object(new_map))?;
                 Net::set_xml(&xml)?;
             }
         }
