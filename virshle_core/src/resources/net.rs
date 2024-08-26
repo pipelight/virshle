@@ -97,18 +97,6 @@ impl Net {
         let list: Vec<Net> = map.into_values().collect();
         Ok(list)
     }
-    pub fn delete(name: &str) -> Result<(), VirshleError> {
-        // Guard
-        Self::get(name)?;
-
-        let conn = connect()?;
-        let network = Network::lookup_by_name(&conn, name)?;
-        let res = network.destroy();
-        match res {
-            Ok(res) => Ok(()),
-            Err(e) => Err(VirtError::new("The network could not be destroyed", "", e).into()),
-        }
-    }
     pub fn set(path: &str) -> Result<(), VirshleError> {
         let toml = fs::read_to_string(path)?;
         let xml = convert::from_toml_to_xml(&toml)?;
@@ -126,6 +114,18 @@ impl Net {
                 e,
             )
             .into()),
+        }
+    }
+    pub fn delete(name: &str) -> Result<(), VirshleError> {
+        // Guard
+        Self::get(name)?;
+
+        let conn = connect()?;
+        let item = Network::lookup_by_name(&conn, name)?;
+        let res = item.destroy();
+        match res {
+            Ok(res) => Ok(()),
+            Err(e) => Err(VirtError::new("The network could not be destroyed", "", e).into()),
         }
     }
 }

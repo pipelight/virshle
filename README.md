@@ -166,26 +166,24 @@ v0.4.0
 
 - [ ] Toml/Xml: automaticaly guess what resource to manipulate based on file root element
 
-- cli add base commandes,
+Cli base commandes,
 
-  - [x] list:
-    - [x] vms
-    - [x] networks
-  - [ ] create:
-    - [ ] vms,
-    - [ ] networks
-  - [x] delete:
-    - [ ] vms,
-    - [x] networks
-  - [ ] update:
-    - [ ] vms,
-    - [ ] networks
+- [x] list:
+  - [x] vms
+  - [x] networks
+- [x] create:
+  - [x] vms,
+  - [x] networks
+- [x] delete:
+  - [x] vms,
+  - [x] networks
+- [ ] update:
+  - [ ] vms,
+  - [ ] networks
 
-- [ ] cli better autocomplete value hints
+Display resources,
 
-v1.0.0
-
-- [ ] Create multiple machines based on same template
+- [ ] display vm IPs when verbosity increased (-v)
 
 ## Community/Contrib
 

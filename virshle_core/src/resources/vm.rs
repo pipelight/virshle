@@ -122,6 +122,18 @@ impl Vm {
             Err(e) => Err(VirtError::new("The Vm could not be created", "", e).into()),
         }
     }
+    pub fn delete(name: &str) -> Result<(), VirshleError> {
+        // Guard
+        Self::get(name)?;
+
+        let conn = connect()?;
+        let item = Domain::lookup_by_name(&conn, name)?;
+        let res = item.destroy();
+        match res {
+            Ok(res) => Ok(()),
+            Err(e) => Err(VirtError::new("The vm could not be destroyed", "", e).into()),
+        }
+    }
 }
 
 #[cfg(test)]
