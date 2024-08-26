@@ -6,6 +6,10 @@ Features:
 
 - Uses TOML instead of XML.
 
+- Colorful outputs.
+
+![tables comparison](https://github.com/pipelight/virshle/public/images/table.png)
+
 > [!IMPORTANT]  
 > Tool very early development stage.
 > Can still be use complementay to [virsh](https://github.com/libvirt/libvirt)

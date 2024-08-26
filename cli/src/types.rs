@@ -66,7 +66,7 @@ impl Cli {
                     display(Vm::get_all()?)?;
                 }
                 Crud::Rm(resource) => {
-                    Net::delete(&resource.name)?;
+                    Vm::delete(&resource.name)?;
                 }
             },
             Commands::Net(args) => match args {
