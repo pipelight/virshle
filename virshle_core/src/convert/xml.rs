@@ -19,22 +19,6 @@ pub fn to_xml(value: &Value) -> Result<String, VirshleError> {
     Ok(string)
 }
 
-// pub fn get_ressource_definitions(value: &Value) -> Result<(), VirshleError> {
-//     if let Some(map) = value.as_object() {
-//         for key in map.keys() {
-//             if let Some((k, v)) = map.get_key_value("domain") {
-//                 return enum
-//
-//             }
-//             if let Some((k, v)) = map.get_key_value("network") {
-//
-//             }
-//         }
-//     }
-//
-//     Ok(())
-// }
-
 /**
 * Detect "#text" fields from a Value/Node
 * to be parsed as xml text.

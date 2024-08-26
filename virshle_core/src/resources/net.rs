@@ -67,6 +67,15 @@ impl Net {
             .into()),
         }
     }
+    pub fn get_all() -> Result<Vec<Self>> {
+        let conn = connect()?;
+        let names = conn.list_networks().into_diagnostic()?;
+        let mut list = vec![];
+        for name in names {
+            list.push(Net::get(&name)?);
+        }
+        Ok(list)
+    }
     pub fn delete(name: &str) -> Result<(), VirshleError> {
         // Guard
         Self::get(name)?;
@@ -79,19 +88,13 @@ impl Net {
             Err(e) => Err(VirtError::new("The network could not be destroyed", "", e).into()),
         }
     }
-    pub fn get_all() -> Result<Vec<Self>> {
-        let conn = connect()?;
-        let names = conn.list_networks().into_diagnostic()?;
-        let mut list = vec![];
-        for name in names {
-            list.push(Net::get(&name)?);
-        }
-        Ok(list)
-    }
     pub fn set(path: &str) -> Result<(), VirshleError> {
         let toml = fs::read_to_string(path)?;
         let xml = convert::from_toml_to_xml(&toml)?;
-
+        Self::set_xml(&xml)?;
+        Ok(())
+    }
+    pub fn set_xml(xml: &str) -> Result<(), VirshleError> {
         let conn = connect()?;
         let res = Network::create_xml(&conn, &xml);
         match res {

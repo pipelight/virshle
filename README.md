@@ -1,11 +1,14 @@
 # Virshle - Virtual machines from the command line.
 
-Virsh + Toml = Virshle.
+A Cli to supersede [virsh](https://github.com/libvirt/libvirt).
 
-A command line interface to replace virsh.
+Features:
+
+- Uses TOML instead of XML.
 
 > [!IMPORTANT]  
-> Tool in early development stages
+> Tool very early development stage.
+> Can still be use complementay to [virsh](https://github.com/libvirt/libvirt)
 
 ## 🚀 Get started!
 
@@ -15,13 +18,15 @@ A command line interface to replace virsh.
 # Create resources
 virshle create ./template/vm/base.toml
 
-# List resources
-virshle ls
-virshle ls vm
-virshle ls network
+# List domains (virtual machines, guests)
+virshle vm ls
+
+# List networks
+virshle net ls
 
 # Delete resources
-virshle delete <resource_name>
+virshle rm <resource_type> <resource_name>
+virshle rm net default_6
 
 ```
 
@@ -36,31 +41,26 @@ The following Toml file defines a VM called "nixos":
 ```toml
 [domain]
 "@type" = "kvm"
-name = "nixos"
+name = "vm-nixos"
 uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
-memory = 140000
 vcpu = 2
-
-[domain.os.type]
-"@arch" = "x86_64"
-"#text" = "hvm"
+[domain.memory]
+"@unit" = "GiB"
+"#text" = 4
 
 [domain.clock]
 "@sync" = "localtime"
-
 [domain.devices]
-emulator = "/run/qemu-kvm"
+emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 
 [[domain.devices.disk]]
 "@type" = "file"
 "@device" = "disk"
 driver."@name" = "qemu"
 driver."@type" = "qcow2"
-
 "@bus" = "virtio"
 "@size" = 20
-
-source."@file" = "ISO/nixos.qcow2"
+source."@file" = "./iso/nixos.qcow2"
 target."@dev" = "hda"
 target."@bus" = "virtio"
 
@@ -79,7 +79,7 @@ This is how you would define a network.
 
 ```toml
 [network]
-name = "default"
+name = "default_4"
 uuid = "9a05da11-e96b-47f3-8253-a3a482e445f5"
 
 forward."@mode" = 'nat'
@@ -174,9 +174,9 @@ v0.4.0
   - [ ] create:
     - [ ] vms,
     - [ ] networks
-  - [ ] delete:
+  - [x] delete:
     - [ ] vms,
-    - [ ] networks
+    - [x] networks
   - [ ] update:
     - [ ] vms,
     - [ ] networks

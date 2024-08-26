@@ -3,7 +3,7 @@ use std::fs;
 use tabled::Tabled;
 
 // Error Handling
-use crate::error::{VirshleError, WrapError};
+use crate::error::{VirshleError, VirtError, WrapError};
 use log::trace;
 use miette::{IntoDiagnostic, Result};
 
@@ -87,11 +87,16 @@ impl Vm {
     pub fn set(path: &str) -> Result<(), VirshleError> {
         let toml = fs::read_to_string(path)?;
         let xml = convert::from_toml_to_xml(&toml)?;
-
-        let conn = connect()?;
-        Domain::create_xml(&conn, &xml, 0)?;
-
+        Self::set_xml(&xml)?;
         Ok(())
+    }
+    pub fn set_xml(xml: &str) -> Result<(), VirshleError> {
+        let conn = connect()?;
+        let res = Domain::create_xml(&conn, &xml, 0);
+        match res {
+            Ok(res) => Ok(()),
+            Err(e) => Err(VirtError::new("The Vm could not be created", "", e).into()),
+        }
     }
 }
 

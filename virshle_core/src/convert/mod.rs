@@ -1,8 +1,8 @@
 pub mod toml;
 pub mod xml;
 
-use toml::from_toml;
-use xml::to_xml;
+pub use toml::from_toml;
+pub use xml::to_xml;
 
 // Error Handling
 use crate::error::VirshleError;

@@ -1,0 +1,7 @@
+[[connect]]
+name = "test"
+url = "test:///default"
+
+[[connect]]
+name = "local"
+url = "qemu:///system"
