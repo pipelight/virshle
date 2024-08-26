@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::{fs, u32};
 use tabled::Tabled;
 use uuid::Uuid;
 
@@ -7,13 +7,18 @@ use uuid::Uuid;
 use crate::error::{VirshleError, VirtError, WrapError};
 use log::trace;
 use miette::{IntoDiagnostic, Result};
+use std::collections::HashMap;
 
 // libvirt
 use super::connect;
 use crate::convert;
 use convert_case::{Case, Casing};
-use strum::EnumIter;
+use strum::{EnumIter, IntoEnumIterator};
 use virt::network::Network;
+
+use once_cell::sync::Lazy;
+
+static NVirConnectListAllDomainsFlags: u32 = 15;
 
 fn display_option(state: &Option<State>) -> String {
     match state {
@@ -21,44 +26,52 @@ fn display_option(state: &Option<State>) -> String {
         None => format!(""),
     }
 }
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
-pub struct Net {
-    #[tabled(order = 2)]
-    pub uuid: Uuid,
-    pub name: String,
-    // #[tabled(display_with = "display_option")]
-    pub state: State,
-}
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, EnumIter)]
 pub enum State {
     #[default]
-    Inactive,
-    Active,
+    Inactive = 0,
+    Active = 1,
 }
-impl From<bool> for State {
-    fn from(value: bool) -> Self {
+impl From<u32> for State {
+    fn from(value: u32) -> Self {
         match value {
-            true => State::Active,
-            false => State::Inactive,
+            0 => State::Inactive,
+            1 => State::Active,
+            _ => State::Inactive,
         }
     }
 }
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+pub struct Net {
+    #[tabled(skip)]
+    pub uuid: Uuid,
+    pub name: String,
+    // #[tabled(display_with = "display_option")]
+    pub state: State,
+    pub autostart: bool,
+    pub persistent: bool,
+}
 impl Net {
+    fn from(e: &Network) -> Result<Net, VirshleError> {
+        let res = Net {
+            uuid: e.get_uuid()?,
+            name: e.get_name()?,
+            state: State::from(e.is_active()? as u32),
+            autostart: e.get_autostart()?,
+            persistent: e.is_persistent()?,
+        };
+        Ok(res)
+    }
     pub fn get(name: &str) -> Result<Self, VirshleError> {
         let conn = connect()?;
         let res = Network::lookup_by_name(&conn, name);
         match res {
-            Ok(network) => {
-                let item = Net {
-                    uuid: network.get_uuid()?,
-                    name: network.get_name()?,
-                    state: State::from(network.is_active()?),
-                    ..Default::default()
-                };
+            Ok(e) => {
+                let item = Net::from(&e)?;
                 Ok(item)
             }
-
             Err(e) => Err(VirtError::new(
                 &format!("No network with name {:?}", name),
                 "Maybe you made a typo",
@@ -67,13 +80,21 @@ impl Net {
             .into()),
         }
     }
-    pub fn get_all() -> Result<Vec<Self>> {
+    pub fn get_all() -> Result<Vec<Self>, VirshleError> {
         let conn = connect()?;
-        let names = conn.list_networks().into_diagnostic()?;
-        let mut list = vec![];
-        for name in names {
-            list.push(Net::get(&name)?);
+        let mut map: HashMap<String, Net> = HashMap::new();
+
+        for flag in State::iter() {
+            let items = conn.list_all_networks(flag as u32)?;
+            for e in items.clone() {
+                let network = Net::from(&e)?;
+                let name = network.clone().name;
+                if !map.contains_key(&name) {
+                    map.insert(name, network);
+                }
+            }
         }
+        let list: Vec<Net> = map.into_values().collect();
         Ok(list)
     }
     pub fn delete(name: &str) -> Result<(), VirshleError> {
@@ -121,7 +142,7 @@ mod test {
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn create_network() -> Result<()> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("../templates/network/base.toml");

@@ -39,11 +39,13 @@ mod test {
                 uuid: Uuid::new_v4(),
                 name: "net_arch".to_owned(),
                 state: State::Active,
+                ..Default::default()
             },
             Net {
                 uuid: Uuid::new_v4(),
                 name: "net_nix".to_owned(),
                 state: State::Inactive,
+                ..Default::default()
             },
         ];
 

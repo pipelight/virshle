@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use tabled::Tabled;
 
@@ -11,24 +12,19 @@ use miette::{IntoDiagnostic, Result};
 use super::connect;
 use crate::convert;
 use convert_case::{Case, Casing};
+use human_bytes::human_bytes;
 use strum::EnumIter;
 use virt::domain::Domain;
+
+use once_cell::sync::Lazy;
+
+static NVirConnectListAllNetworksFlags: u32 = 5;
 
 fn display_option(state: &Option<State>) -> String {
     match state {
         Some(s) => format!("{}", s),
         None => format!(""),
     }
-}
-
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
-pub struct Vm {
-    pub name: String,
-    pub id: u32,
-    pub vcpu: u64,
-    pub vram: u64,
-    // #[tabled(display_with = "display_option")]
-    pub state: State,
 }
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, EnumIter)]
 pub enum State {
@@ -59,29 +55,57 @@ impl From<u32> for State {
         }
     }
 }
-impl Vm {
-    pub fn get(id: u32) -> Result<Self, VirshleError> {
-        let conn = connect()?;
-        let domain = Domain::lookup_by_id(&conn, id)?;
 
-        let (state, _) = domain.get_state()?;
-        let vm = Vm {
-            id,
-            name: domain.get_name()?,
-            vcpu: domain.get_max_vcpus()?,
-            vram: domain.get_max_memory()?,
-            state: State::from(state),
-            ..Default::default()
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+pub struct Vm {
+    pub name: String,
+    pub id: u32,
+    pub vcpu: u64,
+    pub vram: String,
+    pub state: State,
+}
+impl Vm {
+    fn from(e: &Domain) -> Result<Vm, VirshleError> {
+        let res = Vm {
+            id: e.get_id().unwrap(),
+            name: e.get_name()?,
+            state: State::from(e.is_active()? as u32),
+            vcpu: e.get_max_vcpus()?,
+            vram: human_bytes(e.get_max_memory()? as f64),
         };
-        Ok(vm)
+        Ok(res)
+    }
+    pub fn get(name: &str) -> Result<Self, VirshleError> {
+        let conn = connect()?;
+        let res = Domain::lookup_by_name(&conn, name);
+        match res {
+            Ok(e) => {
+                let item = Vm::from(&e)?;
+                Ok(item)
+            }
+            Err(e) => Err(VirtError::new(
+                &format!("No vm with name {:?}", name),
+                "Maybe you made a typo",
+                e,
+            )
+            .into()),
+        }
     }
     pub fn get_all() -> Result<Vec<Self>, VirshleError> {
         let conn = connect()?;
-        let ids = conn.list_domains()?;
-        let mut list = vec![];
-        for id in ids {
-            list.push(Vm::get(id)?);
+        let mut map: HashMap<String, Vm> = HashMap::new();
+
+        for flag in 0..NVirConnectListAllNetworksFlags {
+            let items = conn.list_all_domains(flag)?;
+            for item in items.clone() {
+                let vm = Vm::from(&item)?;
+                let name = vm.clone().name;
+                if !map.contains_key(&name) {
+                    map.insert(name, vm);
+                }
+            }
         }
+        let list: Vec<Vm> = map.into_values().collect();
         Ok(list)
     }
     pub fn set(path: &str) -> Result<(), VirshleError> {
