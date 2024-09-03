@@ -25,7 +25,7 @@ pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
     }
 }
 pub fn make_path(key: &str, value: &mut Value) -> Result<(), VirshleError> {
-    let tags = ["@file".to_owned()];
+    let tags = ["@file".to_owned(), "#text".to_owned()];
     match value {
         Value::Object(map) => {
             for (k, mut v) in map {
@@ -39,18 +39,24 @@ pub fn make_path(key: &str, value: &mut Value) -> Result<(), VirshleError> {
         }
         Value::String(string) => {
             if tags.contains(&key.to_string()) {
-                let string = shellexpand::tilde(string).to_string();
-                let path = Path::new(&string);
+                if string.contains("./")
+                    || string.contains("../")
+                    || string.contains("/../")
+                    || string.contains("~/")
+                {
+                    let string = shellexpand::tilde(string).to_string();
+                    let path = Path::new(&string);
 
-                if path.exists() {
-                    let abs_path = path.canonicalize()?;
-                    let abs_path = abs_path.display().to_string();
-                    *value = Value::String(abs_path);
-                } else {
-                    let message = format!("The file at path {:?} doesn't exist.", string);
-                    let help = format!("change the path for key {:?}", key);
-                    let err = LibError { message, help };
-                    return Err(err.into());
+                    if path.exists() {
+                        let abs_path = path.canonicalize()?;
+                        let abs_path = abs_path.display().to_string();
+                        *value = Value::String(abs_path);
+                    } else {
+                        let message = format!("The file at path {:?} doesn't exist.", string);
+                        let help = format!("change the path for key {:?}", key);
+                        let err = LibError { message, help };
+                        return Err(err.into());
+                    }
                 }
             }
         }

@@ -3,36 +3,45 @@ import { Mode, pipeline, step } from "https://deno.land/x/pipelight/mod.ts";
 
 // Binaries
 const bin = {
-  test: "deno run -A ./mod.ts",
+  test: "cargo run --bin virshle",
   default: "virshle",
 };
 
-// Build VM iso or qcow2
-const build_image = pipeline("build_image", () => [
+/**
+ * Build qcow2 image
+ */
+const create_env = pipeline("create_env", () => [
   step("build nixos iso file", () => [
-    // "nixos-generate -c ~/Fast/nixos/vm/flake.nix",
+    "nix flake update ~/Fast/nixos/vm",
     "nix build ~/Fast/nixos/vm",
   ]),
-  step("copy result to pwd", () => [
-    "sudo cp -r ./result/iso/* ./iso/",
+  step("copy image to repo root", () => [
+    "sudo cp -Lr ./result/*.qcow2 ./iso/",
     "sudo chown anon:users ./iso/*",
     "sudo chmod u+w ./iso/*",
-  ]).set_mode(Mode.JumpNextOnFailure),
-  step("copy result to pwd", () => [
-    "sudo cp -r ./result/iso/* ./iso/",
-    "sudo chown anon:users ./iso/*",
-    "sudo chmod u+w ./iso/*",
+  ]),
+  step("copy efi vars to repo root", () => [
+    "sudo cp -Lr /run/libvirt/nix-ovmf/* ./iso/",
   ]).set_mode(Mode.JumpNextOnFailure),
 ]).detach();
 
-const create_vm = pipeline("create_vm", () => [
+/**
+ * Create template network and vm
+ */
+const test_templates = pipeline("test_templates", () => [
+  step("delete existing testing resources", () => [
+    `${bin.test} net rm \
+    default_6`,
+    `${bin.test} vm rm \
+    vm-nixos`,
+  ]).set_mode(Mode.JumpNextOnFailure),
   step("ensure network", () => [
-    `${bin.test} net create \
-  ./base/networks/default.toml -vvv`,
+    `${bin.test} create \
+    ./templates/net/base.toml -vvv`,
   ]),
   step("create vm", () => [
-    `${bin.test} vm create \
-  ./base/machines/console.toml -vvv`,
+    `${bin.test} create \
+    ./templates/vm/base.toml -vvv`,
   ]),
 ]);
 
@@ -95,9 +104,10 @@ const config = {
     log_level: "info",
   },
   pipelines: [
-    build_image,
+    test_templates,
+    create_env,
+
     make_ci_vol,
-    create_vm,
     clean_env,
     generate_standard_empty_volumes,
   ],

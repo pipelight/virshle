@@ -71,7 +71,7 @@ impl Vm {
             name: e.get_name()?,
             state: State::from(e.is_active()? as u32),
             vcpu: e.get_max_vcpus()?,
-            vram: human_bytes(e.get_max_memory()? as f64),
+            vram: human_bytes((e.get_max_memory()? * 1024) as f64),
         };
         Ok(res)
     }
