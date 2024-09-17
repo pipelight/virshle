@@ -1,3 +1,4 @@
+pub mod cache;
 pub mod convert;
 mod display;
 mod error;

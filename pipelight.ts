@@ -7,6 +7,14 @@ const bin = {
   default: "virshle",
 };
 
+const test = pipeline("test", () => [
+  step("build nixos iso file", () => [
+    "pipelight run create_env --attach",
+    "pipelight run create_luks --attach",
+    "pipelight run test_templates --attach",
+  ]),
+]).detach();
+
 /**
  * Build qcow2 image
  */
@@ -23,7 +31,23 @@ const create_env = pipeline("create_env", () => [
   step("copy efi vars to repo root", () => [
     "sudo cp -Lr /run/libvirt/nix-ovmf/* ./iso/",
   ]).set_mode(Mode.JumpNextOnFailure),
-]).detach();
+]);
+
+const create_luks = pipeline("create_luks", () => [
+  step("encrypt root", () => [
+    `qemu-img create \
+      -f qcow2 \
+      --object secret,id=password,data=abc123 \
+      -o encrypt.format=luks,encrypt.key-secret=password \
+      ./iso/encrypted.qcow2 50G`,
+    // Copy and encrypt device
+    `qemu-img convert \
+      --object secret,id=password,data=abc123 \
+      --image-opts driver=qcow2,file.filename=./iso/nixos.qcow2 \
+      --target-image-opts driver=qcow2,encrypt.key-secret=password,file.filename=./iso/encrypted.qcow2 \
+      -n -p`,
+  ]).set_mode(Mode.JumpNextOnFailure),
+]);
 
 /**
  * Create template network and vm
@@ -89,6 +113,7 @@ const make_ci_vol = pipeline("make_ci_vol", () => [
   // ]),
   step("create user-data iso file", () => [
     `virt-make-fs \
+      --partition=gpt \
       ./base/pipelight-init/ ./iso/pipelight-init.img`,
   ]),
 ]);
@@ -104,8 +129,10 @@ const config = {
     log_level: "info",
   },
   pipelines: [
+    test,
     test_templates,
     create_env,
+    create_luks,
 
     make_ci_vol,
     clean_env,

@@ -1,4 +1,5 @@
 use std::error::Error;
+use uuid::Uuid;
 
 use miette::{Diagnostic, Report};
 use pipelight_error::CastError;
@@ -10,6 +11,14 @@ pub enum VirshleError {
     #[error(transparent)]
     #[diagnostic(code(virshle::io::error))]
     IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    #[diagnostic(code(virshle::io::error))]
+    Utf8Error(#[from] std::string::FromUtf8Error),
+
+    #[error(transparent)]
+    #[diagnostic(code(virshle::io::error))]
+    UuidError(#[from] uuid::Error),
 
     #[error(transparent)]
     #[diagnostic(transparent)]

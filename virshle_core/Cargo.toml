@@ -7,16 +7,16 @@ edition = "2021"
 miette = { version = "7.2.0", features = ["fancy"] }
 pipelight_error = { version = "0.2.8" }
 quick-xml = { version = "0.36.1", features = ["serde", "serialize"] }
-serde_json = { version = "1.0.125", features = ["preserve_order"] }
+serde_json = { version = "1.0.128", features = ["preserve_order"] }
 toml = "0.8.19"
 log = "0.4.22"
-virt = "0.4.0"
+virt = "0.4.1"
 thiserror = "1.0.63"
-serde = { version = "1.0.208", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive"] }
 tabled = { version = "0.16.0", features = ["ansi"] }
 strum = { version = "0.26.3", features = ["derive"] }
 convert_case = "0.6.0"
-owo-colors = "4.0.0"
+owo-colors = "4.1.0"
 env_logger = "0.11.5"
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
 bat = "0.24.0"

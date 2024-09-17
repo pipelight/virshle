@@ -18,14 +18,8 @@ use virt::domain::Domain;
 
 use once_cell::sync::Lazy;
 
-static NVirConnectListAllNetworksFlags: u32 = 5;
+static NVirConnectListAllDomainsFlags: u32 = 15;
 
-fn display_option(state: &Option<State>) -> String {
-    match state {
-        Some(s) => format!("{}", s),
-        None => format!(""),
-    }
-}
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, EnumIter)]
 pub enum State {
     #[default]
@@ -56,12 +50,17 @@ impl From<u32> for State {
     }
 }
 
+fn display_option(vram: &u64) -> String {
+    let res = human_bytes((vram * 1024) as f64);
+    format!("{}", res)
+}
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct Vm {
     pub name: String,
     pub id: u32,
     pub vcpu: u64,
-    pub vram: String,
+    #[tabled(display_with = "display_option")]
+    pub vram: u64,
     pub state: State,
 }
 impl Vm {
@@ -71,7 +70,7 @@ impl Vm {
             name: e.get_name()?,
             state: State::from(e.is_active()? as u32),
             vcpu: e.get_max_vcpus()?,
-            vram: human_bytes((e.get_max_memory()? * 1024) as f64),
+            vram: e.get_max_memory()?,
         };
         Ok(res)
     }
@@ -95,7 +94,7 @@ impl Vm {
         let conn = connect()?;
         let mut map: HashMap<String, Vm> = HashMap::new();
 
-        for flag in 0..NVirConnectListAllNetworksFlags {
+        for flag in 0..NVirConnectListAllDomainsFlags {
             let items = conn.list_all_domains(flag)?;
             for item in items.clone() {
                 let vm = Vm::from(&item)?;
@@ -147,6 +146,7 @@ mod test {
         println!("{:#?}", items);
         Ok(())
     }
+
     #[test]
     fn create_domain() -> Result<()> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -155,6 +155,13 @@ mod test {
 
         let items = Vm::set(&path);
         println!("{:#?}", items);
+        Ok(())
+    }
+
+    #[test]
+    fn delete_domain() -> Result<()> {
+        Vm::delete("default_6")?;
+
         Ok(())
     }
 }

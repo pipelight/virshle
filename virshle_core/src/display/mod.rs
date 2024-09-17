@@ -3,6 +3,7 @@ use miette::Result;
 use tabled::{settings::Style, Table, Tabled};
 
 mod net;
+mod secret;
 mod vm;
 
 /**

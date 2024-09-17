@@ -18,7 +18,7 @@ use virt::network::Network;
 
 use once_cell::sync::Lazy;
 
-static NVirConnectListAllDomainsFlags: u32 = 15;
+static NVirConnectListAllNetworksFlags: u32 = 5;
 
 fn display_option(state: &Option<State>) -> String {
     match state {

@@ -1,6 +1,7 @@
 ## Cicd
 # Pipelight internal api folder
 .pipelight
+
 # Nixos
 /result
 .direnv

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use virshle_core::{
     convert, display,
-    resources::{create_resources, Net, ResourceType, Vm},
+    resources::{create_resources, Net, ResourceType, Secret, Vm},
 };
 
 // Logger
@@ -29,6 +29,8 @@ pub enum Commands {
     Vm(Crud),
     #[command(subcommand)]
     Net(Crud),
+    #[command(subcommand)]
+    Secret(CrudUuid),
 }
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct File {
@@ -42,6 +44,15 @@ pub enum Crud {
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct Resource {
     name: String,
+}
+#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
+pub enum CrudUuid {
+    Rm(ResourceUuid),
+    Ls,
+}
+#[derive(Debug, Args, Clone, Eq, PartialEq)]
+pub struct ResourceUuid {
+    uuid: String,
 }
 
 impl Cli {
@@ -75,6 +86,14 @@ impl Cli {
                 }
                 Crud::Rm(resource) => {
                     Net::delete(&resource.name)?;
+                }
+            },
+            Commands::Secret(args) => match args {
+                CrudUuid::Ls => {
+                    display(Secret::get_all()?)?;
+                }
+                CrudUuid::Rm(resource) => {
+                    Secret::delete(&resource.uuid)?;
                 }
             },
             _ => {}

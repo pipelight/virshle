@@ -10,6 +10,7 @@ use crate::{
     error::VirshleError,
     resources::vm::{State, Vm},
 };
+use human_bytes::human_bytes;
 
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

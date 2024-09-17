@@ -7,20 +7,20 @@ build = "build.rs"
 [dependencies]
 virshle_core = { path = "../virshle_core" }
 miette = { version = "7.2.0", features = ["fancy"] }
-clap = { version = "4.5.16", features = ["derive"] }
+clap = { version = "4.5.17", features = ["derive"] }
 clap-verbosity-flag = "2.2.1"
 log = "0.4.22"
-serde = { version = "1.0.208", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive"] }
 convert_case = "0.6.0"
 env_logger = "0.11.5"
 
 [build-dependencies]
 virshle_core = { path = "../virshle_core" }
 miette = { version = "7.2.0", features = ["fancy"] }
-clap = { version = "4.5.16", features = ["derive"] }
+clap = { version = "4.5.17", features = ["derive"] }
 clap-verbosity-flag = "2.2.1"
 log = "0.4.22"
-serde = { version = "1.0.208", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive"] }
 convert_case = "0.6.0"
 env_logger = "0.11.5"
-clap_complete = "4.5.23"
+clap_complete = "4.5.26"

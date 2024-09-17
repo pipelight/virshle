@@ -170,7 +170,7 @@ v0.4.0
 
 - [ ] Toml/Xml: automaticaly guess what resource to manipulate based on file root element
 
-Cli base commandes,
+Commandes,
 
 - [x] list:
   - [x] vms
@@ -185,9 +185,15 @@ Cli base commandes,
   - [ ] vms,
   - [ ] networks
 
-Display resources,
+Resources management
 
 - [ ] display vm IPs when verbosity increased (-v)
+- [ ] add support for url as disk source.
+
+```toml
+[domain.devices.disk.source]
+"@file" = "./iso/encrypted.qcow2"
+```
 
 ## Community/Contrib
 

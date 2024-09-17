@@ -1,14 +1,16 @@
 pub mod net;
+pub mod secret;
 pub mod vm;
 use crossterm::{execute, style::Stylize, terminal::size};
 use owo_colors::OwoColorize;
 
 use crate::convert;
 use log::{info, log_enabled, Level};
+use serde_json::{Map, Value};
 
 use bat::PrettyPrinter;
 pub use net::Net;
-use serde_json::{Map, Value};
+pub use secret::Secret;
 pub use vm::Vm;
 
 // Error Handling
@@ -48,7 +50,7 @@ pub fn create_resources(toml: &str) -> Result<()> {
         for key in map.keys() {
             let mut new_map = Map::new();
             new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
-            let xml = convert::to_xml(&Value::Object(new_map))?;
+            let xml = convert::to_xml(&value)?;
 
             if log_enabled!(Level::Info) {
                 println!("{}", format!("{divider}xml{divider}").green());
@@ -65,6 +67,10 @@ pub fn create_resources(toml: &str) -> Result<()> {
             }
             if key == "network" {
                 Net::set_xml(&xml)?;
+            }
+            if key == "secret" {
+                let mut value = Value::Object(new_map);
+                Secret::set_multi_xml_w_value(&mut value)?;
             }
         }
     }
