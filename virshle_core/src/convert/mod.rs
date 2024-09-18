@@ -6,6 +6,7 @@ pub use xml::to_xml;
 
 // Error Handling
 use crate::error::VirshleError;
+use log::info;
 use miette::{IntoDiagnostic, Result};
 
 pub fn from_toml_to_xml(toml: &str) -> Result<String, VirshleError> {
@@ -30,13 +31,12 @@ mod test {
         let path = path.to_str().unwrap();
 
         let toml = fs::read_to_string(path).into_diagnostic()?;
-
         println!("\n{}", toml);
+
         let value = from_toml(&toml)?;
-
         println!("\n{:#?}", value);
-        let xml = to_xml(&value)?;
 
+        let xml = to_xml(&value)?;
         println!("\n{}", xml);
         Ok(())
     }

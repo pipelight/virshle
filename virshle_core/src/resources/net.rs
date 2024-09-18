@@ -45,10 +45,8 @@ impl From<u32> for State {
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct Net {
-    #[tabled(skip)]
     pub uuid: Uuid,
     pub name: String,
-    // #[tabled(display_with = "display_option")]
     pub state: State,
     pub autostart: bool,
     pub persistent: bool,
@@ -145,7 +143,7 @@ mod test {
     #[test]
     fn create_network() -> Result<()> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("../templates/network/base.toml");
+        path.push("../templates/net/default.toml");
         let path = path.display().to_string();
 
         Net::set(&path)?;
@@ -156,7 +154,6 @@ mod test {
     #[test]
     fn delete_network() -> Result<()> {
         Net::delete("default_6")?;
-
         Ok(())
     }
 }

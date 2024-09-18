@@ -13,7 +13,8 @@ log = "0.4.22"
 virt = "0.4.1"
 thiserror = "1.0.63"
 serde = { version = "1.0.210", features = ["derive"] }
-tabled = { version = "0.16.0", features = ["ansi"] }
+# tabled = { version = "0.16.0", features = ["ansi"] }
+tabled = { version = "=0.15.0", features = ["ansi"] }
 strum = { version = "0.26.3", features = ["derive"] }
 convert_case = "0.6.0"
 owo-colors = "4.1.0"

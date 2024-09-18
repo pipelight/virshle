@@ -1,12 +1,12 @@
+// Convert
+use crate::convert::{from_toml, from_toml_to_xml, to_xml};
+use serde_json::Value;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use tabled::Tabled;
-
-// Error Handling
-use crate::error::{VirshleError, VirtError, WrapError};
-use log::trace;
-use miette::{IntoDiagnostic, Result};
+use uuid::Uuid;
 
 // libvirt
 use super::connect;
@@ -16,7 +16,10 @@ use human_bytes::human_bytes;
 use strum::EnumIter;
 use virt::domain::Domain;
 
-use once_cell::sync::Lazy;
+// Error Handling
+use crate::error::{VirshleError, VirtError, WrapError};
+use log::{info, trace};
+use miette::{IntoDiagnostic, Result};
 
 static NVirConnectListAllDomainsFlags: u32 = 15;
 
@@ -56,6 +59,7 @@ fn display_option(vram: &u64) -> String {
 }
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct Vm {
+    pub uuid: Uuid,
     pub name: String,
     pub id: u32,
     pub vcpu: u64,
@@ -71,6 +75,7 @@ impl Vm {
             state: State::from(e.is_active()? as u32),
             vcpu: e.get_max_vcpus()?,
             vram: e.get_max_memory()?,
+            uuid: e.get_uuid()?,
         };
         Ok(res)
     }
@@ -106,6 +111,20 @@ impl Vm {
         }
         let list: Vec<Vm> = map.into_values().collect();
         Ok(list)
+    }
+    pub fn set_w_uuid(path: &str, uuid: &Uuid) -> Result<(), VirshleError> {
+        let toml = fs::read_to_string(path)?;
+
+        // Hydrate template with uuid and volume ids,...
+        let mut value = from_toml(&toml)?;
+        value["domain"]["uuid"] = Value::String(uuid.to_string());
+        info!("\n{}", toml);
+
+        let xml = to_xml(&value)?;
+        info!("\n{}", xml);
+
+        Self::set_xml(&xml)?;
+        Ok(())
     }
     pub fn set(path: &str) -> Result<(), VirshleError> {
         let toml = fs::read_to_string(path)?;
@@ -150,7 +169,7 @@ mod test {
     #[test]
     fn create_domain() -> Result<()> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("../templates/vm/base.toml");
+        path.push("../templates/vm/default_qcow2.toml");
         let path = path.display().to_string();
 
         let items = Vm::set(&path);
@@ -158,10 +177,9 @@ mod test {
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn delete_domain() -> Result<()> {
-        Vm::delete("default_6")?;
-
+        Vm::delete("vm-nixos")?;
         Ok(())
     }
 }

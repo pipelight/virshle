@@ -5,13 +5,13 @@
 }:
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "virshle";
-  version = "0.3.0";
+  version = (builtins.fromTOML (lib.readFile ./${pname}/Cargo.toml)).package.version;
 
   src = ./.;
-
   cargoLock = {
     lockFile = ./Cargo.lock;
   };
+
   # disable tests
   checkType = "debug";
   doCheck = false;
@@ -25,8 +25,7 @@ pkgs.rustPlatform.buildRustPackage rec {
     pkg-config
     libvirt
     libvirt-glib
-    rust-bin.nightly.latest.default
-    llvmPackages_latest.bintools
+    (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
   ];
 
   postInstall = with lib; ''

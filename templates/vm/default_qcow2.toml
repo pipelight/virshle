@@ -34,7 +34,7 @@ emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 "#text" = "hvm"
 
 [domain.os.nvram]
-"#text" = "./iso/OVMF_VARS.fd"
+"#text" = "~/Iso/OVMF_VARS.fd"
 "@readonly" = "yes"
 
 [domain.os.loader]
@@ -58,7 +58,7 @@ emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 "@type" = "file"
 "@device" = "disk"
 [domain.devices.disk.source]
-"@file" = "./iso/nixos.qcow2"
+"@file" = "~/Iso/nixos.qcow2"
 [domain.devices.disk.driver]
 "@name" = "qemu"
 "@type" = "qcow2"

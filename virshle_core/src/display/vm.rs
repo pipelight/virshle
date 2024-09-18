@@ -1,6 +1,8 @@
 use owo_colors::OwoColorize;
 use std::fmt;
 use tabled::{settings::Style, Table, Tabled};
+use uuid::Uuid;
+
 // Error Handling
 use log::trace;
 use miette::{IntoDiagnostic, Result};
@@ -48,6 +50,7 @@ mod test {
                 vcpu: 2,
                 vram: 4_200_000,
                 state: State::Crashed,
+                uuid: Uuid::new_v4(),
             },
             Vm {
                 id: 4,
@@ -55,6 +58,7 @@ mod test {
                 vcpu: 2,
                 vram: 4_200_000,
                 state: State::Running,
+                uuid: Uuid::new_v4(),
             },
         ];
 
