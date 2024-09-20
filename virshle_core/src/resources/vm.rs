@@ -67,6 +67,14 @@ pub struct Vm {
     pub vram: u64,
     pub state: State,
 }
+
+// Methods
+impl Vm {
+    pub fn get_vram(&self) -> Result<String, VirshleError> {
+        let res = human_bytes((self.vram * 1024) as f64);
+        Ok(res)
+    }
+}
 impl Vm {
     fn from(e: &Domain) -> Result<Vm, VirshleError> {
         let res = Vm {

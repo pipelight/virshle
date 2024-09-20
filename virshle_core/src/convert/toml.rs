@@ -1,11 +1,14 @@
+use bat::PrettyPrinter;
+use crossterm::{execute, style::Stylize, terminal::size};
+use log::{info, log_enabled, Level};
 use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::Path;
+
 // Error Handling
+use crate::error::LibError;
 use crate::error::VirshleError;
 use miette::{IntoDiagnostic, Result};
-
-use crate::error::LibError;
 use pipelight_error::{CastError, TomlError};
 
 /**
@@ -13,9 +16,22 @@ use pipelight_error::{CastError, TomlError};
 */
 pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
     let res = toml::from_str::<Value>(string);
+
+    if log_enabled!(Level::Info) {
+        let (cols, _) = size()?;
+        let divider = "-".repeat((cols / 3).into());
+        println!("{}", format!("{divider}toml{divider}").green());
+        PrettyPrinter::new()
+            .input_from_bytes(string.as_bytes())
+            .language("toml")
+            .print()?;
+        println!("");
+    }
+
     match res {
         Ok(mut res) => {
             relpath_to_fullpath(&mut res)?;
+
             Ok(res)
         }
         Err(e) => {

@@ -3,9 +3,10 @@ pub mod secret;
 pub mod vm;
 use crossterm::{execute, style::Stylize, terminal::size};
 use owo_colors::OwoColorize;
+use std::str::FromStr;
+use strum::{Display, EnumIter, EnumString, FromRepr, IntoEnumIterator};
 
 use crate::convert;
-use log::{info, log_enabled, Level};
 use serde_json::{Map, Value};
 
 use bat::PrettyPrinter;
@@ -15,7 +16,7 @@ pub use vm::Vm;
 
 // Error Handling
 use crate::error::{VirshleError, WrapError};
-use log::trace;
+use log::{info, log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 
 use virt::connect::Connect;
@@ -25,53 +26,45 @@ pub fn connect() -> Result<Connect, VirshleError> {
     let res = Connect::open(Some("qemu:///system"))?;
     Ok(res)
 }
-
+#[derive(Debug, EnumIter, EnumString)]
 pub enum ResourceType {
-    Net(String),
-    Vm(String),
+    #[strum(serialize = "network")]
+    Net,
+    #[strum(serialize = "domain")]
+    Vm,
+    #[strum(serialize = "secret")]
+    Secret,
+    #[strum(serialize = "volume")]
+    Vol,
 }
 
-pub fn create_resources(toml: &str) -> Result<()> {
-    let (cols, rows) = size().into_diagnostic()?;
-    let divider = "-".repeat((cols / 3).into());
-
-    if log_enabled!(Level::Info) {
-        println!("{}", format!("{divider}toml{divider}").green());
-        PrettyPrinter::new()
-            .input_from_bytes(toml.as_bytes())
-            .language("toml")
-            .print()
-            .into_diagnostic()?;
-        println!("");
-    }
-
+pub fn create_resources(toml: &str) -> Result<(), VirshleError> {
     let value = convert::from_toml(&toml)?;
     if let Some(map) = value.as_object() {
         for key in map.keys() {
-            let mut new_map = Map::new();
-            new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
-            let xml = convert::to_xml(&value)?;
-
-            if log_enabled!(Level::Info) {
-                println!("{}", format!("{divider}xml{divider}").green());
-                PrettyPrinter::new()
-                    .input_from_bytes(xml.as_bytes())
-                    .language("xml")
-                    .print()
-                    .into_diagnostic()?;
-                println!("");
-            }
-
-            if key == "domain" {
-                Vm::set_xml(&xml)?;
-            }
-            if key == "network" {
-                Net::set_xml(&xml)?;
-            }
-            if key == "secret" {
-                let mut value = Value::Object(new_map);
-                Secret::set_multi_xml_w_value(&mut value)?;
-            }
+            let binding = ResourceType::from_str(key)?;
+            match binding {
+                ResourceType::Vm => {
+                    let mut new_map = Map::new();
+                    new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
+                    let xml = convert::to_xml(&Value::Object(new_map))?;
+                    Vm::set_xml(&xml)?;
+                }
+                ResourceType::Net => {
+                    let mut new_map = Map::new();
+                    new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
+                    let xml = convert::to_xml(&Value::Object(new_map))?;
+                    Net::set_xml(&xml)?;
+                }
+                ResourceType::Secret => {
+                    let mut new_map = Map::new();
+                    new_map.insert(key.to_owned(), map.get(key).unwrap().to_owned());
+                    let mut value = Value::Object(new_map);
+                    Secret::set_multi_xml_w_value(&mut value)?;
+                }
+                ResourceType::Vol => {}
+                _ => {}
+            };
         }
     }
     Ok(())

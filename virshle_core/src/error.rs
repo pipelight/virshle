@@ -29,6 +29,14 @@ pub enum VirshleError {
     LibVirtError(#[from] virt::error::Error),
 
     #[error(transparent)]
+    #[diagnostic(code(virshle::bat::error))]
+    BatError(#[from] bat::error::Error),
+
+    #[error(transparent)]
+    #[diagnostic(code(virshle::bat::error))]
+    StrumError(#[from] strum::ParseError),
+
+    #[error(transparent)]
     #[diagnostic(transparent)]
     WrapError(#[from] WrapError),
 

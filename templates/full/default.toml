@@ -53,25 +53,14 @@ emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 
 #################################
 ## Storage
+
 # Os
 
-# Secret definition
-[[secret]]
-"@ephemeral" = "no"
-"@private" = "yes"
-[secret.value]
-"#text" = "abc123"
-[secret.description]
-"#text" = "Luks storage secret"
-[secret.uuid]
-"#text" = "d6e7d1f8-1cca-4fb3-b985-7ca74cf7cbb9"
-
-# Encrypted device
 [[domain.devices.disk]]
 "@type" = "file"
 "@device" = "disk"
 [domain.devices.disk.source]
-"@file" = "~/Iso/encrypted.qcow2"
+"@file" = "~/Iso/nixos.qcow2"
 [domain.devices.disk.driver]
 "@name" = "qemu"
 "@type" = "qcow2"
@@ -79,22 +68,51 @@ emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 "@dev" = "vda"
 "@bus" = "virtio"
 [domain.devices.disk.alias]
-"@name" = "encrypted"
-# Luks settings
-[domain.devices.disk.encryption]
-"@format" = "luks"
-[domain.devices.disk.encryption.secret]
-"@type" = "passphrase"
-"@uuid" = "d6e7d1f8-1cca-4fb3-b985-7ca74cf7cbb9"
-
+"@name" = "nixos"
 
 #################################
 ## Network
+
+## Plug vm to network
 
 [[domain.devices.interface]]
 "@type" = "network"
 source."@network" = "default_6"
 model."@type" = "virtio"
+
+## Ensure network exists
+
+[network]
+name = "default_6"
+uuid = "9a05da11-e96b-47f3-8253-a3a482e445f5"
+
+forward."@mode" = 'nat'
+[network.bridge]
+"@name" = "virbr4"
+"@stp" = "on"
+
+[network.mac]
+"@address" = "52:54:00:0a:cd:22"
+
+# IPv4 network
+[[network.ip]]
+"@family" = "ipv4"
+"@address" = "192.168.120.1"
+"@netmask" = "255.255.255.0"
+
+[network.ip.dhcp.range]
+"@start" = "192.168.120.2"
+"@end" = "192.168.120.254"
+
+# IPv6 network
+[[network.ip]]
+"@family" = "ipv6"
+"@address" = "2607:db8::1"
+"@prefix" = "96"
+
+[network.ip.dhcp.range]
+"@start" = "2607:db8::1000"
+"@end" = "2607:db8::1fff"
 
 #################################
 ## Utils

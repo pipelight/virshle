@@ -1,9 +1,11 @@
+use bat::PrettyPrinter;
+use crossterm::{execute, style::Stylize, terminal::size};
+use log::{info, log_enabled, Level};
 use serde_json::{json, Map, Value};
 use std::fs;
 
 // Error Handling
 use crate::error::VirshleError;
-use log::trace;
 use miette::{IntoDiagnostic, Result};
 
 pub fn to_xml(value: &Value) -> Result<String, VirshleError> {
@@ -15,6 +17,18 @@ pub fn to_xml(value: &Value) -> Result<String, VirshleError> {
                 make_xml_tree(k, &mut v, &mut -1, &mut string)?;
             }
         }
+    }
+
+    // Debug
+    if log_enabled!(Level::Info) {
+        let (cols, _) = size()?;
+        let divider = "-".repeat((cols / 3).into());
+        println!("{}", format!("{divider}xml{divider}").green());
+        PrettyPrinter::new()
+            .input_from_bytes(string.as_bytes())
+            .language("xml")
+            .print()?;
+        println!("");
     }
     Ok(string)
 }
