@@ -44,9 +44,9 @@ pub fn create_resources(toml: &str) -> Result<(), VirshleError> {
 
     if let Some(map) = value.as_object_mut() {
         let mut resources: HashMap<String, Vec<Value>> = HashMap::new();
-        resources.insert("domain".to_owned(), vec![]);
-        resources.insert("network".to_owned(), vec![]);
-        resources.insert("secret".to_owned(), vec![]);
+        resources.insert(ResourceType::Secret.to_string(), vec![]);
+        resources.insert(ResourceType::Net.to_string(), vec![]);
+        resources.insert(ResourceType::Vm.to_string(), vec![]);
 
         // Reorder values for efficient creation.
         let keys: Vec<String> = map.keys().map(|e| e.to_owned()).collect();
