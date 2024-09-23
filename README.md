@@ -7,8 +7,6 @@ Features:
 - Use **predefined [templates](https://github.com/pipelight/virshle/templates)**.
 - Twist numerous clones of the same machine.
 
-![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table.png)
-
 > [!IMPORTANT]  
 > Tool in very early development stage.
 > Should be used complementay to [virsh](https://github.com/libvirt/libvirt)
@@ -31,11 +29,11 @@ And create/ensure them with a single command.
 Checkout example in the predefined
 [templates](https://github.com/pipelight/virshle/templates) directory.
 
-```sh
-virshle create <file>
-```
+The following commands creates a different vm everytime it is called.
 
-virshle up <file>
+```sh
+virshle create <template_file>
+```
 
 ###
 
@@ -64,18 +62,33 @@ Simple operations on resources.
 | rm (delete) |
 | ls (list)   |
 
-Here is a complete example of command line usage.
+Here is an example of command line usage.
 
 ```sh
 # List domains (virtual machines, guests)
 virshle vm ls
+```
+
+![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table_base.png)
+
+```sh
+
+virshle vm ls -vv
+```
+
+![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table_ips.png)
+
+```sh
 # List networks
+
 virshle net ls
 
 # Create a domain
+
 virshle vm create ./template/vm/base.toml
 
 # Delete resources
+
 virshle vm rm <vm_name>
 
 ```

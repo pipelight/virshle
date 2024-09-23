@@ -92,7 +92,8 @@ impl Net {
                 }
             }
         }
-        let list: Vec<Net> = map.into_values().collect();
+        let mut list: Vec<Net> = map.into_values().collect();
+        list.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(list)
     }
     pub fn set(path: &str) -> Result<(), VirshleError> {

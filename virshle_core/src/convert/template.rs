@@ -6,9 +6,10 @@ use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::Path;
 
-// Error Handling
 use super::toml::make_canonical_path;
-use crate::error::LibError;
+use crate::config::MANAGED_DIR;
+
+// Error Handling
 use crate::error::VirshleError;
 use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};

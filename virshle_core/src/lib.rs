@@ -1,8 +1,6 @@
 pub mod cache;
+pub mod config;
 pub mod convert;
-mod display;
+pub mod display;
 mod error;
 pub mod resources;
-
-// Reexports
-pub use display::display;

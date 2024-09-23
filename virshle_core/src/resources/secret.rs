@@ -106,7 +106,8 @@ impl Secret {
                 }
             }
         }
-        let list: Vec<Secret> = map.into_values().collect();
+        let mut list: Vec<Secret> = map.into_values().collect();
+        list.sort_by(|a, b| a.uuid.cmp(&b.uuid));
         Ok(list)
     }
     pub fn set(path: &str) -> Result<(), VirshleError> {

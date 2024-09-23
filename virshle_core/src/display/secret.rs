@@ -1,4 +1,5 @@
-use super::display;
+use super::default;
+
 use owo_colors::OwoColorize;
 use std::fmt;
 use tabled::{settings::Style, Table, Tabled};
@@ -50,7 +51,7 @@ mod test {
         ];
 
         println!("");
-        display(items)?;
+        default(items)?;
 
         Ok(())
     }
@@ -59,7 +60,7 @@ mod test {
         let items = Secret::get_all()?;
 
         println!("");
-        display(items)?;
+        default(items)?;
 
         Ok(())
     }

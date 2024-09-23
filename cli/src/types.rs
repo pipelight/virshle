@@ -1,13 +1,14 @@
 use std::fs;
 use std::path::Path;
 use virshle_core::{
-    convert, display,
-    resources::{create_resources, Net, ResourceType, Secret, Vm},
+    convert, display, resources,
+    resources::{create, Net, ResourceType, Secret, Vm},
 };
 
 // Logger
 use env_logger::Builder;
 use log::LevelFilter;
+
 // Error Handling
 use miette::{IntoDiagnostic, Result};
 
@@ -24,6 +25,7 @@ pub struct Cli {
 }
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
+    Prune,
     Create(File),
     #[command(subcommand)]
     Vm(Crud),
@@ -70,13 +72,17 @@ impl Cli {
         Builder::from_env("VIRSHLE_LOG").init();
 
         match cli.commands {
+            Commands::Prune => {
+                // remove unused managed files
+                resources::clean()?;
+            }
             Commands::Create(args) => {
                 let toml = fs::read_to_string(args.file).into_diagnostic()?;
-                create_resources(&toml)?;
+                create(&toml)?;
             }
             Commands::Vm(args) => match args {
                 Crud::Ls => {
-                    display(Vm::get_all()?)?;
+                    display::vm(Vm::get_all()?)?;
                 }
                 Crud::Rm(resource) => {
                     Vm::delete(&resource.name)?;
@@ -87,7 +93,7 @@ impl Cli {
             },
             Commands::Net(args) => match args {
                 Crud::Ls => {
-                    display(Net::get_all()?)?;
+                    display::default(Net::get_all()?)?;
                 }
                 Crud::Rm(resource) => {
                     Net::delete(&resource.name)?;
@@ -98,7 +104,7 @@ impl Cli {
             },
             Commands::Secret(args) => match args {
                 CrudUuid::Ls => {
-                    display(Secret::get_all()?)?;
+                    display::default(Secret::get_all()?)?;
                 }
                 CrudUuid::Rm(resource) => {
                     Secret::delete(&resource.uuid)?;

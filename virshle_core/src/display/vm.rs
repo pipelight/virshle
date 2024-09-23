@@ -7,7 +7,7 @@ use uuid::Uuid;
 use log::trace;
 use miette::{IntoDiagnostic, Result};
 
-use super::display;
+use super::vm;
 use crate::{
     error::VirshleError,
     resources::vm::{State, Vm},
@@ -51,6 +51,7 @@ mod test {
                 vram: 4_200_000,
                 state: State::Crashed,
                 uuid: Uuid::new_v4(),
+                ips: vec![],
             },
             Vm {
                 id: 4,
@@ -59,11 +60,12 @@ mod test {
                 vram: 4_200_000,
                 state: State::Running,
                 uuid: Uuid::new_v4(),
+                ips: vec![],
             },
         ];
 
         println!("");
-        display(vms)?;
+        vm(vms)?;
 
         Ok(())
     }
@@ -72,7 +74,7 @@ mod test {
         let vms = Vm::get_all()?;
 
         println!("");
-        display(vms)?;
+        vm(vms)?;
 
         Ok(())
     }

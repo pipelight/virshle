@@ -53,19 +53,25 @@ impl From<u32> for State {
     }
 }
 
-fn display_option(vram: &u64) -> String {
+fn display_vram(vram: &u64) -> String {
     let res = human_bytes((vram * 1024) as f64);
     format!("{}", res)
 }
+fn display_ips(ips: &Vec<String>) -> String {
+    let res = ips.join("\n");
+    format!("{}\n", res)
+}
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct Vm {
-    pub uuid: Uuid,
     pub name: String,
     pub id: u32,
     pub vcpu: u64,
-    #[tabled(display_with = "display_option")]
+    #[tabled(display_with = "display_vram")]
     pub vram: u64,
     pub state: State,
+    #[tabled(display_with = "display_ips")]
+    pub ips: Vec<String>,
+    pub uuid: Uuid,
 }
 
 // Methods
@@ -74,9 +80,22 @@ impl Vm {
         let res = human_bytes((self.vram * 1024) as f64);
         Ok(res)
     }
-    pub fn get_ip(&self) -> Result<String, VirshleError> {
-        let ip = "".to_owned();
-        Ok(ip)
+    /*
+     * https://libvirt.org/html/libvirt-libvirt-domain.html#virDomainInterfaceAddressesSource
+     */
+    pub fn get_ips(domain: &Domain) -> Result<Vec<String>, VirshleError> {
+        let interfaces = domain.interface_addresses(0, 0)?;
+        let ips: Vec<String> = interfaces
+            .iter()
+            .map(|e| {
+                e.addrs
+                    .iter()
+                    .map(|a| a.addr.clone())
+                    .collect::<Vec<String>>()
+            })
+            .flatten()
+            .collect();
+        Ok(ips)
     }
 }
 impl Vm {
@@ -88,6 +107,7 @@ impl Vm {
             vcpu: e.get_max_vcpus()?,
             vram: e.get_max_memory()?,
             uuid: e.get_uuid()?,
+            ips: Self::get_ips(e)?,
         };
         Ok(res)
     }
@@ -121,7 +141,8 @@ impl Vm {
                 }
             }
         }
-        let list: Vec<Vm> = map.into_values().collect();
+        let mut list: Vec<Vm> = map.into_values().collect();
+        list.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(list)
     }
     pub fn set_w_uuid(path: &str, uuid: &Uuid) -> Result<(), VirshleError> {
