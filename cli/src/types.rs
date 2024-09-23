@@ -39,6 +39,7 @@ pub struct File {
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Crud {
     Rm(Resource),
+    Create(File),
     Ls,
 }
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
@@ -48,6 +49,7 @@ pub struct Resource {
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum CrudUuid {
     Rm(ResourceUuid),
+    Create(File),
     Ls,
 }
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
@@ -79,6 +81,9 @@ impl Cli {
                 Crud::Rm(resource) => {
                     Vm::delete(&resource.name)?;
                 }
+                Crud::Create(args) => {
+                    Vm::set(&args.file)?;
+                }
             },
             Commands::Net(args) => match args {
                 Crud::Ls => {
@@ -87,6 +92,9 @@ impl Cli {
                 Crud::Rm(resource) => {
                     Net::delete(&resource.name)?;
                 }
+                Crud::Create(args) => {
+                    Net::set(&args.file)?;
+                }
             },
             Commands::Secret(args) => match args {
                 CrudUuid::Ls => {
@@ -94,6 +102,9 @@ impl Cli {
                 }
                 CrudUuid::Rm(resource) => {
                     Secret::delete(&resource.uuid)?;
+                }
+                CrudUuid::Create(args) => {
+                    Secret::set(&args.file)?;
                 }
             },
             _ => {}

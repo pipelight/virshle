@@ -114,6 +114,14 @@ impl Net {
             .into()),
         }
     }
+    pub fn ensure_xml(xml: &str) -> Result<(), VirshleError> {
+        let res = Self::set_xml(xml);
+        match res {
+            Err(e) => {}
+            Ok(()) => {}
+        };
+        Ok(())
+    }
     pub fn delete(name: &str) -> Result<(), VirshleError> {
         // Guard
         Self::get(name)?;

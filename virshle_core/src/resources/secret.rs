@@ -134,13 +134,13 @@ impl Secret {
      * value="test"
      * ```
      */
-    pub fn set_multi_xml_w_value(json: &mut Value) -> Result<(), VirshleError> {
+    pub fn set_multi_xml_w_value(json: &Value) -> Result<(), VirshleError> {
         // For array of secrets
         if json["secret"].is_array() {
-            for secret in json["secret"].as_array_mut().unwrap() {
+            for secret in json["secret"].as_array().unwrap() {
                 let mut new_map = Map::new();
                 new_map.insert("secret".to_owned(), secret.to_owned());
-                Self::set_xml_w_value(&mut Value::Object(new_map))?;
+                Self::set_xml_w_value(&Value::Object(new_map))?;
             }
         // For single secret
         } else {
@@ -150,11 +150,12 @@ impl Secret {
         Ok(())
     }
 
-    pub fn set_xml_w_value(json: &mut Value) -> Result<(), VirshleError> {
+    pub fn set_xml_w_value(json: &Value) -> Result<(), VirshleError> {
         let conn = connect()?;
         if json.is_object() {
-            let mut binding = json.clone();
-            let mut objmut = json.as_object_mut().unwrap();
+            let mut binding = json.to_owned();
+            let mut objmut = json.to_owned();
+            let objmut = objmut.as_object_mut().unwrap();
             let obj = binding.as_object().unwrap();
             if let Some(obj) = obj.get("secret") {
                 if let Some(secret_value) = obj.get("value") {

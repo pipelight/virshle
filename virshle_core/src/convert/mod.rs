@@ -1,6 +1,8 @@
+pub mod template;
 pub mod toml;
 pub mod xml;
 
+pub use template::*;
 pub use toml::from_toml;
 pub use xml::to_xml;
 
@@ -27,7 +29,7 @@ mod test {
     #[test]
     fn try_from_toml_to_xml() -> Result<()> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("../templates/vm/base.toml");
+        path.push("../templates/vm/default.toml");
         let path = path.to_str().unwrap();
 
         let toml = fs::read_to_string(path).into_diagnostic()?;

@@ -1,0 +1,17 @@
+let names = ["server1", "server2", "server3"];
+{
+  vm = [
+  for name in names:
+     {
+      name = name,
+      template = "../all/default.toml"
+    }
+  ],
+  net = [
+    {
+      name = "default_X",
+      template = "../net/default.toml"
+    }
+  ]
+}
+

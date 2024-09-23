@@ -1,0 +1,15 @@
+[[vm]]
+name = "server1"
+template = "../all/default.toml"
+
+[[vm]]
+name = "server2"
+template = "../all/default.toml"
+
+[[vm]]
+name = "server3"
+template = "../all/default.toml"
+
+[[net]]
+name = "default3"
+template = "../net/default.toml"

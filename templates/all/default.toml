@@ -80,6 +80,29 @@ emulator = "/run/libvirt/nix-emulators/qemu-kvm"
 source."@network" = "default_6"
 model."@type" = "virtio"
 
+#################################
+## Utils
+# Redirect guest output to host
+
+[domain.devices.serial]
+"@type" = "pty"
+source."@path" = "/dev/pts/0"
+alias."@name" = 'serial0'
+
+[domain.devices.serial.target]
+"@type" = "isa-serial"
+model."@name" = "isa-serial"
+"@port" = 0
+
+[domain.devices.console]
+"@type" = "pty"
+"@tty" = "/dev/pts/0"
+source."@path" = "/dev/pts/0"
+alias."@name" = "serial0"
+
+[domain.devices.console.target]
+"@type" = "serial"
+"@port" = 0
 ## Ensure network exists
 
 [network]
@@ -113,27 +136,3 @@ forward."@mode" = 'nat'
 [network.ip.dhcp.range]
 "@start" = "2607:db8::1000"
 "@end" = "2607:db8::1fff"
-
-#################################
-## Utils
-# Redirect guest output to host
-
-[domain.devices.serial]
-"@type" = "pty"
-source."@path" = "/dev/pts/0"
-alias."@name" = 'serial0'
-
-[domain.devices.serial.target]
-"@type" = "isa-serial"
-model."@name" = "isa-serial"
-"@port" = 0
-
-[domain.devices.console]
-"@type" = "pty"
-"@tty" = "/dev/pts/0"
-source."@path" = "/dev/pts/0"
-alias."@name" = "serial0"
-
-[domain.devices.console.target]
-"@type" = "serial"
-"@port" = 0

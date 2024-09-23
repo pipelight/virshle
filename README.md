@@ -1,36 +1,82 @@
-# Virshle - Virtual machines from the command line.
-
-A Cli to supersede [virsh](https://github.com/libvirt/libvirt).
+# Virshle - Painless virtual machines.
 
 Features:
 
-- Resource definitions take **TOML** instead of XML.
-
-- More intuitive commands and colorful outputs.
+- Manage virtual machines with a **nobrainer cli**.
+- Write resource definitions in **TOML**.
+- Use **predefined [templates](https://github.com/pipelight/virshle/templates)**.
+- Twist numerous clones of the same machine.
 
 ![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table.png)
 
 > [!IMPORTANT]  
-> Tool very early development stage.
-> Can still be use complementay to [virsh](https://github.com/libvirt/libvirt)
+> Tool in very early development stage.
+> Should be used complementay to [virsh](https://github.com/libvirt/libvirt)
 
 ## 🚀 Get started!
 
-### A quick command tour
+### Debug
+
+You can increase verbosity for each commands and get detailed logs.
 
 ```sh
-# Create resources
-virshle create ./template/vm/base.toml
+virshle -vvvv
+```
 
+### Bulk create from templates
+
+You can define multiple resources in the same file.
+And create/ensure them with a single command.
+
+Checkout example in the predefined
+[templates](https://github.com/pipelight/virshle/templates) directory.
+
+```sh
+virshle create <file>
+```
+
+virshle up <file>
+
+###
+
+Manage virtual machines and networks easily.
+Commands have been simplified to a minimal CRUD api.
+
+Here is the cli struct.
+
+```sh
+virshle <resource> <method>
+```
+
+You can manipulate those resources.
+
+| resources     |
+| ------------- |
+| vm (domain)   |
+| net (network) |
+| secret        |
+
+Simple operations on resources.
+
+| methods     |
+| ----------- |
+| create      |
+| rm (delete) |
+| ls (list)   |
+
+Here is a complete example of command line usage.
+
+```sh
 # List domains (virtual machines, guests)
 virshle vm ls
-
 # List networks
 virshle net ls
 
+# Create a domain
+virshle vm create ./template/vm/base.toml
+
 # Delete resources
-virshle rm <resource_type> <resource_name>
-virshle rm net default_6
+virshle vm rm <vm_name>
 
 ```
 
@@ -76,7 +122,7 @@ source."@network" = "default"
 Bring the guest up with,
 
 ```sh
-virshle create ./template/vm/base.toml
+virshle vm create ./template/vm/base.toml
 ```
 
 This is how you would define a network.
@@ -108,15 +154,7 @@ forward."@mode" = 'nat'
 Bring it up with
 
 ```sh
-virshle create ./template/network/network.toml
-```
-
-### Debug
-
-Increase verbosity.
-
-```sh
-virshle create <file> -vvvv
+virshle net create ./template/network/network.toml
 ```
 
 ## 🛠️ Install
@@ -168,27 +206,30 @@ Install it on your system.
 
 v0.4.0
 
-- [ ] Toml/Xml: automaticaly guess what resource to manipulate based on file root element
+- [x] Toml/Xml: automaticaly guess what resource to manipulate based on file root element
 
 Commandes,
 
 - [x] list:
   - [x] vms
   - [x] networks
+  - [x] secrets
 - [x] create:
   - [x] vms,
   - [x] networks
+  - [x] secrets
 - [x] delete:
   - [x] vms,
   - [x] networks
+  - [x] secrets
 - [ ] update:
   - [ ] vms,
   - [ ] networks
+  - [ ] secrets
 
 Resources management
 
 - [ ] display vm IPs when verbosity increased (-v)
-- [ ] add support for url as disk source.
 
 ```toml
 [domain.devices.disk.source]
@@ -198,5 +239,11 @@ Resources management
 ## Community/Contrib
 
 Join the matrix room.
-
 https://matrix.to/#/#virshle:matrix.org
+
+## Thanks
+
+Big thanks to libvirt teams who mad it possible with the
+[virsh](https://github.com/libvirt/libvirt) cli
+and rust libvirt mappings.
+Docker [https://github.com/docker/compose] for inspiration.

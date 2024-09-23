@@ -74,6 +74,10 @@ impl Vm {
         let res = human_bytes((self.vram * 1024) as f64);
         Ok(res)
     }
+    pub fn get_ip(&self) -> Result<String, VirshleError> {
+        let ip = "".to_owned();
+        Ok(ip)
+    }
 }
 impl Vm {
     fn from(e: &Domain) -> Result<Vm, VirshleError> {
