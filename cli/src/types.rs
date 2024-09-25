@@ -40,7 +40,9 @@ pub struct File {
 }
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Crud {
+    On(Resource),
     Rm(Resource),
+    Off(Resource),
     Create(File),
     Ls,
 }
@@ -85,7 +87,13 @@ impl Cli {
                     display::vm(Vm::get_all()?)?;
                 }
                 Crud::Rm(resource) => {
-                    Vm::delete(&resource.name)?;
+                    Vm::get(&resource.name)?.delete()?;
+                }
+                Crud::On(resource) => {
+                    Vm::get(&resource.name)?.shutdown()?;
+                }
+                Crud::Off(resource) => {
+                    Vm::get(&resource.name)?.shutdown()?;
                 }
                 Crud::Create(args) => {
                     Vm::set(&args.file)?;
@@ -101,6 +109,7 @@ impl Cli {
                 Crud::Create(args) => {
                     Net::set(&args.file)?;
                 }
+                _ => {}
             },
             Commands::Secret(args) => match args {
                 CrudUuid::Ls => {
