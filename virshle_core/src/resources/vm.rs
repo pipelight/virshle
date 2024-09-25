@@ -60,7 +60,7 @@ fn display_vram(vram: &u64) -> String {
 fn display_id(id: &Option<u32>) -> String {
     match id {
         Some(x) => x.to_string().to_owned(),
-        None => "_".to_owned(),
+        None => " ".to_owned(),
     }
 }
 fn display_ips(ips: &Vec<String>) -> String {
@@ -208,6 +208,22 @@ impl Vm {
 
 // Methods
 impl Vm {
+    pub fn get_vram(&self) -> String {
+        let res = human_bytes((self.vram * 1024) as f64);
+        format!("{}", res)
+    }
+    pub fn start(&self) -> Result<(), VirshleError> {
+        // Guard
+        Self::get(&self.name)?;
+
+        let conn = connect()?;
+        let item = Domain::lookup_by_name(&conn, &self.name)?;
+        let res = item.create();
+        match res {
+            Ok(res) => Ok(()),
+            Err(e) => Err(VirtError::new("Libvirt could not start the vm", "", e).into()),
+        }
+    }
     pub fn shutdown(&self) -> Result<(), VirshleError> {
         // Guard
         Self::get(&self.name)?;
