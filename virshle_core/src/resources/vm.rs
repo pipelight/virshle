@@ -173,6 +173,18 @@ impl Vm {
             Err(e) => Err(VirtError::new("The Vm could not be created", "", e).into()),
         }
     }
+    pub fn reboot(name: &str) -> Result<(), VirshleError> {
+        // Guard
+        Self::get(name)?;
+
+        let conn = connect()?;
+        let item = Domain::lookup_by_name(&conn, name)?;
+        let res = item.reboot(0);
+        match res {
+            Ok(res) => Ok(()),
+            Err(e) => Err(VirtError::new("Libvirt could not reboot the vm", "", e).into()),
+        }
+    }
     pub fn delete(name: &str) -> Result<(), VirshleError> {
         // Guard
         Self::get(name)?;
