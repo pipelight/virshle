@@ -2,6 +2,7 @@
 use crate::convert::{from_toml, from_toml_to_xml, to_xml};
 use serde_json::Value;
 
+use super::order::Order;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -95,6 +96,15 @@ impl Vm {
         };
         Ok(res)
     }
+    pub fn update(&mut self) -> Result<(), VirshleError> {
+        let conn = connect()?;
+        let e = Domain::lookup_by_uuid(&conn, self.uuid)?;
+        self.id = Self::get_id(&e)?;
+        self.name = e.get_name()?;
+        self.state = State::from(e.is_active()? as u32);
+        self.ips = Self::get_ips(&e)?;
+        Ok(())
+    }
     pub fn get(name: &str) -> Result<Self, VirshleError> {
         let conn = connect()?;
         let res = Domain::lookup_by_name(&conn, name);
@@ -125,9 +135,8 @@ impl Vm {
                 }
             }
         }
-        let mut list: Vec<Vm> = map.into_values().collect();
-        list.sort_by(|a, b| a.id.cmp(&b.id));
-        Ok(list)
+        let items: Vec<Vm> = map.into_values().collect();
+        Ok(items)
     }
     pub fn get_id(e: &Domain) -> Result<Option<u32>, VirshleError> {
         // Guard
@@ -203,6 +212,16 @@ impl Vm {
             Ok(res) => Ok(()),
             Err(e) => Err(VirtError::new("The Vm could not be created", "", e).into()),
         }
+    }
+}
+impl Order<Vm> for Vec<Vm> {
+    fn order_by_id(&mut self) -> Result<&mut Self, VirshleError> {
+        self.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(self)
+    }
+    fn order_by_name(&mut self) -> Result<&mut Self, VirshleError> {
+        self.sort_by(|a, b| a.name.cmp(&b.name));
+        Ok(self)
     }
 }
 

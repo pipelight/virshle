@@ -1,3 +1,6 @@
+// Traits
+pub mod order;
+
 pub mod clean;
 pub mod create;
 pub mod net;
@@ -9,6 +12,7 @@ pub use clean::clean;
 pub use create::create;
 pub use create::ResourceType;
 pub use net::Net;
+pub use order::Order;
 pub use secret::Secret;
 pub use vm::Vm;
 

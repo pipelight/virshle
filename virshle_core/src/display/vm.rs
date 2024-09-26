@@ -10,7 +10,10 @@ use miette::{IntoDiagnostic, Result};
 use super::vm;
 use crate::{
     error::VirshleError,
-    resources::vm::{State, Vm},
+    resources::{
+        vm::{State, Vm},
+        Order,
+    },
 };
 use human_bytes::human_bytes;
 
@@ -45,7 +48,7 @@ mod test {
         // Get vms
         let vms = vec![
             Vm {
-                id: 4,
+                id: Some(4),
                 name: "TestOs".to_owned(),
                 vcpu: 2,
                 vram: 4_200_000,
@@ -54,7 +57,7 @@ mod test {
                 ips: vec![],
             },
             Vm {
-                id: 4,
+                id: Some(6),
                 name: "NixOs".to_owned(),
                 vcpu: 2,
                 vram: 4_200_000,
@@ -71,7 +74,7 @@ mod test {
     }
     #[test]
     fn display_current() -> Result<()> {
-        let vms = Vm::get_all()?;
+        let vms = Vm::get_all()?.order_by_id()?.order_by_name()?.to_owned();
 
         println!("");
         vm(vms)?;

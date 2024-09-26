@@ -24,3 +24,4 @@ miette = { version = "7.2.0", features = ["fancy"] }
 log = "0.4.22"
 serde = { version = "1.0.210", features = ["derive"] }
 env_logger = "0.11.5"
+virt = "0.4.1"
