@@ -104,7 +104,7 @@ impl Net {
     }
     pub fn set_xml(xml: &str) -> Result<(), VirshleError> {
         let conn = connect()?;
-        let res = Network::create_xml(&conn, &xml);
+        let res = Network::define_xml(&conn, &xml);
         match res {
             Ok(res) => Ok(()),
             Err(e) => Err(VirtError::new(
@@ -133,6 +133,18 @@ impl Net {
         match res {
             Ok(res) => Ok(()),
             Err(e) => Err(VirtError::new("The network could not be destroyed", "", e).into()),
+        }
+    }
+}
+impl Net {
+    pub fn start(&self) -> Result<(), VirshleError> {
+        let conn = connect()?;
+        let net = Network::lookup_by_name(&conn, &self.name)?;
+
+        let res = net.create();
+        match res {
+            Ok(res) => Ok(()),
+            Err(e) => Err(VirtError::new("The network could not be started", "", e).into()),
         }
     }
 }

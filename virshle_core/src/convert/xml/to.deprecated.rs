@@ -207,6 +207,16 @@ mod test {
                 "clock": {
                     "@sync": "localtime",
                 },
+                "devices": [
+                    {
+                        "disk": {
+                            "@type": "file",
+                            "source": {
+                                "@file": "~/Iso/encrypted.qcow2",
+                            },
+                        },
+                    },
+                ],
                 "memory": {
                     "@unit": "GiB",
                     "#text": 4,

@@ -33,6 +33,10 @@ pub enum VirshleError {
     BatError(#[from] bat::error::Error),
 
     #[error(transparent)]
+    #[diagnostic(code(virshle::minidom::error))]
+    MinidomError(#[from] minidom::error::Error),
+
+    #[error(transparent)]
     #[diagnostic(code(virshle::bat::error))]
     StrumError(#[from] strum::ParseError),
 

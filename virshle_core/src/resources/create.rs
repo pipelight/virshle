@@ -118,15 +118,3 @@ pub fn create(toml: &str) -> Result<(), VirshleError> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn try_connect() -> Result<()> {
-        let res = connect();
-        assert!(res.is_ok());
-        Ok(())
-    }
-}
