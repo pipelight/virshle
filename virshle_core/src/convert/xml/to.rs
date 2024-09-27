@@ -61,6 +61,10 @@ pub fn from_value_to_dom(element: &mut Element, value: &Value) -> Result<(), Vir
                     }
                     Value::String(v) => {
                         match k {
+                            _ if k == "devices" => {
+                                // _ if k.ends_with("s") => {
+                                // make an array
+                            }
                             _ if k.starts_with("@") => {
                                 element.set_attr(k.trim_start_matches("@"), v)
                             }
