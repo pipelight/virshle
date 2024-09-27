@@ -23,20 +23,38 @@ pub fn from_xml(xml: &str) -> Result<Value, VirshleError> {
     let mut map = Map::new();
 
     from_dom_to_value(&mut map, &dom)?;
-    Ok(Value::Object(map))
+
+    Ok(Value::Object(
+        map.get("libvirt").unwrap().as_object().unwrap().to_owned(),
+    ))
+}
+pub fn from_dom_to_array(
+    value: &mut Map<String, Value>,
+    element: &Element,
+) -> Result<(), VirshleError> {
+    let mut array = vec![];
+    for e in element.children() {
+        let mut map = Map::new();
+        from_dom_to_value(&mut map, e)?;
+        array.push(Value::Object(map.to_owned()));
+    }
+    value.insert(element.name().to_owned(), Value::Array(array));
+    Ok(())
 }
 pub fn from_dom_to_value(
     value: &mut Map<String, Value>,
     element: &Element,
 ) -> Result<(), VirshleError> {
-    for e in element.children() {
+    if element.name() == "devices" {
+        from_dom_to_array(value, element);
+    } else {
         let mut map = Map::new();
         // Attr
-        for (key, value) in e.attrs() {
+        for (key, value) in element.attrs() {
             map.insert(format!("@{}", key), Value::String(value.to_owned()));
         }
         // Text
-        let text = e.text().trim().to_owned();
+        let text = element.text().trim().to_owned();
         if !text.is_empty() {
             let number: Result<u64, ParseIntError> = text.parse();
             match number {
@@ -45,8 +63,10 @@ pub fn from_dom_to_value(
             };
         }
         // Children
-        from_dom_to_value(&mut map, e)?;
-        value.insert(e.name().to_owned(), Value::Object(map));
+        for e in element.children() {
+            from_dom_to_value(&mut map, e);
+        }
+        value.insert(element.name().to_owned(), Value::Object(map));
     }
     Ok(())
 }
@@ -79,6 +99,14 @@ mod test {
                             },
                         },
                     },
+                    {
+                        "disk": {
+                            "@type": "file",
+                            "source": {
+                                "@file": "/mnt/encrypted.qcow2",
+                            },
+                        },
+                    },
                 ],
             },
         });
@@ -90,10 +118,17 @@ mod test {
                     <disk type="file">
                         <source file="/mnt/encrypted.qcow2"></source>
                     </disk>
+                    <disk type="file">
+                        <source file="/mnt/encrypted.qcow2"></source>
+                    </disk>
                 </devices>
             </domain>
         "#;
+
         let res = from_xml(string)?;
+        // println!("{:#?}", value);
+        // println!("{:#?}", res);
+
         assert_eq!(value, res);
         Ok(())
     }
