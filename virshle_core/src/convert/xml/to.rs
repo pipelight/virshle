@@ -6,8 +6,7 @@ use std::fs;
 
 use minidom::Element;
 use quick_xml;
-use quick_xml::events::Event;
-use quick_xml::reader::Reader;
+use quick_xml::{events::Event, reader::Reader, writer::Writer};
 use regex::Regex;
 use std::num::ParseIntError;
 
@@ -24,7 +23,7 @@ pub fn to_xml(value: &Value) -> Result<String, VirshleError> {
     root.write_to(&mut buf);
 
     let mut string = String::from_utf8(buf)?;
-    string = clean(&string)?;
+    string = pretty(&clean(&string)?)?;
 
     // Debug
     if log_enabled!(Level::Info) {
@@ -116,6 +115,27 @@ pub fn clean(string: &str) -> Result<String, VirshleError> {
 
     Ok(string)
 }
+pub fn pretty(xml: &str) -> Result<String, VirshleError> {
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+
+    let mut writer = Writer::new_with_indent(Vec::new(), b' ', 2);
+
+    loop {
+        let ev = reader.read_event();
+        match ev {
+            Ok(Event::Eof) => break, // exits the loop when reaching end of file
+            Ok(event) => writer.write_event(event),
+            Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
+        }
+        .expect("Failed to parse XML");
+    }
+    let res = std::str::from_utf8(&*writer.into_inner())
+        .expect("Failed to convert a slice of bytes to a string slice")
+        .to_string();
+
+    Ok(res)
+}
 
 #[cfg(test)]
 mod test {
@@ -166,8 +186,8 @@ mod test {
             },
         });
         let res = to_xml(&value)?;
-        println!("{:?}", res);
-        assert_eq!(clean(string)?, res);
+        println!("{}", res);
+        assert_eq!(pretty(&clean(string)?)?, res);
         Ok(())
     }
 }
