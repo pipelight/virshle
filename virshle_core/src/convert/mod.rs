@@ -3,8 +3,8 @@ pub mod toml;
 pub mod xml;
 
 pub use template::*;
-pub use toml::from_toml;
-pub use xml::to_xml;
+pub use toml::{from_toml, to_toml};
+pub use xml::{from_xml, to_xml};
 
 // Error Handling
 use crate::error::VirshleError;

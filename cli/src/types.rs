@@ -42,7 +42,8 @@ pub struct File {
 pub enum Crud {
     Create(File),
     Start(Resource),
-    Shutdown(Resource),
+    Shutdown(Resource), // Replace with stop
+    // Stop(Resource),
     Rm(Resource),
     Ls,
 }
@@ -104,10 +105,10 @@ impl Cli {
                     display::default(Net::get_all()?)?;
                 }
                 Crud::Rm(resource) => {
-                    Net::delete(&resource.name)?;
+                    Net::get_by_name(&resource.name)?.delete()?;
                 }
                 Crud::Create(args) => {
-                    Net::set(&args.file)?;
+                    Net::from_path(&args.file)?;
                 }
                 _ => {}
             },

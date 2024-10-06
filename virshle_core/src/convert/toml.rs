@@ -12,6 +12,13 @@ use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};
 
 /**
+* Returns a toml string from a Value
+*/
+pub fn to_toml(value: &Value) -> Result<String, CastError> {
+    let res = toml::to_string(value)?;
+    Ok(res)
+}
+/**
 * Returns a Value from a toml string
 */
 pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
@@ -41,7 +48,7 @@ pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
 }
 
 pub fn relpath_to_fullpath(value: &mut Value) -> Result<(), VirshleError> {
-    if let Some(mut map) = value.as_object_mut() {
+    if let Some(map) = value.as_object_mut() {
         let binding = map.clone();
         let keys = binding.keys();
         for key in keys {
