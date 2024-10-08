@@ -99,7 +99,7 @@ impl Connection {
             .header("Host", "localhost")
             .body(Full::new(Bytes::new()));
 
-        println!("{:#?}", request);
+        // println!("{:#?}", request);
         self.execute(url, request?).await
     }
 

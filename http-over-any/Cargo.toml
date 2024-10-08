@@ -51,5 +51,7 @@ sea-orm = { version = "1.0.1", features = [
   "macros",
 ] }
 migration = { path = "../migration" }
-ssh2 = "0.9.4"
 url = "2.5.2"
+async-trait = "0.1.83"
+openssh = { version = "0.11.2", features = ["native-mux"] }
+russh = "0.45.0"

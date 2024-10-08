@@ -3,8 +3,24 @@
 */
 
 use super::uri::{LibvirtUri, SshUri};
-use ssh2::Session;
 use std::net::TcpStream;
+
+use russh::client::{connect, Config, Handle, Handler};
+use russh::keys::agent::client::AgentClient;
+use russh::keys::{key::PublicKey, load_secret_key};
+use russh::{ChannelMsg, CryptoVec, Disconnect};
+
+use std::pin::Pin;
+use std::sync::Arc;
+
+use std::path::Path;
+use std::time::Duration;
+
+// Ssh
+use async_trait::async_trait;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
+use tokio::net::ToSocketAddrs;
+use tokio::net::UnixStream;
 
 // Http cli
 use http_body_util::{BodyExt, Full};
@@ -22,59 +38,165 @@ use log::info;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub struct SshConnection {
-    sender: SendRequest<Full<Bytes>>,
-    connection: JoinHandle<Result<(), hyper::Error>>,
-}
+struct Client {}
 
-pub struct SshUnixStream {}
+// More SSH event handlers
+// can be defined in this trait
+// In this example, we're only using Channel, so these aren't needed.
+#[async_trait]
+impl Handler for Client {
+    type Error = russh::Error;
 
-impl SshConnection {
-    pub fn connect(uri: SshUri) -> io::Result<SshUnixStream> {
-        // Connect to the local SSH server
-        let tcp = TcpStream::connect("127.0.0.1:22").unwrap();
-
-        let mut sess = Session::new().unwrap();
-        sess.set_tcp_stream(tcp);
-        sess.handshake().unwrap();
-
-        // Try to authenticate with the first identity in the agent.
-        sess.userauth_agent("username").unwrap();
-
-        // Make sure we succeeded
-        assert!(sess.authenticated());
+    async fn check_server_key(
+        &mut self,
+        _server_public_key: &PublicKey,
+    ) -> Result<bool, Self::Error> {
+        Ok(true)
     }
 }
 
-// impl<'a> std::io::Write for &'a SshConnection {
-//     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-//         self.0.write(buf)
-//     }
-//     fn flush(&mut self) -> std::io::Result<()> {
-//         Ok(())
-//     }
-// }
-// impl std::io::Write for SshConnection {
-//     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-//         std::io::Write::write(&mut &*self, buf)
-//     }
-//     fn flush(&mut self) -> std::io::Result<()> {
-//         std::io::Write::flush(&mut &*self)
-//     }
-// }
+/// This struct is a convenience wrapper
+/// around a russh client
+pub struct Session {
+    session: Handle<Client>,
+}
 
-// impl SshConnection {
-//     pub async fn open(socket: &str) -> Result<Self, VirshleError> {
-//         // Connect to the local SSH server
-//         let tcp = TcpStream::connect("127.0.0.1:22").unwrap();
-//         let mut sess = Session::new().unwrap();
-//         sess.set_tcp_stream(tcp);
-//         sess.handshake().unwrap();
-//
-//         // Try to authenticate with the first identity in the agent.
-//         sess.userauth_agent("username").unwrap();
-//
-//         // Make sure we succeeded
-//         assert!(sess.authenticated());
-//     }
-// }
+impl Session {
+    async fn connect<P: AsRef<Path>, A: ToSocketAddrs>(
+        key_path: P,
+        user: impl Into<String>,
+        addrs: A,
+    ) -> Result<Self, VirshleError> {
+        let key_pair = load_secret_key(key_path, None)?;
+        let config = Config {
+            inactivity_timeout: Some(Duration::from_secs(5)),
+            ..<_>::default()
+        };
+
+        let config = Arc::new(config);
+        let sh = Client {};
+
+        let mut session = connect(config, addrs, sh).await?;
+        let auth_res = session
+            .authenticate_publickey(user, Arc::new(key_pair))
+            .await?;
+
+        if !auth_res {
+            // anyhow::bail!("Authentication failed");
+        }
+
+        Ok(Self { session })
+    }
+
+    async fn call(&mut self, command: &str) -> Result<u32, VirshleError> {
+        let mut channel = self.session.channel_open_session().await?;
+        channel.exec(true, command).await?;
+
+        let mut code = None;
+        let mut stdout = tokio::io::stdout();
+
+        loop {
+            // There's an event available on the session channel
+            let Some(msg) = channel.wait().await else {
+                break;
+            };
+            match msg {
+                // Write data to the terminal
+                ChannelMsg::Data { ref data } => {
+                    stdout.write_all(data).await?;
+                    stdout.flush().await?;
+                }
+                // The command has returned an exit code
+                ChannelMsg::ExitStatus { exit_status } => {
+                    code = Some(exit_status);
+                    // cannot leave the loop immediately, there might still be more data to receive
+                }
+                _ => {}
+            }
+        }
+        Ok(code.expect("program did not exit cleanly"))
+    }
+
+    async fn close(&mut self) -> Result<(), VirshleError> {
+        self.session
+            .disconnect(Disconnect::ByApplication, "", "English")
+            .await?;
+        Ok(())
+    }
+}
+
+pub struct SshConnection {}
+
+impl SshConnection {
+    pub async fn open() -> Result<(), VirshleError> {
+        let mut agent = AgentClient::connect_env().await?;
+
+        // let public_key;
+        let mut public_keys: Vec<PublicKey> = vec![];
+        for key in agent.request_identities().await? {
+            public_keys.push(key);
+        }
+
+        let user = "anon";
+        let addrs = "127.0.0.1:22";
+
+        let config = Config {
+            inactivity_timeout: Some(Duration::from_secs(10)),
+            ..<_>::default()
+        };
+
+        let config = Arc::new(config);
+        let sh = Client {};
+
+        let mut session = connect(config, addrs, sh).await?;
+
+        for key in public_keys {
+            let agent = AgentClient::connect_env().await?;
+            let (_, auth_res) = session.authenticate_future(user, key, agent).await;
+
+            if auth_res? {
+                let mut channel = session.channel_open_session().await?;
+
+                // channel.request_shell(true).await?;
+                // let mut stream = channel.into_stream();
+                // stream.write(b"notify-send ssh");
+
+                channel.exec(true, "notify-send ssh").await?;
+                let mut code = None;
+                let mut stdout = tokio::io::stdout();
+
+                loop {
+                    // There's an event available on the session channel
+                    let Some(msg) = channel.wait().await else {
+                        break;
+                    };
+                    match msg {
+                        // Write data to the terminal
+                        ChannelMsg::Data { ref data } => {
+                            stdout.write_all(data).await?;
+                            stdout.flush().await?;
+                        }
+                        // The command has returned an exit code
+                        ChannelMsg::ExitStatus { exit_status } => {
+                            code = Some(exit_status);
+                            // cannot leave the loop immediately, there might still be more data to receive
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn connect_to_ssh() -> Result<()> {
+        SshConnection::open().await?;
+        Ok(())
+    }
+}
