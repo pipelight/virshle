@@ -5,9 +5,11 @@ use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::Path;
 
+use super::path;
+
 // Error Handling
-use crate::error::LibError;
-use crate::error::VirshleError;
+use virshle_error::LibError;
+use virshle_error::VirshleError;
 use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};
 
@@ -37,7 +39,7 @@ pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
 
     match res {
         Ok(mut res) => {
-            relpath_to_fullpath(&mut res)?;
+            path::relpath_to_fullpath(&mut res)?;
             Ok(res)
         }
         Err(e) => {
@@ -45,60 +47,6 @@ pub fn from_toml(string: &str) -> Result<Value, VirshleError> {
             Err(err.into())
         }
     }
-}
-
-pub fn relpath_to_fullpath(value: &mut Value) -> Result<(), VirshleError> {
-    if let Some(map) = value.as_object_mut() {
-        let binding = map.clone();
-        let keys = binding.keys();
-        for key in keys {
-            if let Some(mut v) = map.get_mut(key) {
-                make_canonical_path(key, &mut v)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-pub fn make_canonical_path(key: &str, value: &mut Value) -> Result<(), VirshleError> {
-    let tags = ["@file".to_owned(), "#text".to_owned()];
-    match value {
-        Value::Object(map) => {
-            for (k, mut v) in map {
-                make_canonical_path(k, &mut v)?;
-            }
-        }
-        Value::Array(value) => {
-            for e in value {
-                make_canonical_path(key, e)?;
-            }
-        }
-        Value::String(string) => {
-            if tags.contains(&key.to_string()) {
-                if string.contains("./")
-                    || string.contains("../")
-                    || string.contains("/../")
-                    || string.contains("~/")
-                {
-                    let string = shellexpand::tilde(string).to_string();
-                    let path = Path::new(&string);
-
-                    if path.exists() {
-                        let abs_path = path.canonicalize()?;
-                        let abs_path = abs_path.display().to_string();
-                        *value = Value::String(abs_path);
-                    } else {
-                        let message = format!("The file at path {:?} doesn't exist.", string);
-                        let help = format!("change the path for key {:?}", key);
-                        let err = LibError { message, help };
-                        return Err(err.into());
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-    Ok(())
 }
 
 #[cfg(test)]

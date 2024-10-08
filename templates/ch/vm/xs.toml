@@ -1,0 +1,4 @@
+name = "default_xs"
+uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
+vcpu = 1
+vram = 2

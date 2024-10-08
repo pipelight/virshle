@@ -1,0 +1,25 @@
+[package]
+name = "migration"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "migration"
+path = "src/lib.rs"
+
+[dependencies]
+miette = { version = "7.2.0", features = ["fancy"] }
+tokio = { version = "1.37.0", features = ["full"] }
+async-std = { version = "1", features = ["attributes", "tokio1"] }
+sea-orm = { version = "1.0.1", features = [
+  "runtime-tokio-rustls",
+  "sqlx-sqlite",
+  "with-json",
+  "macros",
+] }
+strum = { version = "0.26.2", features = ["derive"] }
+
+[dependencies.sea-orm-migration]
+version = "1.0.1"
+features = ["runtime-tokio-rustls", "sqlx-sqlite"]

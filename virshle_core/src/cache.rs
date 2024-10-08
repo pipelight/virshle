@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::Path;
 // Error Handling
-use crate::error::VirshleError;
+use virshle_error::VirshleError;
 use miette::{IntoDiagnostic, Result};
 
-use crate::error::LibError;
+use virshle_error::LibError;
 use pipelight_error::{CastError, TomlError};
 
 pub fn ensure_cache_dir() -> Result<(), VirshleError> {

@@ -1,0 +1,8 @@
+[[vm]]
+name = "defaul_xs_vm"
+uuid = "57971595-61d9-491c-9b06-58cf3dd72299"
+vcpu = 1
+vram = 2
+
+# [vm.net]
+# name = "virshle_br4"

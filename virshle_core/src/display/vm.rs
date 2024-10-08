@@ -1,36 +1,62 @@
+use crate::cloud_hypervisor::Vm;
+use human_bytes::human_bytes;
 use owo_colors::OwoColorize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
-use tabled::{settings::Style, Table, Tabled};
+use tabled::{
+    settings::{object::Columns, Disable, Style},
+    Table, Tabled,
+};
 use uuid::Uuid;
 
+// Cloud Hypervisor
+use vmm::vm::VmState;
+
 // Error Handling
-use log::trace;
+use virshle_error::VirshleError;
+use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 
-use super::vm;
-use crate::{
-    error::VirshleError,
-    resources::{
-        vm::{State, Vm},
-        Order,
-    },
-};
-use human_bytes::human_bytes;
+pub fn display_vram(vram: &u64) -> String {
+    let res = human_bytes((vram * 1024) as f64);
+    format!("{}", res)
+}
+pub fn display_ips(ips: &Vec<String>) -> String {
+    let res = ips.join("\n");
+    format!("{}\n", res)
+}
 
-impl fmt::Display for State {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let res = match self {
-            State::Running => "running".green().to_string(),
-            State::Paused => "paused".yellow().to_string(),
-            State::PmSuspended => "pm suspended".yellow().to_string(),
-            State::ShutOff => "shutoff".red().to_string(),
-            State::ShutDown => "shutdown".red().to_string(),
-            State::Crashed => "crashed".red().to_string(),
-            State::Blocked => "blocked".to_string(),
-            State::NoState => "none".white().to_string(),
-            State::Last => "last".white().to_string(),
-        };
-        write!(f, "{}", res)
+pub fn display_state(state: &Option<VmState>) -> String {
+    let res = match state {
+        Some(VmState::Created) => "created".blue().to_string(),
+        Some(VmState::Running) => "running".green().to_string(),
+        Some(VmState::Paused) => "paused".yellow().to_string(),
+        Some(VmState::Shutdown) => "shutdown".red().to_string(),
+        Some(VmState::BreakPoint) => "breakpoint".white().to_string(),
+        None => "none".to_owned(),
+    };
+    format!("{}", res)
+}
+
+impl Vm {
+    pub fn display(vec: Vec<Vm>) -> Result<()> {
+        if log_enabled!(Level::Info) {
+            let mut res = Table::new(&vec);
+            res.with(Style::rounded());
+            println!("{}", res);
+        } else if log_enabled!(Level::Warn) {
+            let mut res = Table::new(&vec);
+            res.with(Style::rounded());
+            res.with(Disable::column(Columns::last()));
+            println!("{}", res);
+        } else {
+            let mut res = Table::new(&vec);
+            res.with(Disable::column(Columns::last()));
+            res.with(Disable::column(Columns::last()));
+            res.with(Style::rounded());
+            println!("{}", res);
+        }
+        Ok(())
     }
 }
 
@@ -39,8 +65,8 @@ mod test {
     use super::*;
 
     #[test]
-    fn display_state() -> Result<()> {
-        println!("\n{}", State::Running);
+    fn try_display_state() -> Result<()> {
+        println!("\n{}", display_state(&Some(VmState::Running)));
         Ok(())
     }
     #[test]
@@ -48,37 +74,25 @@ mod test {
         // Get vms
         let vms = vec![
             Vm {
-                id: Some(4),
                 name: "TestOs".to_owned(),
                 vcpu: 2,
                 vram: 4_200_000,
-                state: State::Crashed,
+                state: Some(VmState::Shutdown),
                 uuid: Uuid::new_v4(),
-                ips: vec![],
+                // ips: vec![],
             },
             Vm {
-                id: Some(6),
                 name: "NixOs".to_owned(),
                 vcpu: 2,
                 vram: 4_200_000,
-                state: State::Running,
+                state: Some(VmState::Running),
                 uuid: Uuid::new_v4(),
-                ips: vec![],
+                // ips: vec![],
             },
         ];
 
         println!("");
-        vm(vms)?;
-
-        Ok(())
-    }
-    #[test]
-    fn display_current() -> Result<()> {
-        let vms = Vm::get_all()?.order_by_id()?.order_by_name()?.to_owned();
-
-        println!("");
-        vm(vms)?;
-
+        Vm::display(vms)?;
         Ok(())
     }
 }

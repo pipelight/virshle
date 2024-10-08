@@ -1,0 +1,32 @@
+# Default network configuration
+
+[net]
+name = "default_6"
+uuid = "9a05da11-e96b-47f3-8253-a3a482e445f5"
+forward.mode = 'nat'
+
+[net.bridge]
+name = "virshle_br4"
+
+[net.mac]
+address = "52:54:00:0a:cd:22"
+
+# IPv4 network
+[[net.ip]]
+family = "ipv4"
+address = "192.168.120.1"
+netmask = "255.255.255.0"
+
+[net.ip.dhcp.range]
+start = "192.168.120.2"
+end = "192.168.120.254"
+
+# IPv6 network
+[[net.ip]]
+family = "ipv6"
+address = "2607:db8::1"
+prefix = "96"
+
+[net.ip.dhcp.range]
+start = "2607:db8::1000"
+end = "2607:db8::1fff"

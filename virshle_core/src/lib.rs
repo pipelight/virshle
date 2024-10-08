@@ -1,10 +1,18 @@
 #![allow(unused_imports)]
 #![allow(unused_variables)]
 #![allow(unused_must_use)]
+#![allow(unused_must_use)]
+
+pub mod api;
 
 pub mod cache;
+
+pub mod cloud_hypervisor;
+
 pub mod config;
 pub mod convert;
+pub mod database;
 pub mod display;
-pub mod error;
-pub mod resources;
+pub mod request;
+
+pub use api::Api;

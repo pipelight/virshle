@@ -1,7 +1,7 @@
 [[connect]]
-name = "test"
-url = "test:///default"
+name = "default"
+url = "file:///var/lib/virshle/virshle.socket"
 
 [[connect]]
-name = "local"
-url = "qemu:///system"
+name = "default-ssh"
+url = "ssh://anon@localhost:22/var/lib/virshle/virshle.socket"

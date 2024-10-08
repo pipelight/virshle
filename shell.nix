@@ -7,4 +7,13 @@ pkgs.mkShell {
     libvirt
     libvirt-glib
   ];
+  # SeaOrm Sqlite database
+  DATABASE_URL = "sqlite:////var/lib/virshle/virshle.sqlite?mode=rwc";
+  DBEE_CONNECTIONS = "[
+    {
+      \"name\": \"virshle_db\",
+      \"type\": \"sqlite\",
+      \"url\": \"/var/lib/virshle/virshle.sqlite?mode=rwc\"
+    }
+  ]";
 }

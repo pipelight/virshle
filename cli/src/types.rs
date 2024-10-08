@@ -1,8 +1,11 @@
 use std::fs;
 use std::path::Path;
 use virshle_core::{
-    convert, display, resources,
-    resources::{create, Net, ResourceType, Secret, Vm},
+    // resources,
+    // resources::{create, Net, ResourceType, Secret, Vm},
+    cloud_hypervisor::Vm,
+    convert,
+    Api,
 };
 
 // Logger
@@ -26,6 +29,7 @@ pub struct Cli {
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
     Prune,
+    Daemon,
     Create(File),
     #[command(subcommand)]
     Vm(Crud),
@@ -63,12 +67,12 @@ pub struct ResourceUuid {
 }
 
 impl Cli {
-    pub fn run() -> Result<()> {
+    pub async fn run() -> Result<()> {
         let cli = Cli::parse();
-        Self::switch(cli)?;
+        Self::switch(cli).await?;
         Ok(())
     }
-    pub fn switch(cli: Cli) -> Result<()> {
+    pub async fn switch(cli: Cli) -> Result<()> {
         // Set verbosity
         let verbosity = cli.verbose.log_level_filter();
         std::env::set_var("VIRSHLE_LOG", verbosity.to_string().to_lowercase());
@@ -77,50 +81,52 @@ impl Cli {
         match cli.commands {
             Commands::Prune => {
                 // remove unused managed files
-                resources::clean()?;
+                // resources::clean()?;
+            }
+            Commands::Daemon => {
+                Api::run().await?;
             }
             Commands::Create(args) => {
-                let toml = fs::read_to_string(args.file).into_diagnostic()?;
-                create(&toml)?;
+                Vm::from_file(&args.file)?;
             }
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    Vm::set(&args.file)?;
+                    Vm::from_file(&args.file)?.set().await?;
                 }
                 Crud::Start(resource) => {
-                    Vm::get(&resource.name)?.start()?;
+                    // Vm::get(&resource.name)?.start()?;
                 }
                 Crud::Shutdown(resource) => {
-                    Vm::get(&resource.name)?.shutdown()?;
+                    // Vm::get(&resource.name).await?.shutdown().await?;
                 }
                 Crud::Ls => {
-                    display::vm(Vm::get_all()?)?;
+                    Vm::display(Vm::get_all().await?)?;
                 }
                 Crud::Rm(resource) => {
-                    Vm::get(&resource.name)?.delete()?;
+                    // Vm::get_by_name(&resource.name).await?.delete()?;
                 }
             },
             Commands::Net(args) => match args {
                 Crud::Ls => {
-                    display::default(Net::get_all()?)?;
+                    // display::default(Net::get_all()?)?;
                 }
                 Crud::Rm(resource) => {
-                    Net::get_by_name(&resource.name)?.delete()?;
+                    // Net::get_by_name(&resource.name)?.delete()?;
                 }
                 Crud::Create(args) => {
-                    Net::from_path(&args.file)?;
+                    // Net::from_path(&args.file)?;
                 }
                 _ => {}
             },
             Commands::Secret(args) => match args {
                 CrudUuid::Ls => {
-                    display::default(Secret::get_all()?)?;
+                    // display::default(Secret::get_all()?)?;
                 }
                 CrudUuid::Rm(resource) => {
-                    Secret::delete(&resource.uuid)?;
+                    // Secret::delete(&resource.uuid)?;
                 }
                 CrudUuid::Create(args) => {
-                    Secret::set(&args.file)?;
+                    // Secret::set(&args.file)?;
                 }
             },
             _ => {}
@@ -136,32 +142,32 @@ mod tests {
     use clap::Parser;
     use miette::Result;
 
-    #[test]
-    fn parse_command_line() -> Result<()> {
+    #[tokio::test]
+    async fn parse_command_line() -> Result<()> {
         println!("");
         let e = "virshle --help";
         let os_str: Vec<&str> = e.split(' ').collect();
         let cli = Cli::parse_from(os_str);
-        Cli::switch(cli)?;
+        Cli::switch(cli).await?;
         Ok(())
     }
 
-    #[test]
-    fn get_domains() -> Result<()> {
+    #[tokio::test]
+    async fn get_domains() -> Result<()> {
         println!("");
         let e = "virshle vm ls";
         let os_str: Vec<&str> = e.split(' ').collect();
         let cli = Cli::parse_from(os_str);
-        Cli::switch(cli)?;
+        Cli::switch(cli).await?;
         Ok(())
     }
-    #[test]
-    fn get_networks() -> Result<()> {
+    #[tokio::test]
+    async fn get_networks() -> Result<()> {
         println!("");
         let e = "virshle net ls";
         let os_str: Vec<&str> = e.split(' ').collect();
         let cli = Cli::parse_from(os_str);
-        Cli::switch(cli)?;
+        Cli::switch(cli).await?;
         Ok(())
     }
 }

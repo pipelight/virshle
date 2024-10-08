@@ -4,6 +4,8 @@ version = "0.1.1"
 edition = "2021"
 
 [dependencies]
+virshle_error = { path = "../virshle_error" }
+
 miette = { version = "7.2.0", features = ["fancy"] }
 pipelight_error = { version = "0.2.9" }
 quick-xml = { version = "0.36.2", features = ["serde", "serialize"] }
@@ -30,3 +32,29 @@ rand = "0.8.5"
 minidom = "0.16.0"
 regex = "1.10.6"
 bon = "2.3.0"
+pipelight_exec = "0.2.8"
+reqwest = "0.12.7"
+tokio = { version = "1.40.0", features = ["full"] }
+hyper-socket = "0.2.0"
+hyper = { version = "1.4.1", features = ["full"] }
+http-body-util = "0.1.2"
+hyper-util = "0.1.9"
+hyperlocal = "0.9.1"
+ureq = "2.10.1"
+config = "0.14.0"
+
+vmm = { git = "https://github.com/cloud-hypervisor/cloud-hypervisor", features = [
+  "kvm",
+] }
+sea-orm = { version = "1.0.1", features = [
+  "runtime-tokio-rustls",
+  "sqlx-sqlite",
+  "with-json",
+  "macros",
+] }
+migration = { path = "../migration" }
+russh = "0.45.0"
+url = "2.5.2"
+async-trait = "0.1.83"
+axum = "0.7.7"
+tower = "0.5.1"

@@ -102,46 +102,29 @@ The following Toml file defines a VM called "nixos":
 - based on a custom nixos image
 
 ```toml
-[domain]
-"@type" = "kvm"
 name = "vm-nixos"
 uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
 vcpu = 2
-[domain.memory]
-"@unit" = "GiB"
-"#text" = 4
+vram = 2 # in GiB
 
-[domain.clock]
-"@sync" = "localtime"
-[domain.devices]
-emulator = "/run/libvirt/nix-emulators/qemu-kvm"
+[[disk]]
+path = "./disk/path"
 
-[[domain.devices.disk]]
-"@type" = "file"
-"@device" = "disk"
-driver."@name" = "qemu"
-driver."@type" = "qcow2"
-"@bus" = "virtio"
-"@size" = 20
-source."@file" = "./iso/nixos.qcow2"
-target."@dev" = "hda"
-target."@bus" = "virtio"
+[[net]]
+name = "default"
 
-[[domain.devices.interface]]
-"@type" = "network"
-source."@network" = "default"
 ```
 
 Bring the guest up with,
 
 ```sh
-virshle vm create ./template/vm/base.toml
+virshle vm create <vm_definition>.toml
 ```
 
 This is how you would define a network.
 
 ```toml
-[network]
+[net]
 name = "default_4"
 uuid = "9a05da11-e96b-47f3-8253-a3a482e445f5"
 
@@ -215,40 +198,6 @@ Install it on your system.
 }
 ```
 
-## Roadmap
-
-v0.4.0
-
-- [x] Toml/Xml: automaticaly guess what resource to manipulate based on file root element
-
-Commandes,
-
-- [x] list:
-  - [x] vms
-  - [x] networks
-  - [x] secrets
-- [x] create:
-  - [x] vms,
-  - [x] networks
-  - [x] secrets
-- [x] delete:
-  - [x] vms,
-  - [x] networks
-  - [x] secrets
-- [ ] update:
-  - [ ] vms,
-  - [ ] networks
-  - [ ] secrets
-
-Resources management
-
-- [ ] display vm IPs when verbosity increased (-v)
-
-```toml
-[domain.devices.disk.source]
-"@file" = "./iso/encrypted.qcow2"
-```
-
 ## Community/Contrib
 
 Join the matrix room.
@@ -256,7 +205,14 @@ https://matrix.to/#/#virshle:matrix.org
 
 ## Thanks
 
-Big thanks to libvirt teams who mad it possible with the
-[virsh](https://github.com/libvirt/libvirt) cli
-and rust libvirt mappings.
-Docker [https://github.com/docker/compose] for inspiration.
+Inspired by:
+
+- libvirt and
+  [virsh](https://github.com/libvirt/libvirt).
+- [docker](https://github.com/docker/compose).
+
+Based on:
+
+- [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
+- rust-vmm
+- sqlite

@@ -1,8 +1,8 @@
-mod net;
-mod secret;
-mod vm;
+// mod net;
+// mod secret;
+pub mod vm;
 
-use crate::resources::Vm;
+// use crate::resources::Vm;
 
 // Error Handling
 use log::{log_enabled, Level};
@@ -26,26 +26,6 @@ where
     } else {
         let mut res = Table::new(&vec);
         res.with(Disable::column(Columns::single(0)));
-        res.with(Style::rounded());
-        println!("{}", res);
-    }
-    Ok(())
-}
-
-pub fn vm(vec: Vec<Vm>) -> Result<()> {
-    if log_enabled!(Level::Info) {
-        let mut res = Table::new(&vec);
-        res.with(Style::rounded());
-        println!("{}", res);
-    } else if log_enabled!(Level::Warn) {
-        let mut res = Table::new(&vec);
-        res.with(Style::rounded());
-        res.with(Disable::column(Columns::last()));
-        println!("{}", res);
-    } else {
-        let mut res = Table::new(&vec);
-        res.with(Disable::column(Columns::last()));
-        res.with(Disable::column(Columns::last()));
         res.with(Style::rounded());
         println!("{}", res);
     }

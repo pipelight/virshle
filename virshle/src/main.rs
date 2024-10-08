@@ -10,10 +10,11 @@ use miette::{IntoDiagnostic, MietteHandlerOpts, Result, RgbColors};
 The binary entrypoint.
 This main function is the first function to be executed when launching the binary.
 */
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     trace!("Launch process.");
     make_handler()?;
-    Cli::run()?;
+    Cli::run().await?;
     trace!("Process clean exit.");
     Ok(())
 }

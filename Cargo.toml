@@ -1,7 +1,21 @@
 [workspace]
 resolver = "2"
 members = [
-  "cli",          # command line definition
-  "virshle",      # binary entrypoint
+  ## Binaries
+  # Command line entrypoint.
+  "virshle",
+  # Daemon entrypoint.
+  # "virshle-daemon",
+
+  # Generate sqlite database
+  "migration",
+
+  # Command line definition
+  "cli",
+
   "virshle_core",
+
+  # Error definitions
+  "virshle_error",
+
 ]
