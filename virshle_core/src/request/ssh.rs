@@ -9,6 +9,8 @@ use russh::client::{connect, Config, Handle, Handler};
 use russh::keys::agent::client::AgentClient;
 use russh::keys::{key::PublicKey, load_secret_key};
 use russh::{ChannelMsg, CryptoVec, Disconnect};
+use std::os::unix::process::ExitStatusExt;
+use std::process::ExitStatus;
 
 use std::pin::Pin;
 use std::sync::Arc;
@@ -105,7 +107,7 @@ impl Session {
         let addrs = "127.0.0.1:22";
 
         let config = Config {
-            inactivity_timeout: Some(Duration::from_secs(10)),
+            inactivity_timeout: Some(Duration::from_secs(5)),
             ..<_>::default()
         };
 
@@ -132,11 +134,14 @@ impl Session {
         // let mut stream = channel.into_stream();
         // stream.write(b"notify-send ssh");
 
+        // -U creates a binding to unixsocket.
+        // -N closes the connection as soon as message sended.
         let cmd = format!("echo \"{}\" | nc -U /var/lib/virshle/virshle.socket", req);
-        println!("{}", cmd);
+        println!("\n{}", cmd);
         channel.exec(true, cmd).await?;
-        let mut code = None;
+
         let mut stdout = tokio::io::stdout();
+        let mut code = None;
 
         loop {
             // There's an event available on the session channel
@@ -148,14 +153,35 @@ impl Session {
                 ChannelMsg::Data { ref data } => {
                     stdout.write_all(data).await?;
                     stdout.flush().await?;
+                    // Close channel as soon as response returned.
+                    channel.close().await?;
                 }
                 // The command has returned an exit code
                 ChannelMsg::ExitStatus { exit_status } => {
                     code = Some(exit_status);
-                    // cannot leave the loop immediately, there might still be more data to receive
+                    // cannot leave the loop immediately
+                    // there might still be more data to receive
+                }
+                ChannelMsg::Eof | ChannelMsg::Close => {
+                    break;
                 }
                 _ => {}
+            };
+        }
+
+        // channel.close().await?;
+
+        if let Some(exit_status) = code {
+            if ExitStatus::from_raw(exit_status as i32).success() {
+            } else {
+                let message = "Couldn't call virshle socket successfully on remote host";
+                let help = "Is virshle running on remote?";
+                return Err(LibError::new(message, help).into());
             }
+        } else {
+            let message = "Command returned no exit code.";
+            let help = "Connection might have been interupted.";
+            return Err(LibError::new(message, help).into());
         }
         Ok(())
     }
@@ -185,11 +211,14 @@ mod tests {
             .uri("/")
             .method("GET")
             .header("Host", "localhost")
-            .body(serde_json::Value::Null)
+            .body(())
             .into_diagnostic()?;
+
         let req = request_to_string(&request).into_diagnostic()?;
+
         let mut session = Session::open().await?;
         session.put(&req).await?;
+
         Ok(())
     }
 }

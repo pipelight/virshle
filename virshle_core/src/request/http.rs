@@ -1,3 +1,4 @@
+use convert_case::{Case, Casing};
 use std::path::Path;
 
 use hyper::body::{Body, Bytes, Incoming};
@@ -65,11 +66,13 @@ impl Connection {
             .header("Host", "localhost")
             .body(Full::new(Bytes::new()));
 
-        // println!("{:#?}", request);
         self.execute(url, request?).await
     }
 
-    pub async fn post(self, url: &str, body: Option<Value>) -> Result<Response, VirshleError> {
+    pub async fn post<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
+    where
+        T: Serialize,
+    {
         let request = Request::builder()
             .uri(url)
             .method("POST")
@@ -77,7 +80,9 @@ impl Connection {
             .header("Content-Type", "application/json");
         let request = match body {
             None => request.body(Full::new(Bytes::new())),
-            Some(value) => request.body(Full::new(Bytes::from(value.to_string()))),
+            Some(value) => request.body(Full::new(Bytes::from(
+                serde_json::to_value(value).unwrap().to_string(),
+            ))),
         };
 
         self.execute(url, request?).await
@@ -147,17 +152,20 @@ where
         req.version()
     ));
 
-    for (h_name, h_value) in req.headers() {
-        string.push_str(&format!(
-            "{}: {}\n",
-            h_name,
-            h_value
-                .to_str()
-                .unwrap_or("Error: Non-visible ascii characters")
-        ));
+    for (key, value) in req.headers() {
+        let key = key.to_string().to_case(Case::Title);
+        let value = value.to_str().unwrap();
+        string.push_str(&format!("{key}: {value}\n",));
     }
-    let body: String = serde_json::to_string(req.body().to_owned())?;
-    string.push_str(&format!("{}\n", body));
+
+    let body: Value = serde_json::to_value(req.body().to_owned())?;
+    match body {
+        Value::Null => {}
+        _ => {
+            let body: String = serde_json::to_string(req.body().to_owned())?;
+            string.push_str(&format!("\n{}\n", body));
+        }
+    };
     Ok(string)
 }
 
@@ -165,6 +173,7 @@ where
 mod tests {
     use super::*;
     use miette::{IntoDiagnostic, Result};
+    use std::path::PathBuf;
     use tokio::fs;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::UnixListener;
@@ -187,6 +196,12 @@ mod tests {
      * Create a socket and listens to incoming connections
      */
     async fn create_socket(socket: &str) -> Result<()> {
+        let path = PathBuf::from(socket);
+        let _ = tokio::fs::remove_file(&path).await;
+        tokio::fs::create_dir_all(path.parent().unwrap())
+            .await
+            .unwrap();
+
         let listener = UnixListener::bind(socket).into_diagnostic()?;
         match listener.accept().await {
             Ok((mut socket, addr)) => {
