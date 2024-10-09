@@ -1,12 +1,12 @@
-use std::fs;
-use std::path::Path;
-use virshle_core::{
+use crate::{
     // resources,
     // resources::{create, Net, ResourceType, Secret, Vm},
     cloud_hypervisor::Vm,
     convert,
     Api,
 };
+use std::fs;
+use std::path::Path;
 
 // Logger
 use env_logger::Builder;

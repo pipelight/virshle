@@ -159,7 +159,7 @@ impl Session {
                 // The command has returned an exit code
                 ChannelMsg::ExitStatus { exit_status } => {
                     code = Some(exit_status);
-                    // cannot leave the loop immediately
+                    // cannot leave the loop immediately,
                     // there might still be more data to receive
                 }
                 ChannelMsg::Eof | ChannelMsg::Close => {

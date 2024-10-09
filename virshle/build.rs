@@ -10,7 +10,7 @@ use std::path::Path;
 // Error Handling
 use miette::{IntoDiagnostic, Result};
 
-include!("./src/lib.rs");
+use virshle_core::cli::Cli;
 
 /**
 Generate autocompletion scripts

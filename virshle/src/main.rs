@@ -1,5 +1,5 @@
-use cli::Cli;
 use std::{process::ExitCode, u8};
+use virshle_core::cli::Cli;
 use virt;
 
 // Error Handling

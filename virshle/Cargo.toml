@@ -1,5 +1,5 @@
 [package]
-name = "virshle-daemon"
+name = "virshle"
 version = "0.1.4"
 edition = "2021"
 authors = ["areskul"]
@@ -16,9 +16,13 @@ name = "virshle"
 path = "src/main.rs"
 doc = false
 
+[[build]]
+name = "virshle-autocomplete"
+path = "src/build.rs"
+doc = false
 
 [dependencies]
-cli = { path = "../cli" }
+# cli = { path = "../cli" }
 virshle_core = { path = "../virshle_core/" }
 miette = { version = "7.2.0", features = ["fancy"] }
 log = "0.4.22"
@@ -26,3 +30,17 @@ serde = { version = "1.0.210", features = ["derive"] }
 env_logger = "0.11.5"
 virt = "0.4.1"
 tokio = { version = "1.40.0", features = ["full"] }
+clap = "4.5.20"
+clap_complete = "4.5.33"
+
+[build-dependencies]
+# cli = { path = "../cli" }
+virshle_core = { path = "../virshle_core/" }
+miette = { version = "7.2.0", features = ["fancy"] }
+log = "0.4.22"
+serde = { version = "1.0.210", features = ["derive"] }
+env_logger = "0.11.5"
+virt = "0.4.1"
+tokio = { version = "1.40.0", features = ["full"] }
+clap = "4.5.20"
+clap_complete = "4.5.33"

@@ -545,7 +545,7 @@ dependencies = [
  "bincode",
  "bugreport",
  "bytesize",
- "clap 4.5.19",
+ "clap 4.5.20",
  "clircle",
  "console",
  "content_inspector",
@@ -927,9 +927,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.19"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7be5744db7978a28d9df86a214130d106a89ce49644cbc4e3f0c22c3fba30615"
+checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
 dependencies = [
  "clap_builder",
  "clap_derive 4.5.18",
@@ -941,15 +941,15 @@ version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e099138e1807662ff75e2cebe4ae2287add879245574489f9b1588eb5e5564ed"
 dependencies = [
- "clap 4.5.19",
+ "clap 4.5.20",
  "log",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.5.19"
+version = "4.5.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5fbc17d3ef8278f55b282b2a2e75ae6f6c7d4bb70ed3d0382375104bfafdb4b"
+checksum = "19bc80abd44e4bed93ca373a0704ccbd1b710dc5749406201bb018272808dc54"
 dependencies = [
  "anstream",
  "anstyle",
@@ -960,11 +960,11 @@ dependencies = [
 
 [[package]]
 name = "clap_complete"
-version = "4.5.30"
+version = "4.5.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb31f1f3041ef3636e425b09e588911b72fc5513b2428b5b7df130f497e6a728"
+checksum = "9646e2e245bf62f45d39a0f3f36f1171ad1ea0d6967fd114bca72cb02a8fcdfb"
 dependencies = [
- "clap 4.5.19",
+ "clap 4.5.20",
 ]
 
 [[package]]
@@ -1006,22 +1006,6 @@ name = "clap_lex"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
-
-[[package]]
-name = "cli"
-version = "0.1.2"
-dependencies = [
- "clap 4.5.19",
- "clap-verbosity-flag",
- "clap_complete",
- "convert_case",
- "env_logger",
- "log",
- "miette",
- "serde",
- "tokio 1.40.0",
- "virshle_core",
-]
 
 [[package]]
 name = "clircle"
@@ -4606,7 +4590,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f0b8869c75cf3fbb1bd860abb025033cd2e514c5f4fa43e792697cb1fe6c882"
 dependencies = [
  "chrono",
- "clap 4.5.19",
+ "clap 4.5.20",
  "dotenvy",
  "glob",
  "regex",
@@ -4637,7 +4621,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216643749e26ce27ab6c51d3475f2692981d4a902d34455bcd322f412900df5c"
 dependencies = [
  "async-trait",
- "clap 4.5.19",
+ "clap 4.5.20",
  "dotenvy",
  "futures",
  "sea-orm",
@@ -6211,10 +6195,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "virshle-daemon"
+name = "virshle"
 version = "0.1.4"
 dependencies = [
- "cli",
+ "clap 4.5.20",
+ "clap_complete",
  "env_logger",
  "log",
  "miette",
@@ -6232,6 +6217,9 @@ dependencies = [
  "axum",
  "bat",
  "bon",
+ "clap 4.5.20",
+ "clap-verbosity-flag",
+ "clap_complete",
  "config",
  "convert_case",
  "crossterm",
@@ -6468,7 +6456,7 @@ dependencies = [
  "bitflags 2.6.0",
  "block",
  "cfg-if 1.0.0",
- "clap 4.5.19",
+ "clap 4.5.20",
  "devices",
  "epoll",
  "event_monitor",
