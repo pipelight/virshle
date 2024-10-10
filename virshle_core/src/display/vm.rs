@@ -13,9 +13,35 @@ use uuid::Uuid;
 use vmm::vm::VmState;
 
 // Error Handling
-use virshle_error::VirshleError;
 use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
+use virshle_error::VirshleError;
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+pub struct VmTable {
+    pub name: String,
+    pub vcpu: u64,
+    #[tabled(display_with = "display_vram")]
+    pub vram: u64,
+    #[tabled(display_with = "display_state")]
+    pub state: Option<VmState>,
+    #[tabled(display_with = "display_ips")]
+    pub ips: Vec<String>,
+    pub uuid: Uuid,
+}
+impl VmTable {
+    async fn from(vm: &Vm) -> Result<Self, VirshleError> {
+        let table = VmTable {
+            name: vm.name,
+            vcpu: vm.vcpu,
+            vram: vm.vram,
+            state: vm.get_state(),
+            ips: vm.get_ips(),
+            uuid: vm.uuid,
+        };
+        Ok(table)
+    }
+}
 
 pub fn display_vram(vram: &u64) -> String {
     let res = human_bytes((vram * 1024) as f64);
@@ -39,18 +65,23 @@ pub fn display_state(state: &Option<VmState>) -> String {
 }
 
 impl Vm {
-    pub fn display(vec: Vec<Vm>) -> Result<()> {
+    pub async fn display(vms: Vec<Vm>) -> Result<()> {
+        let mut table: Vec<VmTable> = vec![];
+        for vm in vms {
+            table.push(VmTable::from(&vm).await?);
+        }
+
         if log_enabled!(Level::Info) {
-            let mut res = Table::new(&vec);
+            let mut res = Table::new(&table);
             res.with(Style::rounded());
             println!("{}", res);
         } else if log_enabled!(Level::Warn) {
-            let mut res = Table::new(&vec);
+            let mut res = Table::new(&table);
             res.with(Style::rounded());
             res.with(Disable::column(Columns::last()));
             println!("{}", res);
         } else {
-            let mut res = Table::new(&vec);
+            let mut res = Table::new(&table);
             res.with(Disable::column(Columns::last()));
             res.with(Disable::column(Columns::last()));
             res.with(Style::rounded());
@@ -69,8 +100,8 @@ mod test {
         println!("\n{}", display_state(&Some(VmState::Running)));
         Ok(())
     }
-    #[test]
-    fn display_mock() -> Result<()> {
+    #[tokio::test]
+    async fn display_mock() -> Result<()> {
         // Get vms
         let vms = vec![
             Vm {
@@ -92,7 +123,7 @@ mod test {
         ];
 
         println!("");
-        Vm::display(vms)?;
+        Vm::display(vms).await?;
         Ok(())
     }
 }

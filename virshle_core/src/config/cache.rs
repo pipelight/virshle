@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::Path;
 // Error Handling
-use virshle_error::VirshleError;
 use miette::{IntoDiagnostic, Result};
+use virshle_error::VirshleError;
 
-use virshle_error::LibError;
 use pipelight_error::{CastError, TomlError};
+use virshle_error::LibError;
 
 pub fn ensure_cache_dir() -> Result<(), VirshleError> {
     Path::new("~/.local/share/virshle");

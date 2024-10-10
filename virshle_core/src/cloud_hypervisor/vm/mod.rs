@@ -1,7 +1,24 @@
+pub mod from;
+pub mod to;
+
 // Cloud Hypervisor
 use uuid::Uuid;
 use vmm::api::VmInfoResponse;
-use vmm::vm::VmState;
+use vmm::{
+    vm::VmState as ChVmState,
+    vm_config::{
+        // defaults
+        default_console,
+        default_serial,
+
+        CpusConfig,
+        DiskConfig,
+        MemoryConfig,
+        NetConfig,
+        RngConfig,
+        VmConfig,
+    },
+};
 
 use hyper::Request;
 use serde::{Deserialize, Serialize};
@@ -14,18 +31,18 @@ use tabled::{
 };
 
 use super::template;
+
 // Http
-use crate::request::Connection;
+use crate::http_cli::Connection;
 
 //Database
 use crate::database;
+use crate::database::connect_db;
 use crate::database::entity::{prelude::*, *};
 use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult};
 
 use crate::config::MANAGED_DIR;
 use crate::display::vm::*;
-
-use crate::database::connect_db;
 
 // Error Handling
 use log::info;
@@ -35,6 +52,16 @@ use virshle_error::{LibError, VirshleError};
 
 use serde_json::{from_slice, Value};
 use std::fs;
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+pub enum VmState {
+    NotCreated,
+    Created,
+    Running,
+    Shutdown,
+    Paused,
+    BreakPoint,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct Vm {
@@ -63,49 +90,8 @@ impl Default for Vm {
 
 impl Vm {
     /*
-     * Retrieve a vm from db
+     * Remove a vm and its definition.
      */
-    pub async fn get_by_name(name: &str) -> Result<Self, VirshleError> {
-        let db = connect_db().await.unwrap();
-        let record = database::prelude::Vm::find()
-            .filter(database::entity::vm::Column::Name.eq(name))
-            .one(&db)
-            .await?;
-        if let Some(record) = record {
-            let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &record.uuid.to_string();
-            Self::from_file(&definition_path)
-        } else {
-            let message = format!("Could not find a vm with the name: {}", name);
-            return Err(LibError::new(&message, "").into());
-        }
-    }
-    pub async fn get_by_uuid(uuid: &Uuid) -> Result<Self, VirshleError> {
-        let db = connect_db().await.unwrap();
-        let record = database::prelude::Vm::find()
-            .filter(database::entity::vm::Column::Uuid.eq(uuid.to_owned()))
-            .one(&db)
-            .await?;
-        if let Some(record) = record {
-            let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &record.uuid.to_string();
-            Self::from_file(&definition_path)
-        } else {
-            let message = format!("Could not find a vm with the uuid: {}", uuid);
-            return Err(LibError::new(&message, "").into());
-        }
-    }
-    pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
-        let string = fs::read_to_string(file_path)?;
-        let res = toml::from_str::<Self>(&string);
-        let mut item = match res {
-            Ok(res) => res,
-            Err(e) => {
-                let err = CastError::TomlError(TomlError::new(e, &string));
-                return Err(err.into());
-            }
-        };
-        item.update();
-        Ok(item)
-    }
     pub fn delete(&mut self) {}
     /*
      * Saves the machine definition in the virshle directory at:
@@ -135,47 +121,45 @@ impl Vm {
         };
 
         // Save definition to virshle managed file.
-        let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &self.uuid.to_string();
+        let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &self.uuid.to_string() + ".toml";
         let toml = toml::to_string(&value);
         let mut file = fs::File::create(definition_path)?;
         file.write_all(value.as_bytes())?;
 
-        // Save Vm to db
+        // Save Vm to db.
         let record = database::entity::vm::ActiveModel {
             uuid: ActiveValue::Set(self.uuid),
             name: ActiveValue::Set(self.name.clone()),
+            config: ActiveValue::Set(serde_json::to_value(&self.to_vmm_config()?)?),
             ..Default::default()
         };
+
         let db = connect_db().await?;
         database::prelude::Vm::insert(record).exec(&db).await?;
 
         Ok(())
     }
+
     /*
      * Bring the virtual machine up.
      */
-    pub async fn set(&mut self) -> Result<(), VirshleError> {
+    pub async fn create(&mut self) -> Result<Self, VirshleError> {
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string();
         let cmd = format!(
             "cloud-hypervisor \
-                --api-socket {socket} \
-                --kernel /run/cloud-hypervisor/hypervisor-fw \
-                --console off \
-                --serial tty \
-                --disk path=/home/anon/Iso/nixos.efi.qcow2 \
-                --cpus boot=2 \
-                --memory size=4G",
+                --api-socket {socket}.sock \
+            "
         );
         let mut proc = Process::new(&cmd);
         proc.run_detached()?;
         self.save_definition().await?;
-        Ok(())
+        Ok(self.to_owned())
     }
     /*
      * Shut the virtual machine down.
      */
     pub async fn shutdown(&mut self) -> Result<(), VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string();
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
         let endpoint = "/api/v1/vm.info";
         let conn = Connection::open(&socket).await?;
 
@@ -183,49 +167,63 @@ impl Vm {
         Ok(())
     }
     /*
-     * If db is broken, (bypass)
-     * Get vm definitions directly from files.
+     * Shut the virtual machine down.
      */
-    pub fn get_all_from_file() -> Result<Vec<Vm>, VirshleError> {
-        let vm_socket_dir = MANAGED_DIR.to_owned() + "/vm";
-        let mut vms: Vec<Vm> = vec![];
-        for entry in fs::read_dir(&vm_socket_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            let mut vm = Self::from_file(path.to_str().unwrap())?;
-            vm.update();
-            vms.push(vm);
-        }
-        Ok(vms)
-    }
-    pub async fn get_all() -> Result<Vec<Vm>, VirshleError> {
-        let db = connect_db().await?;
-        let records: Vec<database::entity::vm::Model> =
-            database::prelude::Vm::find().all(&db).await?;
-
-        let mut vms: Vec<Vm> = vec![];
-        for e in records {
-            vms.push(Self::get_by_uuid(&e.uuid).await?)
-        }
-        Ok(vms)
+    pub async fn start(&mut self) -> Result<(), VirshleError> {
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let endpoint = "/api/v1/vm.boot";
+        let conn = Connection::open(&socket).await?;
+        let response = conn.put::<Vm>(endpoint, None).await?;
+        Ok(())
     }
     /*
      * Should be renamed to get_info();
      *
      */
     pub async fn update(&mut self) -> Result<&mut Vm, VirshleError> {
-        let socket_addr = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string();
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
         let endpoint = "/api/v1/vm.info";
+        let conn = Connection::open(&socket).await?;
 
-        let conn = Connection::open(&socket_addr).await?;
         let response = conn.get(endpoint).await?;
 
         let data = response.to_string().await?;
         println!("{:#?}", data);
         let data: VmInfoResponse = serde_json::from_str(&data)?;
 
-        self.state = Some(data.state);
+        // self.state = Some(data.state);
         Ok(self)
+    }
+}
+
+/*
+* Getters.
+* Get data from cloud-hypervisor on the file.
+* Retrieve in real time everything that would be awkward to keep staticaly in a struct field,
+* like vm state (on, off...), dinamicaly assigned ips over a network...
+*/
+impl Vm {
+    /*
+     * Should be renamed to get_info();
+     *
+     */
+    pub async fn get_state(&mut self) -> Result<VmState, VirshleError> {
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let endpoint = "/api/v1/vm.info";
+
+        let conn = Connection::open(&socket).await;
+        if conn.is_err(){
+            return Ok(VmState::NotCreated);
+        }
+    
+
+        let response = conn.get(endpoint).await?;
+        let data = response.to_string().await?;
+        println!("{:#?}", data);
+        let data: VmInfoResponse = serde_json::from_str(&data)?;
+
+        VmState::from
+        Ok(data.state)
     }
 }
 
@@ -255,14 +253,14 @@ mod test {
         let path = path.display().to_string();
 
         let mut item = Vm::from_file(&path)?;
-        item.set().await?;
+        item.create().await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn set_vm() -> Result<()> {
         let mut item = Vm::default();
-        item.set().await?;
+        item.create().await?;
         Ok(())
     }
     // #[tokio::test]

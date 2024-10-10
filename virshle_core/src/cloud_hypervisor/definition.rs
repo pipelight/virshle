@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 
 // Error Handling
-use virshle_error::VirshleError;
 use bon::{bon, Builder};
 use log::info;
 use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};
+use virshle_error::VirshleError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Definition {
@@ -40,9 +40,9 @@ impl Definition {
         };
         Ok(item)
     }
-    pub async fn set_vms(&mut self) -> Result<&mut Self, VirshleError> {
+    pub async fn create_vms(&mut self) -> Result<&mut Self, VirshleError> {
         for vm in &mut self.vm {
-            vm.set().await?;
+            vm.create().await?;
         }
         Ok(self)
     }

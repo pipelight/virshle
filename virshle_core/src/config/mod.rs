@@ -1,3 +1,6 @@
+pub mod cache;
+pub mod uri;
+
 // Global vars
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
@@ -46,9 +49,10 @@ pub struct Node {
 }
 impl Default for Node {
     fn default() -> Self {
+        let url = "file://".to_owned() + MANAGED_DIR + "/virshle.sock";
         Self {
             name: "default".to_owned(),
-            url: "file:///var/lib/virshle/virshle.socket".to_owned(),
+            url,
         }
     }
 }

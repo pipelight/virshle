@@ -1,7 +1,7 @@
 [[connect]]
 name = "default"
-url = "file:///var/lib/virshle/virshle.socket"
+url = "file:///var/lib/virshle/virshle.sock"
 
 [[connect]]
 name = "default-ssh"
-url = "ssh://anon@localhost:22/var/lib/virshle/virshle.socket"
+url = "ssh://anon@localhost:22/var/lib/virshle/virshle.sock"

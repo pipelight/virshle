@@ -50,7 +50,7 @@ impl Api {
             )
             .route("/", get(|| async { "Hello, World!" }));
 
-        let path = "/var/lib/virshle/virshle.socket";
+        let path = "/var/lib/virshle/virshle.sock";
         let path = PathBuf::from(path);
 
         // Ensure clean socket
@@ -59,7 +59,7 @@ impl Api {
             .await
             .unwrap();
 
-        let listener = UnixListener::bind("/var/lib/virshle/virshle.socket")?;
+        let listener = UnixListener::bind("/var/lib/virshle/virshle.sock")?;
         let mut make_service = app.into_make_service_with_connect_info::<UdsConnectInfo>();
 
         // See https://github.com/tokio-rs/axum/blob/main/examples/serve-with-hyper/src/main.rs for

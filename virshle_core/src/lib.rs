@@ -3,9 +3,8 @@
 #![allow(unused_must_use)]
 #![allow(unused_must_use)]
 
-pub mod api;
-
-pub mod cache;
+pub mod http_api;
+pub mod http_cli;
 
 pub mod cli;
 
@@ -15,6 +14,5 @@ pub mod config;
 pub mod convert;
 pub mod database;
 pub mod display;
-pub mod request;
 
-pub use api::Api;
+pub use http_api::Api;

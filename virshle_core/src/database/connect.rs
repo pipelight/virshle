@@ -9,8 +9,8 @@ use sea_orm::{
 use sea_orm::{prelude::*, sea_query::OnConflict, ActiveValue, InsertResult};
 
 // Error Handling
-use virshle_error::VirshleError;
 use miette::{Error, IntoDiagnostic, Result};
+use virshle_error::VirshleError;
 
 // Global vars
 // use once_cell::sync::Lazy;

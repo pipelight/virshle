@@ -2,7 +2,7 @@
 * This module is to connect to a virshle/libvirshle instance through ssh.
 */
 
-use super::uri::{LibvirtUri, SshUri};
+use crate::config::uri::{LibvirtUri, SshUri};
 use std::net::TcpStream;
 
 use russh::client::{connect, Config, Handle, Handler};
@@ -17,6 +17,10 @@ use std::sync::Arc;
 
 use std::path::Path;
 use std::time::Duration;
+
+use convert_case::{Case, Casing};
+use serde::{Deserialize, Serialize};
+use serde_json::{from_slice, Value};
 
 // Ssh
 use async_trait::async_trait;
@@ -194,10 +198,39 @@ impl Session {
     }
 }
 
+pub fn request_to_string<T>(req: &Request<T>) -> Result<String, VirshleError>
+where
+    T: Serialize,
+{
+    let mut string = "".to_owned();
+
+    string.push_str(&format!(
+        "{} {} {:?}\n",
+        req.method(),
+        req.uri(),
+        req.version()
+    ));
+
+    for (key, value) in req.headers() {
+        let key = key.to_string().to_case(Case::Title);
+        let value = value.to_str().unwrap();
+        string.push_str(&format!("{key}: {value}\n",));
+    }
+
+    let body: Value = serde_json::to_value(req.body().to_owned())?;
+    match body {
+        Value::Null => {}
+        _ => {
+            let body: String = serde_json::to_string(req.body().to_owned())?;
+            string.push_str(&format!("\n{}\n", body));
+        }
+    };
+    Ok(string)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::request::http::request_to_string;
 
     #[tokio::test]
     async fn connect_to_ssh() -> Result<()> {
@@ -215,6 +248,7 @@ mod tests {
             .into_diagnostic()?;
 
         let req = request_to_string(&request).into_diagnostic()?;
+        println!("\n{}", req);
 
         let mut session = Session::open().await?;
         session.put(&req).await?;

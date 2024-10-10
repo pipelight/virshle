@@ -1,4 +1,3 @@
-use convert_case::{Case, Casing};
 use std::path::Path;
 
 use hyper::body::{Body, Bytes, Incoming};
@@ -16,7 +15,7 @@ use tokio::spawn;
 use tokio::task::JoinHandle;
 
 // Error Handling
-use log::info;
+use log::{debug, info};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -50,6 +49,7 @@ impl Connection {
 
         let status: StatusCode = response.status();
         let response: Response = Response::new(url, response, self.connection);
+        debug!("{:#?}", response);
 
         if !status.is_success() {
             let message = format!("Status failed: {}", status);
@@ -139,36 +139,6 @@ impl Response {
     }
 }
 
-pub fn request_to_string<T>(req: &Request<T>) -> Result<String, VirshleError>
-where
-    T: Serialize,
-{
-    let mut string = "".to_owned();
-
-    string.push_str(&format!(
-        "{} {} {:?}\n",
-        req.method(),
-        req.uri(),
-        req.version()
-    ));
-
-    for (key, value) in req.headers() {
-        let key = key.to_string().to_case(Case::Title);
-        let value = value.to_str().unwrap();
-        string.push_str(&format!("{key}: {value}\n",));
-    }
-
-    let body: Value = serde_json::to_value(req.body().to_owned())?;
-    match body {
-        Value::Null => {}
-        _ => {
-            let body: String = serde_json::to_string(req.body().to_owned())?;
-            string.push_str(&format!("\n{}\n", body));
-        }
-    };
-    Ok(string)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -178,19 +148,6 @@ mod tests {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::UnixListener;
     use tokio::time::{sleep, Duration};
-
-    #[test]
-    fn print_request() -> Result<()> {
-        let request = Request::builder()
-            .uri("/")
-            .method("GET")
-            .header("Host", "localhost")
-            .body(serde_json::Value::Null)
-            .into_diagnostic()?;
-        let res = request_to_string(&request).into_diagnostic()?;
-        println!("\n{}", res);
-        Ok(())
-    }
 
     /*
      * Create a socket and listens to incoming connections

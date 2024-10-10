@@ -9,8 +9,7 @@
 * https://docs.rs/hyperlocal/latest/hyperlocal/
 */
 
-mod http;
+mod socket;
 mod ssh;
-mod uri;
 
-pub use http::Connection;
+pub use socket::Connection;

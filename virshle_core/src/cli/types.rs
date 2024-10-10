@@ -91,10 +91,12 @@ impl Cli {
             }
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    Vm::from_file(&args.file)?.set().await?;
+                    let mut vm = Vm::from_file(&args.file)?;
+                    vm.create().await?;
                 }
                 Crud::Start(resource) => {
-                    // Vm::get(&resource.name)?.start()?;
+                    let mut vm = Vm::get_by_name(&resource.name).await?;
+                    vm.start().await?;
                 }
                 Crud::Shutdown(resource) => {
                     // Vm::get(&resource.name).await?.shutdown().await?;

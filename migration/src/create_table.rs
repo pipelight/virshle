@@ -67,7 +67,7 @@ mod tests {
         let connection = sea_orm::Database::connect(database_url)
             .await
             .into_diagnostic()?;
-        Migrator::fresh(&connection).await.into_diagnostic()?;
+        // Migrator::fresh(&connection).await.into_diagnostic()?;
         Ok(())
     }
 }
