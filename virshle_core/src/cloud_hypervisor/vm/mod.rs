@@ -1,4 +1,5 @@
 pub mod from;
+pub mod getters;
 pub mod to;
 
 // Cloud Hypervisor
@@ -12,7 +13,7 @@ use vmm::{
         default_serial,
 
         CpusConfig,
-        DiskConfig,
+        DiskConfig as ChDiskConfig,
         MemoryConfig,
         NetConfig,
         RngConfig,
@@ -62,18 +63,43 @@ pub enum VmState {
     Paused,
     BreakPoint,
 }
+impl From<ChVmState> for VmState {
+    fn from(ch_vm_state: ChVmState) -> Self {
+        let res = match ch_vm_state {
+            ChVmState::Created => VmState::Created,
+            ChVmState::Running => VmState::Running,
+            ChVmState::Shutdown => VmState::Shutdown,
+            ChVmState::Paused => VmState::Paused,
+            ChVmState::BreakPoint => VmState::BreakPoint,
+        };
+        return res;
+    }
+}
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct VirshleVmConfig {
+    autostart: bool,
+}
+impl Default for VirshleVmConfig {
+    fn default() -> Self {
+        Self { autostart: false }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct DiskConfig {
+    path: String,
+    readonly: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Vm {
     pub name: String,
     pub vcpu: u64,
-    #[tabled(display_with = "display_vram")]
     pub vram: u64,
-    #[tabled(display_with = "display_state")]
-    pub state: Option<VmState>,
-    // #[tabled(display_with = "display_ips")]
-    // pub ips: Vec<String>,
     pub uuid: Uuid,
+    pub disk: Vec<DiskConfig>,
+    pub config: VirshleVmConfig,
 }
 impl Default for Vm {
     fn default() -> Self {
@@ -81,9 +107,9 @@ impl Default for Vm {
             name: template::random_name().unwrap(),
             vcpu: 1,
             vram: 2,
-            state: None,
-            // ips: vec![],
             uuid: Uuid::new_v4(),
+            disk: vec![],
+            config: Default::default(),
         }
     }
 }
@@ -128,7 +154,7 @@ impl Vm {
 
         // Save Vm to db.
         let record = database::entity::vm::ActiveModel {
-            uuid: ActiveValue::Set(self.uuid),
+            uuid: ActiveValue::Set(self.uuid.to_string()),
             name: ActiveValue::Set(self.name.clone()),
             config: ActiveValue::Set(serde_json::to_value(&self.to_vmm_config()?)?),
             ..Default::default()
@@ -207,23 +233,25 @@ impl Vm {
      * Should be renamed to get_info();
      *
      */
-    pub async fn get_state(&mut self) -> Result<VmState, VirshleError> {
+    pub async fn get_state(&self) -> Result<VmState, VirshleError> {
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
         let endpoint = "/api/v1/vm.info";
 
         let conn = Connection::open(&socket).await;
-        if conn.is_err(){
-            return Ok(VmState::NotCreated);
-        }
-    
-
-        let response = conn.get(endpoint).await?;
-        let data = response.to_string().await?;
-        println!("{:#?}", data);
-        let data: VmInfoResponse = serde_json::from_str(&data)?;
-
-        VmState::from
-        Ok(data.state)
+        let state: VmState = match conn {
+            Ok(conn) => {
+                let response = conn.get(endpoint).await?;
+                let data = response.to_string().await?;
+                let data: VmInfoResponse = serde_json::from_str(&data)?;
+                VmState::from(data.state)
+            }
+            Err(e) => VmState::NotCreated,
+        };
+        Ok(state)
+    }
+    pub async fn get_ips(&self) -> Result<Vec<String>, VirshleError> {
+        let ips = vec![];
+        Ok(ips)
     }
 }
 

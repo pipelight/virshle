@@ -102,7 +102,7 @@ impl Cli {
                     // Vm::get(&resource.name).await?.shutdown().await?;
                 }
                 Crud::Ls => {
-                    Vm::display(Vm::get_all().await?)?;
+                    Vm::display(Vm::get_all().await?).await?;
                 }
                 Crud::Rm(resource) => {
                     // Vm::get_by_name(&resource.name).await?.delete()?;

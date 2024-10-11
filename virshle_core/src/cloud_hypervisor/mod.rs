@@ -6,4 +6,4 @@ mod definition;
 mod template;
 mod vm;
 
-pub use vm::Vm;
+pub use vm::{Vm, VmState};
