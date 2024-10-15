@@ -1,0 +1,5 @@
+vcpu = 1
+vram = 2
+
+[config]
+autostart = true

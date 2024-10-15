@@ -3,7 +3,9 @@
 * https://levelup.gitconnected.com/learning-rust-http-via-unix-socket-fee3241b4340
 */
 mod definition;
-mod template;
+mod disk;
+mod rand;
 mod vm;
 
-pub use vm::{Vm, VmState};
+pub use disk::{Disk, DiskTemplate};
+pub use vm::{Vm, VmState, VmTemplate};

@@ -105,7 +105,8 @@ impl Cli {
                     Vm::display(Vm::get_all().await?).await?;
                 }
                 Crud::Rm(resource) => {
-                    // Vm::get_by_name(&resource.name).await?.delete()?;
+                    let mut vm = Vm::get_by_name(&resource.name).await?;
+                    vm.delete().await?;
                 }
             },
             Commands::Net(args) => match args {

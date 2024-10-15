@@ -11,7 +11,7 @@ pub struct Model {
     pub uuid: String,
     #[sea_orm(unique)]
     pub name: String,
-    pub config: Json,
+    pub definition: Json,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

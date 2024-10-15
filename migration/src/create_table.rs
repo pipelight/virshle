@@ -32,7 +32,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Vm::Uuid).string().not_null().unique_key())
                     .col(ColumnDef::new(Vm::Name).string().not_null().unique_key())
-                    .col(ColumnDef::new(Vm::Config).json().not_null())
+                    .col(ColumnDef::new(Vm::Definition).json().not_null())
                     .to_owned(),
             )
             .await?;
@@ -53,7 +53,7 @@ pub enum Vm {
     Id,
     Uuid,
     Name,
-    Config,
+    Definition,
 }
 
 #[cfg(test)]

@@ -2,6 +2,8 @@ pub mod from;
 pub mod getters;
 pub mod to;
 
+pub use from::VmTemplate;
+
 // Cloud Hypervisor
 use uuid::Uuid;
 use vmm::api::VmInfoResponse;
@@ -21,7 +23,7 @@ use vmm::{
     },
 };
 
-use hyper::Request;
+use hyper::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 
 use pipelight_exec::Process;
@@ -31,7 +33,8 @@ use tabled::{
     Table, Tabled,
 };
 
-use super::template;
+use super::disk::Disk;
+use super::rand::random_name;
 
 // Http
 use crate::http_cli::Connection;
@@ -40,7 +43,9 @@ use crate::http_cli::Connection;
 use crate::database;
 use crate::database::connect_db;
 use crate::database::entity::{prelude::*, *};
-use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult};
+use sea_orm::{
+    prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult, IntoActiveModel,
+};
 
 use crate::config::MANAGED_DIR;
 use crate::display::vm::*;
@@ -52,7 +57,7 @@ use pipelight_error::{CastError, TomlError};
 use virshle_error::{LibError, VirshleError};
 
 use serde_json::{from_slice, Value};
-use std::fs;
+use tokio::fs;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub enum VmState {
@@ -87,25 +92,21 @@ impl Default for VirshleVmConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct DiskConfig {
-    path: String,
-    readonly: Option<bool>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Vm {
     pub name: String,
     pub vcpu: u64,
+    // vram in Mib
     pub vram: u64,
     pub uuid: Uuid,
-    pub disk: Vec<DiskConfig>,
+    pub disk: Vec<Disk>,
     pub config: VirshleVmConfig,
 }
 impl Default for Vm {
     fn default() -> Self {
         Self {
-            name: template::random_name().unwrap(),
+            name: random_name().unwrap(),
             vcpu: 1,
+            // vram in Mib
             vram: 2,
             uuid: Uuid::new_v4(),
             disk: vec![],
@@ -118,7 +119,26 @@ impl Vm {
     /*
      * Remove a vm and its definition.
      */
-    pub fn delete(&mut self) {}
+    pub async fn delete(&mut self) -> Result<Self, VirshleError> {
+        // Remove running processes
+        // Remove socket and purge disk/net
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        fs::remove_file(socket).await?;
+
+        // Remove record from database
+        let db = connect_db().await.unwrap();
+        let record = database::prelude::Vm::find()
+            .filter(database::entity::vm::Column::Name.eq(&self.name))
+            .one(&db)
+            .await?;
+        let db = connect_db().await?;
+        if let Some(record) = record {
+            database::prelude::Vm::delete(record.into_active_model())
+                .exec(&db)
+                .await?;
+        }
+        Ok(self.to_owned())
+    }
     /*
      * Saves the machine definition in the virshle directory at:
      * `/var/lib/virshle/vm/<vm_uuid>`
@@ -136,7 +156,7 @@ impl Vm {
      * Vm::get("vm_name")?.set()?;
      * ```
      */
-    pub async fn save_definition(&self) -> Result<(), VirshleError> {
+    async fn save_definition(&self) -> Result<(), VirshleError> {
         let res = toml::to_string(&self);
         let value: String = match res {
             Ok(res) => res,
@@ -146,17 +166,11 @@ impl Vm {
             }
         };
 
-        // Save definition to virshle managed file.
-        let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &self.uuid.to_string() + ".toml";
-        let toml = toml::to_string(&value);
-        let mut file = fs::File::create(definition_path)?;
-        file.write_all(value.as_bytes())?;
-
         // Save Vm to db.
         let record = database::entity::vm::ActiveModel {
             uuid: ActiveValue::Set(self.uuid.to_string()),
             name: ActiveValue::Set(self.name.clone()),
-            config: ActiveValue::Set(serde_json::to_value(&self.to_vmm_config()?)?),
+            definition: ActiveValue::Set(serde_json::to_value(&self)?),
             ..Default::default()
         };
 
@@ -166,19 +180,14 @@ impl Vm {
         Ok(())
     }
 
-    /*
-     * Bring the virtual machine up.
-     */
     pub async fn create(&mut self) -> Result<Self, VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string();
-        let cmd = format!(
-            "cloud-hypervisor \
-                --api-socket {socket}.sock \
-            "
-        );
+        self.save_definition().await?;
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+
+        let cmd = format!("cloud-hypervisor --api-socket {socket}");
         let mut proc = Process::new(&cmd);
         proc.run_detached()?;
-        self.save_definition().await?;
+
         Ok(self.to_owned())
     }
     /*
@@ -186,20 +195,36 @@ impl Vm {
      */
     pub async fn shutdown(&mut self) -> Result<(), VirshleError> {
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
-        let endpoint = "/api/v1/vm.info";
+        let endpoint = "/api/v1/vm.shutdown";
         let conn = Connection::open(&socket).await?;
 
-        let response = conn.put::<Vm>(endpoint, None).await?;
+        let response = conn.put::<()>(endpoint, None).await?;
         Ok(())
     }
     /*
      * Shut the virtual machine down.
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
+        self.push_config_to_vmm().await?;
+
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
         let endpoint = "/api/v1/vm.boot";
         let conn = Connection::open(&socket).await?;
-        let response = conn.put::<Vm>(endpoint, None).await?;
+        let response = conn.put::<()>(endpoint, None).await?;
+        Ok(())
+    }
+    /*
+     * Bring the virtual machine up.
+     */
+    async fn push_config_to_vmm(&mut self) -> Result<(), VirshleError> {
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let kernel = "/run/cloud-hypervisor/hypervisor-fw";
+
+        let endpoint = "/api/v1/vm.create";
+        let conn = Connection::open(&socket).await?;
+        let config = self.to_vmm_config()?;
+
+        let response = conn.put::<VmConfig>(endpoint, Some(config)).await?;
         Ok(())
     }
     /*
@@ -238,14 +263,23 @@ impl Vm {
         let endpoint = "/api/v1/vm.info";
 
         let conn = Connection::open(&socket).await;
-        let state: VmState = match conn {
-            Ok(conn) => {
-                let response = conn.get(endpoint).await?;
-                let data = response.to_string().await?;
-                let data: VmInfoResponse = serde_json::from_str(&data)?;
-                VmState::from(data.state)
+
+        let state = match conn {
+            Ok(v) => {
+                let response = v.get(endpoint).await?;
+                let status = response.status();
+
+                match status {
+                    StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
+                    StatusCode::OK => {
+                        let data = &response.to_string().await?;
+                        let data: VmInfoResponse = serde_json::from_str(&data)?;
+                        VmState::from(data.state)
+                    }
+                    _ => VmState::NotCreated,
+                }
             }
-            Err(e) => VmState::NotCreated,
+            Err(_) => VmState::NotCreated,
         };
         Ok(state)
     }
@@ -273,7 +307,7 @@ mod test {
         Ok(())
     }
 
-    // #[tokio::test]
+    #[tokio::test]
     async fn set_vm_from_file() -> Result<()> {
         // Get file
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

@@ -1,4 +1,5 @@
 use super::Vm;
+use std::path::PathBuf;
 
 // Cloud Hypervisor
 use uuid::Uuid;
@@ -14,6 +15,7 @@ use vmm::{
         DiskConfig,
         MemoryConfig,
         NetConfig,
+        PayloadConfig,
         RngConfig,
         VmConfig,
     },
@@ -30,6 +32,7 @@ impl Vm {
      * Generate cloud-hypervisor configuration
      */
     pub fn to_vmm_config(&self) -> Result<VmConfig, VirshleError> {
+        let kernel = "/run/cloud-hypervisor/hypervisor-fw";
         let config = VmConfig {
             cpus: CpusConfig {
                 boot_vcpus: self.vcpu as u8,
@@ -37,7 +40,7 @@ impl Vm {
                 ..Default::default()
             },
             memory: MemoryConfig {
-                size: self.vram,
+                size: self.vram * u64::pow(1024, 2),
                 ..Default::default()
             },
 
@@ -45,7 +48,12 @@ impl Vm {
             net: None,
 
             // Unused params
-            payload: Default::default(),
+            payload: Some(PayloadConfig {
+                kernel: Some(PathBuf::from(kernel)),
+                firmware: None,
+                cmdline: None,
+                initramfs: None,
+            }),
             rate_limit_groups: Default::default(),
             rng: Default::default(),
             balloon: Default::default(),

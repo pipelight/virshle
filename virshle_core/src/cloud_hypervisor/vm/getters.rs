@@ -28,7 +28,8 @@ impl Vm {
 
         let mut vms: Vec<Vm> = vec![];
         for e in records {
-            vms.push(Self::get_by_uuid(&Uuid::parse_str(&e.uuid)?).await?)
+            let vm: Vm = serde_json::from_value(e.definition)?;
+            vms.push(vm)
         }
         Ok(vms)
     }
@@ -44,8 +45,8 @@ impl Vm {
             .await?;
 
         if let Some(record) = record {
-            let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &record.uuid.to_string();
-            Self::from_file(&definition_path)
+            let vm: Vm = serde_json::from_value(record.definition)?;
+            return Ok(vm);
         } else {
             let message = format!("Could not find a vm with the name: {}", name);
             return Err(LibError::new(&message, "").into());
@@ -58,13 +59,13 @@ impl Vm {
         // Retrive from database
         let db = connect_db().await.unwrap();
         let record = database::prelude::Vm::find()
-            .filter(database::entity::vm::Column::Uuid.eq(uuid.to_owned()))
+            .filter(database::entity::vm::Column::Uuid.eq(uuid.to_string()))
             .one(&db)
             .await?;
 
         if let Some(record) = record {
-            let definition_path = MANAGED_DIR.to_owned() + "/vm/" + &record.uuid.to_string();
-            Self::from_file(&definition_path)
+            let vm: Vm = serde_json::from_value(record.definition)?;
+            return Ok(vm);
         } else {
             let message = format!("Could not find a vm with the uuid: {}", uuid);
             return Err(LibError::new(&message, "").into());

@@ -51,11 +51,11 @@ impl Connection {
         let response: Response = Response::new(url, response, self.connection);
         debug!("{:#?}", response);
 
-        if !status.is_success() {
-            let message = format!("Status failed: {}", status);
-            return Err(LibError::new(&message, "").into());
-        }
-
+        // if !status.is_success() {
+        //     let message = format!("Status failed: {}", status);
+        //     return Err(LibError::new(&message, "").into());
+        // }
+        //
         Ok(response)
     }
 
@@ -125,6 +125,9 @@ impl Response {
             inner: response,
             connection,
         }
+    }
+    pub fn status(&self) -> StatusCode {
+        self.inner.status()
     }
     pub async fn into_bytes(self) -> Result<Bytes, VirshleError> {
         let data = self.inner.into_body().collect().await?;
