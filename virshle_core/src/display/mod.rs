@@ -1,4 +1,4 @@
-// mod net;
+mod net;
 // mod secret;
 pub mod vm;
 

@@ -62,7 +62,7 @@ pub fn display_state(state: &VmState) -> String {
 }
 
 impl VmTable {
-    pub async fn display(items: Vec<VmTable>) -> Result<()> {
+    pub async fn display(items: Vec<Self>) -> Result<()> {
         if log_enabled!(Level::Info) {
             let mut res = Table::new(&items);
             res.with(Style::rounded());

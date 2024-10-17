@@ -5,8 +5,7 @@ mod interface;
 mod to;
 
 pub use from::NetTemplate;
-
-use interface::Ip;
+pub use interface::{Ip, LinkState};
 
 use super::rand::random_place;
 use pipelight_exec::{Process, Status};
@@ -30,12 +29,12 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Net {
-    name: String,
+    pub name: String,
     // CIDR notation ip/subnet_mask
-    ip: String,
+    pub ip: String,
     // autostart net on host boot
-    enabled: bool,
-    uuid: Uuid,
+    pub enabled: bool,
+    pub uuid: Uuid,
 }
 
 impl Default for Net {

@@ -38,7 +38,7 @@ pub struct Link {
     broadcast: String,
     altnames: Vec<String>,
 }
-#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Tabled)]
 pub enum LinkState {
     Up,
     Down,
