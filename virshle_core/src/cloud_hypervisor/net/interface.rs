@@ -24,21 +24,22 @@ pub struct Route {
 }
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Link {
-    ifindex: u8,
+    ifindex: u16,
     ifname: String,
     flags: Vec<String>,
-    mtu: u8,
+    mtu: u16,
     qdisc: String,
     operstate: LinkState,
     linkmode: String,
     group: String,
-    txqlen: u8,
-    link_type: u8,
+    txqlen: u16,
+    link_type: String,
     address: String,
     broadcast: String,
-    altnames: Vec<String>,
+    altnames: Option<Vec<String>>,
 }
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Tabled)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum LinkState {
     Up,
     Down,

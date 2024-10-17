@@ -95,7 +95,7 @@ impl Net {
             _ => {}
         };
 
-        let cmd = format!("ip link set {} up", self.name);
+        let cmd = format!("sudo ip link set {} up", self.name);
         let mut proc = Process::new(&cmd);
         proc.run_piped()?;
 
