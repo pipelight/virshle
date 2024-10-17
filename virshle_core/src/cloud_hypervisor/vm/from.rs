@@ -1,4 +1,4 @@
-use super::{VirshleVmConfig, Vm};
+use super::{VirshleVmConfig, Vm, VmNet};
 use crate::cloud_hypervisor::{Disk, DiskTemplate};
 
 use serde::{Deserialize, Serialize};
@@ -42,14 +42,15 @@ pub struct VmTemplate {
     pub vram: u64,
     pub uuid: Option<Uuid>,
     pub disk: Option<Vec<DiskTemplate>>,
+    pub net: Option<Vec<VmNet>>,
     pub config: Option<VirshleVmConfig>,
 }
-
 impl From<&VmTemplate> for Vm {
     fn from(e: &VmTemplate) -> Self {
         let mut vm = Vm {
             vcpu: e.vcpu,
             vram: e.vram,
+            net: e.net.clone(),
             ..Default::default()
         };
 
@@ -59,7 +60,6 @@ impl From<&VmTemplate> for Vm {
         if let Some(uuid) = &e.uuid {
             vm.uuid = uuid.to_owned();
         }
-
         // Make disks
         if let Some(defs) = &e.disk {
             for def in defs {
@@ -80,26 +80,15 @@ impl Vm {
      */
     pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(file_path)?;
-        let res = toml::from_str::<VmTemplate>(&string);
-
-        let item: VmTemplate = match res {
-            Ok(res) => res,
-            Err(e) => {
-                let err = CastError::TomlError(TomlError::new(e, &string));
-                return Err(err.into());
-            }
-        };
-        let mut item = Vm::from(&item);
-        item.update();
-        Ok(item)
+        Self::from_toml(&string)
     }
-    pub fn from_toml(definition: &str) -> Result<Self, VirshleError> {
-        let res = toml::from_str::<VmTemplate>(definition);
+    pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
+        let res = toml::from_str::<VmTemplate>(string);
 
         let item: VmTemplate = match res {
             Ok(res) => res,
             Err(e) => {
-                let err = CastError::TomlError(TomlError::new(e, definition));
+                let err = CastError::TomlError(TomlError::new(e, string));
                 return Err(err.into());
             }
         };
@@ -136,7 +125,16 @@ mod test {
 
             vcpu = 1
             vram = 2
-        "#;
+
+            [[net]]
+            [net.tap]
+            name = "macvtap0"
+
+            [[net]]
+            [net.bridge]
+            name = "virshlebr0"
+
+            "#;
         let item = Vm::from_toml(&toml)?;
         println!("{:#?}", item);
         Ok(())

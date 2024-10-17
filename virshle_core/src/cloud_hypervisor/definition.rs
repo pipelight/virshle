@@ -1,4 +1,4 @@
-use super::vm::Vm;
+use super::{Net, NetTemplate, Vm, VmTemplate};
 use serde::{Deserialize, Serialize};
 use std::fs;
 
@@ -11,25 +11,32 @@ use virshle_error::VirshleError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Definition {
-    pub vm: Vec<Vm>,
-    // net: Vec<Net>,
+    pub vm: Vec<VmTemplate>,
+    pub net: Vec<NetTemplate>,
     // disk: Vec<Disk>,
 }
 #[bon]
 impl Definition {
     #[builder]
-    pub fn new(vm: Option<Vm>) -> Self {
-        let mut vms: Vec<Vm> = vec![];
+    pub fn new(vm: Option<VmTemplate>, net: Option<NetTemplate>) -> Self {
+        let mut vms = vec![];
         if let Some(vm) = vm {
             vms.push(vm);
         }
-        Definition { vm: vms }
+        let mut nets = vec![];
+        if let Some(net) = net {
+            nets.push(net);
+        }
+        Definition { vm: vms, net: nets }
     }
 }
 
 impl Definition {
     pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(file_path)?;
+        Self::from_toml(&string)
+    }
+    pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
         let res = toml::from_str::<Self>(&string);
         let item = match res {
             Ok(res) => res,
@@ -40,11 +47,17 @@ impl Definition {
         };
         Ok(item)
     }
-    pub async fn create_vms(&mut self) -> Result<&mut Self, VirshleError> {
-        for vm in &mut self.vm {
-            vm.create().await?;
+    pub async fn create_vms(&self) -> Result<Self, VirshleError> {
+        for def in &self.vm {
+            Vm::from(def).create().await?;
         }
-        Ok(self)
+        Ok(self.to_owned())
+    }
+    pub async fn create_networks(&self) -> Result<Self, VirshleError> {
+        for def in &self.net {
+            Net::from(def).create()?;
+        }
+        Ok(self.to_owned())
     }
 }
 
@@ -60,8 +73,23 @@ mod test {
         path.push("../templates/ch/vm/xs.toml");
         let path = path.display().to_string();
 
-        let mut def = Definition::from_file(&path)?;
-        // def.set_vms()?;
+        let toml = r#"
+            [[vm]]
+            name = "default_xs_vm"
+            vcpu = 1
+            vram = 2
+
+            [[vm.net]]
+            [vm.net.tap]
+            name = "virshle_tap0"
+
+            [[net]]
+            name = "virshle_tap0"
+            subnet = "192.168.201.1/24"
+        "#;
+
+        let def = Definition::from_toml(&toml)?;
+        def.create_vms().await?.create_networks().await?;
 
         Ok(())
     }

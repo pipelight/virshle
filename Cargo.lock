@@ -3657,9 +3657,9 @@ dependencies = [
 
 [[package]]
 name = "pipelight_exec"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6be801d85b9c780ccab0d71345708360f69bc20f051c716af9b7362c6aca2ae6"
+checksum = "09cab0ecfdff82841c54bf0d931fc0d895fd77b3f4d7c8f798f3c5e15d32ee46"
 dependencies = [
  "chrono",
  "colored",

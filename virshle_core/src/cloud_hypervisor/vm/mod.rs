@@ -25,15 +25,14 @@ use vmm::{
 
 use hyper::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 
-use pipelight_exec::Process;
+use pipelight_exec::{Finder, Process};
 use std::io::Write;
-use tabled::{
-    settings::{object::Columns, Disable, Style},
-    Table, Tabled,
-};
+use tabled::{Table, Tabled};
 
 use super::disk::Disk;
+use super::net::Net;
 use super::rand::random_name;
 
 // Http
@@ -90,6 +89,19 @@ impl Default for VirshleVmConfig {
         Self { autostart: false }
     }
 }
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum VmNet {
+    Tap(Iface),
+    Bridge(Iface),
+}
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct Iface {
+    // Tap device name
+    pub name: String,
+    // Request a static ip on the interface.
+    pub ip: Option<String>,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Vm {
@@ -97,6 +109,7 @@ pub struct Vm {
     pub vcpu: u64,
     // vram in Mib
     pub vram: u64,
+    pub net: Option<Vec<VmNet>>,
     pub uuid: Uuid,
     pub disk: Vec<Disk>,
     pub config: VirshleVmConfig,
@@ -108,6 +121,7 @@ impl Default for Vm {
             vcpu: 1,
             // vram in Mib
             vram: 2,
+            net: None,
             uuid: Uuid::new_v4(),
             disk: vec![],
             config: Default::default(),
@@ -121,9 +135,20 @@ impl Vm {
      */
     pub async fn delete(&mut self) -> Result<Self, VirshleError> {
         // Remove running processes
-        // Remove socket and purge disk/net
+        Finder::new()
+            .seed("cloud-hypervisor")
+            .seed(&self.uuid.to_string())
+            .search_no_parents()?
+            .kill()?;
+
+        // Purge disk/net
+
+        // Clean existing socket
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
-        fs::remove_file(socket).await?;
+        let path = Path::new(&socket);
+        if path.exists() {
+            fs::remove_file(&socket).await?;
+        }
 
         // Remove record from database
         let db = connect_db().await.unwrap();
@@ -180,14 +205,40 @@ impl Vm {
         Ok(())
     }
 
+    async fn start_vmm(&self) -> Result<(), VirshleError> {
+        // Remove running vmm processes
+        Finder::new()
+            .seed("cloud-hypervisor")
+            .seed(&self.uuid.to_string())
+            .search_no_parents()?
+            .kill()?;
+
+        // Remove existing socket
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let path = Path::new(&socket);
+        if path.exists() {
+            fs::remove_file(&socket).await?;
+        }
+
+        match Connection::open(&socket).await {
+            Ok(_) => Ok(()),
+            Err(_) => {
+                let cmd = format!("cloud-hypervisor --api-socket {socket}");
+                let mut proc = Process::new(&cmd);
+                proc.run_detached()?;
+
+                // Wait until socket is created
+                while !path.exists() {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                }
+
+                Ok(())
+            }
+        }
+    }
+
     pub async fn create(&mut self) -> Result<Self, VirshleError> {
         self.save_definition().await?;
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
-
-        let cmd = format!("cloud-hypervisor --api-socket {socket}");
-        let mut proc = Process::new(&cmd);
-        proc.run_detached()?;
-
         Ok(self.to_owned())
     }
     /*
@@ -205,6 +256,7 @@ impl Vm {
      * Shut the virtual machine down.
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
+        self.start_vmm().await?;
         self.push_config_to_vmm().await?;
 
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";

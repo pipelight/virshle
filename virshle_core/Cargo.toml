@@ -5,9 +5,13 @@ edition = "2021"
 
 [dependencies]
 virshle_error = { path = "../virshle_error" }
+pipelight_error = { version = "0.2.9" }
+pipelight_exec = "0.2.8"
+# pipelight_exec = { path = "../../pipelight/pipelight_exec", features = [
+#   "procfs",
+# ] }
 
 miette = { version = "7.2.0", features = ["fancy"] }
-pipelight_error = { version = "0.2.9" }
 quick-xml = { version = "0.36.2", features = ["serde", "serialize"] }
 serde_json = { version = "1.0.128", features = ["preserve_order"] }
 toml = "0.8.19"
@@ -32,7 +36,6 @@ rand = "0.8.5"
 minidom = "0.16.0"
 regex = "1.10.6"
 bon = "2.3.0"
-pipelight_exec = "0.2.8"
 reqwest = "0.12.7"
 tokio = { version = "1.40.0", features = ["full"] }
 hyper-socket = "0.2.0"

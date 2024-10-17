@@ -76,7 +76,7 @@ kikoru shinomiya
 reno ichikawa
 soshiro hoshina
 
-# Kny
+## Kny
 
 tengen uzui
 tanjiro kamado

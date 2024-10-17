@@ -1,3 +1,4 @@
+use bon::{bon, Builder};
 use miette::{Diagnostic, Report};
 use pipelight_error::{CastError, PipelightError};
 
@@ -139,6 +140,17 @@ pub struct WrapError {
     pub help: String,
 }
 
+#[bon]
+impl WrapError {
+    #[builder]
+    pub fn new(msg: &str, help: &str, origin: Report) -> Self {
+        Self {
+            message: msg.to_owned(),
+            help: help.to_owned(),
+            origin,
+        }
+    }
+}
 /**
 A root cause error with no inner origin
 */

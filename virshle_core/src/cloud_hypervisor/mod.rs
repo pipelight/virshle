@@ -4,8 +4,10 @@
 */
 mod definition;
 mod disk;
+mod net;
 mod rand;
 mod vm;
 
 pub use disk::{Disk, DiskTemplate};
+pub use net::{Net, NetTemplate};
 pub use vm::{Vm, VmState, VmTemplate};

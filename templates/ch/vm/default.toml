@@ -1,5 +1,8 @@
 vcpu = 1
 vram = 2
 
+[net]
+tap = "macvtap0"
+
 [config]
 autostart = true
