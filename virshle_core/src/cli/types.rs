@@ -1,7 +1,7 @@
 use crate::{
     // resources,
     // resources::{create, Net, ResourceType, Secret, Vm},
-    cloud_hypervisor::{Net, Vm},
+    cloud_hypervisor::{Definition, Net, Vm},
     convert,
     Api,
 };
@@ -87,7 +87,8 @@ impl Cli {
                 Api::run().await?;
             }
             Commands::Create(args) => {
-                Vm::from_file(&args.file)?;
+                let def = Definition::from_file(&args.file)?;
+                def.create_all().await?;
             }
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
@@ -111,14 +112,18 @@ impl Cli {
             },
             Commands::Net(args) => match args {
                 Crud::Ls => {
-                    // Net::display(Net::get_all()?)?;
+                    Net::display(Net::get_all().await?).await?;
                 }
                 Crud::Rm(resource) => {
                     // Net::get_by_name(&resource.name)?.delete()?;
                 }
                 Crud::Create(args) => {
                     let net = Net::from_file(&args.file)?;
-                    net.create()?;
+                    net.create().await?;
+                }
+                Crud::Start(resource) => {
+                    let net = Net::get_by_name(&resource.name).await?;
+                    net.start().await?;
                 }
                 _ => {}
             },

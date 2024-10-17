@@ -13,7 +13,6 @@ use virshle_error::VirshleError;
 pub struct Definition {
     pub vm: Vec<VmTemplate>,
     pub net: Vec<NetTemplate>,
-    // disk: Vec<Disk>,
 }
 #[bon]
 impl Definition {
@@ -47,6 +46,11 @@ impl Definition {
         };
         Ok(item)
     }
+    pub async fn create_all(&self) -> Result<Self, VirshleError> {
+        self.create_networks().await?;
+        self.create_vms().await?;
+        Ok(self.to_owned())
+    }
     pub async fn create_vms(&self) -> Result<Self, VirshleError> {
         for def in &self.vm {
             Vm::from(def).create().await?;
@@ -55,7 +59,7 @@ impl Definition {
     }
     pub async fn create_networks(&self) -> Result<Self, VirshleError> {
         for def in &self.net {
-            Net::from(def).create()?;
+            Net::from(def).create().await?;
         }
         Ok(self.to_owned())
     }
@@ -75,22 +79,21 @@ mod test {
 
         let toml = r#"
             [[vm]]
-            name = "default_xs_vm"
+            name = "default_xs"
             vcpu = 1
             vram = 2
 
             [[vm.net]]
             [vm.net.tap]
-            name = "virshle_tap0"
+            name = "default_tap"
 
             [[net]]
-            name = "virshle_tap0"
-            subnet = "192.168.201.1/24"
+            name = "default_tap"
+            ip = "192.168.200.1/24"
         "#;
 
         let def = Definition::from_toml(&toml)?;
-        def.create_vms().await?.create_networks().await?;
-
+        def.create_all().await?;
         Ok(())
     }
 }

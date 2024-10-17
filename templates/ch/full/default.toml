@@ -1,12 +1,12 @@
 [[vm]]
-name = "defaul_xs_vm"
+name = "default_xs"
 vcpu = 1
 vram = 2
 
 [[vm.net]]
 [vm.net.tap]
-name = "virshle_tap0"
+name = "default_tap"
 
 [[net]]
-name = "virshle_tap0"
-subnet = "192.168.201.1/24"
+name = "default_tap"
+ip = "192.168.200.1/24"

@@ -36,12 +36,33 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+        // Networks list
+        manager
+            .create_table(
+                Table::create()
+                    .table(Net::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(Net::Id)
+                            .integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(Net::Uuid).string().not_null().unique_key())
+                    .col(ColumnDef::new(Net::Name).string().not_null().unique_key())
+                    .col(ColumnDef::new(Net::Definition).json().not_null())
+                    .to_owned(),
+            )
+            .await?;
         Ok(())
     }
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        // todo!();
         manager
             .drop_table(Table::drop().table(Vm::Table).to_owned())
+            .await?;
+        manager
+            .drop_table(Table::drop().table(Net::Table).to_owned())
             .await?;
         Ok(())
     }
@@ -49,6 +70,15 @@ impl MigrationTrait for Migration {
 
 #[derive(DeriveIden, Debug)]
 pub enum Vm {
+    Table,
+    Id,
+    Uuid,
+    Name,
+    Definition,
+}
+
+#[derive(DeriveIden, Debug)]
+pub enum Net {
     Table,
     Id,
     Uuid,

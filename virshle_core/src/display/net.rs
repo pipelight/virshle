@@ -6,13 +6,10 @@ use tabled::{settings::Style, Table, Tabled};
 use uuid::Uuid;
 
 // Error Handling
+use crate::cloud_hypervisor::{Net, NetState};
 use log::trace;
 use miette::{IntoDiagnostic, Result};
-
-use crate::{
-    error::VirshleError,
-    resources::net::{Net, State},
-};
+use virshle_error::VirshleError;
 
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
