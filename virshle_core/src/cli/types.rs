@@ -2,6 +2,7 @@ use crate::{
     // resources,
     // resources::{create, Net, ResourceType, Secret, Vm},
     cloud_hypervisor::{Definition, Net, Vm},
+    config::VirshleConfig,
     convert,
     Api,
 };
@@ -30,7 +31,12 @@ pub struct Cli {
 pub enum Commands {
     Prune,
     Daemon,
-    Create(File),
+
+    // Declarative docker compose style
+    Up(File),
+    Down(File),
+
+    // Crud classic style
     #[command(subcommand)]
     Vm(Crud),
     #[command(subcommand)]
@@ -45,9 +51,10 @@ pub struct File {
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Crud {
     Create(File),
+    Update(File),
     Start(Resource),
-    Shutdown(Resource), // Replace with stop
-    // Stop(Resource),
+    Stop(Resource),
+    Inspect(Resource),
     Rm(Resource),
     Ls,
 }
@@ -78,6 +85,9 @@ impl Cli {
         std::env::set_var("VIRSHLE_LOG", verbosity.to_string().to_lowercase());
         Builder::from_env("VIRSHLE_LOG").init();
 
+        // Get config
+        let config = VirshleConfig::get()?;
+
         match cli.commands {
             Commands::Prune => {
                 // remove unused managed files
@@ -86,21 +96,37 @@ impl Cli {
             Commands::Daemon => {
                 Api::run().await?;
             }
-            Commands::Create(args) => {
+            Commands::Up(args) => {
                 let def = Definition::from_file(&args.file)?;
                 def.create_all().await?;
+                def.start_all().await?;
+            }
+            Commands::Down(args) => {
+                let def = Definition::from_file(&args.file)?;
+                def.delete_all().await?;
             }
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    let mut vm = Vm::from_file(&args.file)?;
-                    vm.create().await?;
+                    let template_map = config.get_vm_template()?;
+                    let template = template_map.get(&args.file);
+                    if let Some(template) = template {
+                        let vm = Vm::from(template);
+                        vm.create().await?;
+                    } else {
+                        let vm = Vm::from_file(&args.file)?;
+                        vm.create().await?;
+                    }
+                }
+                Crud::Inspect(resource) => {
+                    let vm = Vm::get_by_name(&resource.name).await?;
+                    vm.get_info().await?;
                 }
                 Crud::Start(resource) => {
-                    let mut vm = Vm::get_by_name(&resource.name).await?;
+                    let vm = Vm::get_by_name(&resource.name).await?;
                     vm.start().await?;
                 }
-                Crud::Shutdown(resource) => {
-                    // Vm::get(&resource.name).await?.shutdown().await?;
+                Crud::Stop(resource) => {
+                    Vm::get_by_name(&resource.name).await?.shutdown().await?;
                 }
                 Crud::Ls => {
                     Vm::display(Vm::get_all().await?).await?;
@@ -109,13 +135,15 @@ impl Cli {
                     let mut vm = Vm::get_by_name(&resource.name).await?;
                     vm.delete().await?;
                 }
+                _ => {}
             },
             Commands::Net(args) => match args {
                 Crud::Ls => {
                     Net::display(Net::get_all().await?).await?;
                 }
                 Crud::Rm(resource) => {
-                    // Net::get_by_name(&resource.name)?.delete()?;
+                    let net = Net::get_by_name(&resource.name).await?;
+                    net.delete().await?;
                 }
                 Crud::Create(args) => {
                     let net = Net::from_file(&args.file)?;

@@ -31,7 +31,7 @@ impl Net {
             }
         };
 
-        // Save Vm to db.
+        // Save network definition to db.
         let record = database::entity::net::ActiveModel {
             uuid: ActiveValue::Set(self.uuid.to_string()),
             name: ActiveValue::Set(self.name.clone()),
@@ -44,7 +44,7 @@ impl Net {
 
         Ok(())
     }
-    pub fn delete(&self) -> Result<(), VirshleError> {
+    pub async fn delete(&self) -> Result<(), VirshleError> {
         let cmd = format!("sudo ip link delete {}", self.name,);
         let mut proc = Process::new(&cmd);
         proc.run_piped()?;
@@ -63,6 +63,19 @@ impl Net {
             }
             _ => {}
         };
+
+        // Remove record from database
+        let db = connect_db().await?;
+        let record = database::prelude::Net::find()
+            .filter(database::entity::net::Column::Name.eq(&self.name))
+            .one(&db)
+            .await?;
+        if let Some(record) = record {
+            database::prelude::Net::delete(record.into_active_model())
+                .exec(&db)
+                .await?;
+        }
+
         Ok(())
     }
 

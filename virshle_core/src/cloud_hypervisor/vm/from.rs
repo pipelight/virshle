@@ -37,7 +37,7 @@ impl From<vm::Model> for Vm {
 */
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct VmTemplate {
-    pub name: Option<String>,
+    pub name: String,
     pub vcpu: u64,
     pub vram: u64,
     pub uuid: Option<Uuid>,
@@ -54,12 +54,6 @@ impl From<&VmTemplate> for Vm {
             ..Default::default()
         };
 
-        if let Some(name) = &e.name {
-            vm.name = name.to_owned();
-        }
-        if let Some(uuid) = &e.uuid {
-            vm.uuid = uuid.to_owned();
-        }
         // Make disks
         if let Some(defs) = &e.disk {
             for def in defs {
@@ -68,7 +62,7 @@ impl From<&VmTemplate> for Vm {
         } else {
             vm.disk.push(Disk {
                 path: format!("{}{}{}", MANAGED_DIR.to_owned(), "/disk/", vm.uuid),
-                readonly: false,
+                readonly: Some(false),
             })
         }
         vm

@@ -3,6 +3,7 @@ pub mod getters;
 pub mod to;
 
 pub use from::VmTemplate;
+pub use getters::VmState;
 
 // Cloud Hypervisor
 use uuid::Uuid;
@@ -58,28 +59,6 @@ use virshle_error::{LibError, VirshleError};
 use serde_json::{from_slice, Value};
 use tokio::fs;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
-pub enum VmState {
-    NotCreated,
-    Created,
-    Running,
-    Shutdown,
-    Paused,
-    BreakPoint,
-}
-impl From<ChVmState> for VmState {
-    fn from(ch_vm_state: ChVmState) -> Self {
-        let res = match ch_vm_state {
-            ChVmState::Created => VmState::Created,
-            ChVmState::Running => VmState::Running,
-            ChVmState::Shutdown => VmState::Shutdown,
-            ChVmState::Paused => VmState::Paused,
-            ChVmState::BreakPoint => VmState::BreakPoint,
-        };
-        return res;
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct VirshleVmConfig {
     autostart: bool,
@@ -112,7 +91,7 @@ pub struct Vm {
     pub net: Option<Vec<VmNet>>,
     pub uuid: Uuid,
     pub disk: Vec<Disk>,
-    pub config: VirshleVmConfig,
+    pub config: Option<VirshleVmConfig>,
 }
 impl Default for Vm {
     fn default() -> Self {
@@ -133,7 +112,7 @@ impl Vm {
     /*
      * Remove a vm and its definition.
      */
-    pub async fn delete(&mut self) -> Result<Self, VirshleError> {
+    pub async fn delete(&self) -> Result<Self, VirshleError> {
         // Remove running processes
         Finder::new()
             .seed("cloud-hypervisor")
@@ -151,12 +130,11 @@ impl Vm {
         }
 
         // Remove record from database
-        let db = connect_db().await.unwrap();
+        let db = connect_db().await?;
         let record = database::prelude::Vm::find()
             .filter(database::entity::vm::Column::Name.eq(&self.name))
             .one(&db)
             .await?;
-        let db = connect_db().await?;
         if let Some(record) = record {
             database::prelude::Vm::delete(record.into_active_model())
                 .exec(&db)
@@ -237,14 +215,14 @@ impl Vm {
         }
     }
 
-    pub async fn create(&mut self) -> Result<Self, VirshleError> {
+    pub async fn create(&self) -> Result<Self, VirshleError> {
         self.save_definition().await?;
         Ok(self.to_owned())
     }
     /*
      * Shut the virtual machine down.
      */
-    pub async fn shutdown(&mut self) -> Result<(), VirshleError> {
+    pub async fn shutdown(&self) -> Result<(), VirshleError> {
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
         let endpoint = "/api/v1/vm.shutdown";
         let conn = Connection::open(&socket).await?;
@@ -255,7 +233,7 @@ impl Vm {
     /*
      * Shut the virtual machine down.
      */
-    pub async fn start(&mut self) -> Result<(), VirshleError> {
+    pub async fn start(&self) -> Result<(), VirshleError> {
         self.start_vmm().await?;
         self.push_config_to_vmm().await?;
 
@@ -268,13 +246,12 @@ impl Vm {
     /*
      * Bring the virtual machine up.
      */
-    async fn push_config_to_vmm(&mut self) -> Result<(), VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
-        let kernel = "/run/cloud-hypervisor/hypervisor-fw";
+    async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
+        let config = self.to_vmm_config()?;
 
+        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
         let endpoint = "/api/v1/vm.create";
         let conn = Connection::open(&socket).await?;
-        let config = self.to_vmm_config()?;
 
         let response = conn.put::<VmConfig>(endpoint, Some(config)).await?;
         Ok(())
@@ -299,65 +276,10 @@ impl Vm {
     }
 }
 
-/*
-* Getters.
-* Get data from cloud-hypervisor on the file.
-* Retrieve in real time everything that would be awkward to keep staticaly in a struct field,
-* like vm state (on, off...), dinamicaly assigned ips over a network...
-*/
-impl Vm {
-    /*
-     * Should be renamed to get_info();
-     *
-     */
-    pub async fn get_state(&self) -> Result<VmState, VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
-        let endpoint = "/api/v1/vm.info";
-
-        let conn = Connection::open(&socket).await;
-
-        let state = match conn {
-            Ok(v) => {
-                let response = v.get(endpoint).await?;
-                let status = response.status();
-
-                match status {
-                    StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
-                    StatusCode::OK => {
-                        let data = &response.to_string().await?;
-                        let data: VmInfoResponse = serde_json::from_str(&data)?;
-                        VmState::from(data.state)
-                    }
-                    _ => VmState::NotCreated,
-                }
-            }
-            Err(_) => VmState::NotCreated,
-        };
-        Ok(state)
-    }
-    pub async fn get_ips(&self) -> Result<Vec<String>, VirshleError> {
-        let ips = vec![];
-        Ok(ips)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use std::path::PathBuf;
-
-    // #[tokio::test]
-    async fn fetch_info() -> Result<()> {
-        Vm::get_by_name("default_xs").await?.update().await?;
-        Ok(())
-    }
-
-    // #[tokio::test]
-    async fn fetch_vms() -> Result<()> {
-        let items = Vm::get_all().await?;
-        println!("{:#?}", items);
-        Ok(())
-    }
 
     #[tokio::test]
     async fn set_vm_from_file() -> Result<()> {

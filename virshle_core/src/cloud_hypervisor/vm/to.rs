@@ -1,4 +1,4 @@
-use super::{Vm, VmNet};
+use super::{Disk, Vm, VmNet};
 use std::path::PathBuf;
 
 // Cloud Hypervisor
@@ -45,7 +45,7 @@ impl Vm {
                 ..Default::default()
             },
             memory: MemoryConfig {
-                size: self.vram * u64::pow(1024, 2),
+                size: self.vram * u64::pow(1024, 3),
                 ..Default::default()
             },
 
@@ -83,6 +83,14 @@ impl Vm {
             landlock_rules: Default::default(),
             landlock_enable: Default::default(),
         };
+        // Add disks
+        let mut disk: Vec<DiskConfig> = vec![];
+        for def in &self.disk {
+            disk.push(Disk::to_vmm_config(def)?);
+        }
+        config.disks = Some(disk);
+
+        // Add networks
         if let Some(networks) = &self.net {
             let mut net: Vec<NetConfig> = vec![];
             for def in networks {

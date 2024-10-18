@@ -8,7 +8,7 @@ mod net;
 mod rand;
 mod vm;
 
-pub use definition::Definition;
+pub use definition::{Definition, Template};
 pub use disk::{Disk, DiskTemplate};
 pub use net::{Ip, LinkState, Net, NetTemplate};
 pub use vm::{Vm, VmState, VmTemplate};

@@ -24,7 +24,6 @@ pub struct NetTemplate {
     ip: Option<String>,
     // autostart net on host boot
     enabled: Option<bool>,
-    pub uuid: Option<Uuid>,
 }
 
 impl From<net::Model> for Net {

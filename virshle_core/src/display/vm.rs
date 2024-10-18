@@ -41,7 +41,7 @@ impl VmTable {
 }
 
 pub fn display_vram(vram: &u64) -> String {
-    let res = human_bytes((vram * u64::pow(1024, 2)) as f64);
+    let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
     format!("{}", res)
 }
 pub fn display_ips(ips: &Vec<String>) -> String {

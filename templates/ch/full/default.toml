@@ -1,7 +1,11 @@
 [[vm]]
 name = "default_xs"
+uuid = "b00611a3-e194-454b-a657-c293c18f8097"
 vcpu = 1
 vram = 2
+
+[[vm.disk]]
+path = "~/Iso/nixos.qcow2"
 
 [[vm.net]]
 [vm.net.tap]
@@ -9,4 +13,5 @@ name = "default_tap"
 
 [[net]]
 name = "default_tap"
+uuid = "b16d05bb-c836-45c5-aa88-f70548e372a0"
 ip = "192.168.200.1/24"

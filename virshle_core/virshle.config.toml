@@ -6,49 +6,47 @@ url = "file:///var/lib/virshle/virshle.sock"
 name = "default-ssh"
 url = "ssh://anon@localhost:22/var/lib/virshle/virshle.sock"
 
-[[template]]
-
+[template]
 # Vms
 # Standard sizes with decents presets.
 
-[template.vm]
+[[template.vm]]
 name = "xs"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
+path = "~/Iso/nixos.qcow2"
 size = "50G"
+# [[template.vm.net.tap]]
+# name = "default"
 
-[template.vm]
+[[template.vm]]
 name = "s"
 vcpu = 2
 vram = 4
 [[template.vm.disk]]
+path = "~/Iso/nixos.qcow2"
 size = "80G"
 
-[template.vm]
+[[template.vm]]
 name = "m"
 vcpu = 4
 vram = 8
 size = "100G"
 
-[template.vm]
+[[template.vm]]
 name = "l"
 vcpu = 6
 vram = 10
 size = "150G"
 
-[template.vm]
+[[template.vm]]
 name = "xl"
 vcpu = 8
 vram = 16
 size = "180G"
 
-# Default network ipv6 and ipv4 only
-[template.net]
-name = "default_6"
-# subnet = "192.168.200.1/24"
-
 # Default network ipv4 only
-[template.net]
+[[template.net]]
 name = "default"
 subnet = "192.168.200.1/24"

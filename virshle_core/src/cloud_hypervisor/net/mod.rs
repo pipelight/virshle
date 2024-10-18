@@ -33,7 +33,7 @@ pub struct Net {
     // CIDR notation ip/subnet_mask
     pub ip: String,
     // autostart net on host boot
-    pub enabled: bool,
+    pub enabled: Option<bool>,
     pub uuid: Uuid,
 }
 
@@ -42,7 +42,7 @@ impl Default for Net {
         Self {
             name: random_place().unwrap(),
             ip: "192.168.200.1/24".to_owned(),
-            enabled: true,
+            enabled: Some(true),
             uuid: Uuid::new_v4(),
         }
     }
