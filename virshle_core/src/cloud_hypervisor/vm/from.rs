@@ -3,6 +3,7 @@ use crate::cloud_hypervisor::{Disk, DiskTemplate};
 
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 
 //Database
 use crate::database;
@@ -17,7 +18,7 @@ use crate::config::MANAGED_DIR;
 use log::info;
 use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};
-use virshle_error::{LibError, VirshleError};
+use virshle_error::{LibError, VirshleError, WrapError};
 
 impl From<vm::Model> for Vm {
     fn from(record: vm::Model) -> Self {
@@ -45,6 +46,38 @@ pub struct VmTemplate {
     pub net: Option<Vec<VmNet>>,
     pub config: Option<VirshleVmConfig>,
 }
+pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
+    if let Some(disks) = &template.disk {
+        for disk in disks {
+            let target = format!(
+                "{}{}{}_{}.img",
+                MANAGED_DIR.to_owned(),
+                "/disk/",
+                vm.uuid,
+                disk.name
+            );
+
+            let source = shellexpand::tilde(&disk.path).to_string();
+
+            // Create disk on host drive
+            let file = fs::File::create(&target)?;
+            fs::copy(&source, &target)?;
+            // Set permissions
+            let metadata = file.metadata()?;
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o755);
+            fs::set_permissions(&target, perms)?;
+
+            // Push disk path to vm def
+            vm.disk.push(Disk {
+                name: disk.name.clone(),
+                path: target,
+                readonly: Some(false),
+            })
+        }
+    }
+    Ok(())
+}
 impl From<&VmTemplate> for Vm {
     fn from(e: &VmTemplate) -> Self {
         let mut vm = Vm {
@@ -53,19 +86,25 @@ impl From<&VmTemplate> for Vm {
             net: e.net.clone(),
             ..Default::default()
         };
-
-        // Make disks
-        if let Some(defs) = &e.disk {
-            for def in defs {
-                vm.disk.push(Disk::from(def))
-            }
-        } else {
-            vm.disk.push(Disk {
-                path: format!("{}{}{}", MANAGED_DIR.to_owned(), "/disk/", vm.uuid),
-                readonly: Some(false),
-            })
-        }
+        create_resources(e, &mut vm).unwrap();
         vm
+    }
+}
+impl VmTemplate {
+    pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
+        let string = fs::read_to_string(file_path)?;
+        Self::from_toml(&string)
+    }
+    pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
+        let res = toml::from_str::<Self>(string);
+        let item: Self = match res {
+            Ok(res) => res,
+            Err(e) => {
+                let err = CastError::TomlError(TomlError::new(e, string));
+                return Err(err.into());
+            }
+        };
+        Ok(item)
     }
 }
 impl Vm {
@@ -77,17 +116,19 @@ impl Vm {
         Self::from_toml(&string)
     }
     pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
-        let res = toml::from_str::<VmTemplate>(string);
-
-        let item: VmTemplate = match res {
+        let res = toml::from_str::<Self>(string);
+        let item: Self = match res {
             Ok(res) => res,
             Err(e) => {
                 let err = CastError::TomlError(TomlError::new(e, string));
+                let err = WrapError::builder()
+                    .msg("Couldn't convert toml string to a valid vm")
+                    .help("")
+                    .origin(err.into())
+                    .build();
                 return Err(err.into());
             }
         };
-        let mut item = Vm::from(&item);
-        item.update();
         Ok(item)
     }
 }

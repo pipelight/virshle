@@ -10,28 +10,35 @@ const bin = {
 const test = pipeline("test", () => [
   step("build nixos iso file", () => [
     "pipelight run create_env --attach",
-    "pipelight run create_luks --attach",
-    "pipelight run test_templates --attach",
+    // "pipelight run create_luks --attach",
+    // "pipelight run test_templates --attach",
   ]),
 ]).detach();
 
 /**
- * Build qcow2 image
+ * Build raw-efi image
  */
-const create_env = pipeline("create_env", () => [
-  step("build nixos iso file", () => [
+const create_env = pipeline("build_new_image", () => [
+  step("build crocuda nixos standard images", () => [
     "nix flake update ~/Fast/nixos/vm",
     "nix build ~/Fast/nixos/vm",
   ]),
-  step("copy image to repo root", () => [
-    "sudo cp -Lr ./result/*.qcow2 ./iso/",
-    "sudo chown anon:users ./iso/*",
-    "sudo chmod u+w ./iso/*",
-  ]),
-  step("copy efi vars to repo root", () => [
-    "sudo cp -Lr /run/libvirt/nix-ovmf/* ./iso/",
-  ]).set_mode(Mode.JumpNextOnFailure),
 ]);
+
+/**
+ * Build pipelight init raw image
+ */
+const create_init = pipeline("create_init", () => [
+  step("create files", () => [
+    "dd if=/dev/null of=./scripts/pipelight-init.img bs=1M seek=10",
+    "mkfs.ext4 -F -L INIT ./scripts/pipelight-init.img",
+    "mkdir -p ./scripts/mnt/pipelight-init",
+    "mount -t ext4 -o loop ./scripts/pipelight-init.img ./scripts/mnt/pipelight-init",
+    "cp -r /pipelight-init/.* ./scripts/mnt/pipelight-init",
+    "cp -r /pipelight-init/* ./scripts/mnt/pipelight-init",
+    "umount ./scripts/mnt/pipelight-init",
+  ]),
+]).detach();
 
 const create_luks = pipeline("create_luks", () => [
   step("encrypt root", () => [
@@ -131,6 +138,7 @@ const config = {
   pipelines: [
     test,
     test_templates,
+    create_init,
     create_env,
     create_luks,
 

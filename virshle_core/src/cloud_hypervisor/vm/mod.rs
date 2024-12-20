@@ -13,8 +13,9 @@ use vmm::{
     vm_config::{
         // defaults
         default_console,
-        default_serial,
+        default_netconfig_mac,
 
+        default_serial,
         CpusConfig,
         DiskConfig as ChDiskConfig,
         MemoryConfig,
@@ -33,7 +34,7 @@ use std::io::Write;
 use tabled::{Table, Tabled};
 
 use super::disk::Disk;
-use super::net::Net;
+use super::net::{Ip, Net};
 use super::rand::random_name;
 
 // Http
@@ -71,13 +72,20 @@ impl Default for VirshleVmConfig {
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum VmNet {
-    Tap(Iface),
-    Bridge(Iface),
+    Tap(Tap),
+    Bridge(Bridge),
 }
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct Iface {
-    // Tap device name
+pub struct Bridge {
+    // Bridge name
     pub name: String,
+    // Request a static ip on the interface.
+    pub ip: Option<String>,
+}
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct Tap {
+    // Tap interface name
+    pub name: Option<String>,
     // Request a static ip on the interface.
     pub ip: Option<String>,
 }
@@ -183,6 +191,34 @@ impl Vm {
         Ok(())
     }
 
+    /*
+     * Start networks and link to vm definition
+     */
+    async fn start_networks(&mut self) -> Result<(), VirshleError> {
+        if let Some(nets) = &self.net {
+            for net in nets {
+                match net {
+                    VmNet::Tap(v) => {
+                        let host_net = Ip::get_default_interface_name()?;
+                        let cmd = format!(
+                            "sudo ip link add {} name {} type macvtap",
+                            host_net, self.name
+                        );
+                        let mut proc = Process::new(&cmd);
+                        proc.run_piped()?;
+
+                        let mac = default_netconfig_mac();
+                        let cmd = format!("sudo ip link set {} address {} up", self.name, mac);
+                        let mut proc = Process::new(&cmd);
+                        proc.run_piped()?;
+                    }
+                    VmNet::Bridge(v) => {}
+                }
+            }
+        }
+        Ok(())
+    }
+
     async fn start_vmm(&self) -> Result<(), VirshleError> {
         // Remove running vmm processes
         Finder::new()
@@ -233,7 +269,8 @@ impl Vm {
     /*
      * Shut the virtual machine down.
      */
-    pub async fn start(&self) -> Result<(), VirshleError> {
+    pub async fn start(&mut self) -> Result<(), VirshleError> {
+        self.start_networks().await?;
         self.start_vmm().await?;
         self.push_config_to_vmm().await?;
 

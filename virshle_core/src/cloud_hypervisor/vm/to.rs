@@ -109,7 +109,7 @@ impl VmNet {
         match self {
             VmNet::Tap(e) => {
                 let config = NetConfig {
-                    tap: Some(e.name.clone()),
+                    tap: e.name.clone(),
                     ip: default_netconfig_ip(),
                     mask: default_netconfig_mask(),
                     mac: default_netconfig_mac(),
@@ -122,7 +122,7 @@ impl VmNet {
                     vhost_socket: None,
                     vhost_mode: Default::default(),
                     id: Default::default(),
-                    fds: None,
+                    fds: Some(vec![3]),
                     rate_limiter_config: Default::default(),
                     pci_segment: Default::default(),
                     offload_tso: Default::default(),

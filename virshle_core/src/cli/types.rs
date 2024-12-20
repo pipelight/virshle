@@ -97,7 +97,7 @@ impl Cli {
                 Api::run().await?;
             }
             Commands::Up(args) => {
-                let def = Definition::from_file(&args.file)?;
+                let mut def = Definition::from_file(&args.file)?;
                 def.create_all().await?;
                 def.start_all().await?;
             }
@@ -122,7 +122,7 @@ impl Cli {
                     vm.get_info().await?;
                 }
                 Crud::Start(resource) => {
-                    let vm = Vm::get_by_name(&resource.name).await?;
+                    let mut vm = Vm::get_by_name(&resource.name).await?;
                     vm.start().await?;
                 }
                 Crud::Stop(resource) => {
@@ -132,7 +132,7 @@ impl Cli {
                     Vm::display(Vm::get_all().await?).await?;
                 }
                 Crud::Rm(resource) => {
-                    let mut vm = Vm::get_by_name(&resource.name).await?;
+                    let vm = Vm::get_by_name(&resource.name).await?;
                     vm.delete().await?;
                 }
                 _ => {}

@@ -40,7 +40,7 @@ use crate::config::MANAGED_DIR;
 use log::info;
 use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};
-use virshle_error::{LibError, VirshleError};
+use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Vm {
     /*
@@ -53,7 +53,18 @@ impl Vm {
 
         let mut vms: Vec<Vm> = vec![];
         for e in records {
-            let vm: Vm = serde_json::from_value(e.definition)?;
+            let res = serde_json::from_value(e.definition);
+            let vm: Vm = match res {
+                Ok(v) => v,
+                Err(e) => {
+                    let err = WrapError::builder()
+                        .msg("Couldn't convert database record to valid resources")
+                        .help("")
+                        .origin(VirshleError::from(e).into())
+                        .build();
+                    return Err(err.into());
+                }
+            };
             vms.push(vm)
         }
         Ok(vms)

@@ -37,18 +37,27 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
+    fn debug_path() -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("./virshle.config.toml");
+        return path;
+    }
+    fn release_path() -> PathBuf {
+        let mut path = PathBuf::new();
+        path.push("/etc/virshle/config.toml");
+        return path;
+    }
     pub fn get() -> Result<Self, VirshleError> {
         info!("Search config file.");
 
         #[cfg(debug_assertions)]
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("./virshle.config.toml");
-        let path = path.display().to_string();
-        let config = Self::from_file(&path)?;
+        let path = Self::debug_path();
 
         #[cfg(not(debug_assertions))]
-        let config = Self::from_file("/etc/virshle/config.toml")?;
+        let path = Self::release_path();
 
+        let path = path.display().to_string();
+        let config = Self::from_file(&path)?;
         Ok(config)
     }
     pub fn get_vm_template(&self) -> Result<HashMap<String, VmTemplate>, VirshleError> {

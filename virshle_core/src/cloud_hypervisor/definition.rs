@@ -1,13 +1,13 @@
 use super::{Net, NetTemplate, Vm, VmTemplate};
+use bon::{bon, Builder};
 use serde::{Deserialize, Serialize};
 use std::fs;
 
 // Error Handling
-use bon::{bon, Builder};
 use log::info;
 use miette::{IntoDiagnostic, Result};
 use pipelight_error::{CastError, TomlError};
-use virshle_error::VirshleError;
+use virshle_error::{VirshleError, WrapError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Definition {
@@ -25,6 +25,11 @@ impl Definition {
             Ok(res) => res,
             Err(e) => {
                 let err = CastError::TomlError(TomlError::new(e, &string));
+                let err = WrapError::builder()
+                    .msg("Couldn't convert definitions string to valid resources")
+                    .help("")
+                    .origin(err.into())
+                    .build();
                 return Err(err.into());
             }
         };
@@ -75,13 +80,13 @@ impl Definition {
         Ok(self.to_owned())
     }
     // Start
-    pub async fn start_all(&self) -> Result<Self, VirshleError> {
+    pub async fn start_all(&mut self) -> Result<Self, VirshleError> {
         self.start_networks().await?;
         self.start_vms().await?;
         Ok(self.to_owned())
     }
-    pub async fn start_vms(&self) -> Result<Self, VirshleError> {
-        if let Some(vms) = &self.vm {
+    pub async fn start_vms(&mut self) -> Result<Self, VirshleError> {
+        if let Some(vms) = &mut self.vm {
             for def in vms {
                 def.start().await?;
             }
