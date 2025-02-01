@@ -19,8 +19,8 @@ sudo ip link show macvtap0
 
 ###################
 # Bridge interface
-mac="c2:67:4f:53:29:a1"
-sudo ip link add link "$host_net" name tap0 type tap
+# mac="c2:67:4f:53:29:a1"
+# sudo ip link add link "$host_net" name tap0 type tap
 
 ###################
 # Cloud hypervisor socket
@@ -38,9 +38,20 @@ cloud-hypervisor \
     --kernel /run/cloud-hypervisor/hypervisor-fw \
     --console off \
     --serial tty \
-    --disk path=/home/anon/Iso/nixos.img path=/home/anon/Iso/pipelight-init.img \
+    --disk path=/home/anon/Iso/nixos.efi.img path=/home/anon/Iso/pipelight-init.img \
     --cpus boot=2 \
-    --memory size=512M,hugepages=on,shared=true \
+    --memory size=512M \
     --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw" \
     --net mac=$mac,fd=3 3<>$"$tapdevice"
-    --net mac=$mac,fd=3 3<>$"$tapdevice"
+    
+   
+# cloud-hypervisor \
+#     --api-socket /var/lib/virshle/socket/$uuid.sock \
+#     --kernel /run/cloud-hypervisor/hypervisor-fw \
+#     --console off \
+#     --serial tty \
+#     --disk path=/home/anon/Iso/nixos.img path=/home/anon/Iso/pipelight-init.img \
+#     --cpus boot=4 \
+#     --memory size=512M,hugepages=on,shared=true \
+#     --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw" \
+#     --net mac=$mac,fd=3 3<>$"$tapdevice"

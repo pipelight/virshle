@@ -17,11 +17,17 @@ const test = pipeline("test", () => [
 
 /**
  * Build raw-efi image
+ *
  */
-const create_env = pipeline("build_new_image", () => [
+const create_env = pipeline("build_image", () => [
   step("build crocuda nixos standard images", () => [
-    "nix flake update ~/Fast/nixos/vm",
-    "nix build ~/Fast/nixos/vm",
+    // "nix flake update ~/Fast/nixos/general",
+    "nix build \
+      ~/Fast/nixos/general/#vm.default \
+      --override-input crocuda \
+      ~/Fast/nixos/crocuda.nixos",
+    "cp ~/Fast/nixos/general/result/nixos.img \
+      ~/Iso/nixos.efi.img",
   ]),
 ]);
 
