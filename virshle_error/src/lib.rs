@@ -55,16 +55,6 @@ pub enum VirshleError {
     ConfigError(#[from] config::ConfigError),
 
     ////////////////////////////////
-    // Deprecated - libvirt xml deps
-    #[error(transparent)]
-    #[diagnostic(code(virshle::minidom::error))]
-    MinidomError(#[from] minidom::error::Error),
-
-    #[error(transparent)]
-    #[diagnostic(code(virshle::libvirt::error))]
-    LibVirtError(#[from] virt::error::Error),
-
-    ////////////////////////////////
     // Process execution
     #[error(transparent)]
     #[diagnostic(transparent)]

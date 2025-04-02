@@ -826,15 +826,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e368af43e418a04d52505cf3dbc23dda4e3407ae2fa99fd0e4f308ce546acc"
 
 [[package]]
-name = "castaway"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0abae9be0aaf9ea96a3b1b8b1b55c602ca751eba1b1500220cea4ecbafe7c0d5"
-dependencies = [
- "rustversion",
-]
-
-[[package]]
 name = "cbc"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1033,19 +1024,6 @@ checksum = "cbf2150cce219b664a8a70df7a1f933836724b503f8a413af9365b4dcc4d90b8"
 dependencies = [
  "lazy_static",
  "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "compact_str"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f86b9c4c00838774a6d902ef931eff7470720c51d90c2e32cfe15dc304737b3f"
-dependencies = [
- "castaway",
- "cfg-if 1.0.0",
- "itoa 1.0.11",
- "ryu",
- "static_assertions",
 ]
 
 [[package]]
@@ -2936,15 +2914,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
-name = "minidom"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e394a0e3c7ccc2daea3dffabe82f09857b6b510cb25af87d54bf3e910ac1642d"
-dependencies = [
- "rxml",
-]
-
-[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3743,7 +3712,7 @@ checksum = "42cf17e9a1800f5f396bc67d193dc9411b59012a5876445ef450d449881e1016"
 dependencies = [
  "base64 0.22.1",
  "indexmap 2.6.0",
- "quick-xml 0.32.0",
+ "quick-xml",
  "serde",
  "time",
 ]
@@ -3907,16 +3876,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d3a6e5838b60e0e8fa7a43f22ade549a37d61f8bdbe636d0d7816191de969c2"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "quick-xml"
-version = "0.36.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7649a7b4df05aed9ea7ec6f628c67c9953a43869b8bc50929569b2999d443fe"
-dependencies = [
- "memchr",
- "serde",
 ]
 
 [[package]]
@@ -4462,25 +4421,6 @@ name = "rustversion"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "955d28af4278de8121b7ebeb796b6a45735dc01436d898801014aced2773a3d6"
-
-[[package]]
-name = "rxml"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65bc94b580d0f5a6b7a2d604e597513d3c673154b52ddeccd1d5c32360d945ee"
-dependencies = [
- "bytes 1.7.2",
- "rxml_validation",
-]
-
-[[package]]
-name = "rxml_validation"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "826e80413b9a35e9d33217b3dcac04cf95f6559d15944b93887a08be5496c4a4"
-dependencies = [
- "compact_str",
-]
 
 [[package]]
 name = "ryu"
@@ -6206,7 +6146,6 @@ dependencies = [
  "serde",
  "tokio 1.40.0",
  "virshle_core",
- "virt",
 ]
 
 [[package]]
@@ -6233,13 +6172,11 @@ dependencies = [
  "log",
  "miette",
  "migration",
- "minidom",
  "names",
  "once_cell",
  "owo-colors",
  "pipelight_error",
  "pipelight_exec",
- "quick-xml 0.36.2",
  "rand",
  "regex",
  "reqwest",
@@ -6258,7 +6195,6 @@ dependencies = [
  "url",
  "uuid",
  "virshle_error",
- "virt",
  "vmm",
 ]
 
@@ -6280,13 +6216,11 @@ dependencies = [
  "hyperlocal",
  "log",
  "miette",
- "minidom",
  "names",
  "once_cell",
  "owo-colors",
  "pipelight_error",
  "pipelight_exec",
- "quick-xml 0.36.2",
  "rand",
  "regex",
  "reqwest",
@@ -6304,29 +6238,7 @@ dependencies = [
  "ureq",
  "url",
  "uuid",
- "virt",
  "vmm",
-]
-
-[[package]]
-name = "virt"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f620c3a1ad2659309abe73b93720c395b9d55d180424baec2b25f6bbe2033f0f"
-dependencies = [
- "libc",
- "uuid",
- "virt-sys",
-]
-
-[[package]]
-name = "virt-sys"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c504e459878f09177f41bf2f8bb3e9a8af4fca7a09e73152fee02535d501601c"
-dependencies = [
- "libc",
- "pkg-config",
 ]
 
 [[package]]

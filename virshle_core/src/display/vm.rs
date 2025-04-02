@@ -1,3 +1,4 @@
+use super::utils::{display_ips, display_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
 use human_bytes::human_bytes;
 use owo_colors::OwoColorize;
@@ -38,15 +39,6 @@ impl VmTable {
         };
         Ok(table)
     }
-}
-
-pub fn display_vram(vram: &u64) -> String {
-    let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
-    format!("{}", res)
-}
-pub fn display_ips(ips: &Vec<String>) -> String {
-    let res = ips.join("\n");
-    format!("{}\n", res)
 }
 
 pub fn display_state(state: &VmState) -> String {

@@ -9,29 +9,40 @@
 #
 mac="52:3d:2b:1d:dd:24"
 ifname="vm1"
-brname="vs0"
+brname="br0"
 uuid="test"
 
 # Clean
 sudo rm /var/lib/virshle/socket/$uuid.sock
 sudo rm /tmp/vhost-user1
 
-# sudo ovs-vsctl \
-#   -- --if-exists del-br $brname
+sudo ovs-vsctl \
+  -- --if-exists del-br $brname
 sudo ovs-vsctl \
   -- --if-exists del-port $brname $ifname
+
+# Create patch cable 1/2
+sudo ovs-vsctl \
+  -- --may-exist add-port vs0 patch_vs0br0 \
+  -- set interface patch_vs0br0 type=patch \
+  -- set interface patch_vs0br0 options:peer=patch_br0vs0 \
 
 # Create dpdk port
 sudo ovs-vsctl add-br $brname \
   -- set bridge $brname datapath_type=netdev
+
+# Create patch cable 2/2
+sudo ovs-vsctl \
+  -- --may-exist add-port $brname patch_br0vs0 \
+  -- set interface patch_br0vs0 type=patch \
+  -- set interface patch_br0vs0 options:peer=patch_vs0br0 \
+
 sudo ovs-vsctl \
   -- add-port $brname $ifname \
   -- set interface $ifname mac=\"$mac\" \
   -- set interface $ifname type=dpdkvhostuserclient \
   -- set interface $ifname options:vhost-server-path=/tmp/vhost-user1 \
   -- set interface $ifname options:n_rxq=2
-
-sudo ip link set up dev $ifname
 
 cloud-hypervisor \
     --api-socket /var/lib/virshle/socket/$uuid.sock \

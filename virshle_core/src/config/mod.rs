@@ -37,11 +37,17 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
+    /*
+     * Get config from crate directory
+     */
     fn debug_path() -> PathBuf {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("./virshle.config.toml");
         return path;
     }
+    /*
+     * Get config from FHS path.
+     */
     fn release_path() -> PathBuf {
         let mut path = PathBuf::new();
         path.push("/etc/virshle/config.toml");
@@ -60,7 +66,7 @@ impl VirshleConfig {
         let config = Self::from_file(&path)?;
         Ok(config)
     }
-    pub fn get_vm_template(&self) -> Result<HashMap<String, VmTemplate>, VirshleError> {
+    pub fn get_vm_templates(&self) -> Result<HashMap<String, VmTemplate>, VirshleError> {
         let mut hashmap = HashMap::new();
         if let Some(template) = &self.template {
             if let Some(vm) = &template.vm {
@@ -111,7 +117,7 @@ mod tests {
     #[test]
     fn get_config_from_file() -> Result<()> {
         let res = VirshleConfig::get()?;
-        // println!("{:#?}", res);
+        println!("{:#?}", res);
         Ok(())
     }
 
@@ -136,6 +142,7 @@ mod tests {
             vcpu = 1
             vram = 2
             [[template.vm.disk]]
+            name = "vda1"
             path = "~/Iso/nixos.qcow2"
             size = "50G"
 
@@ -144,6 +151,7 @@ mod tests {
             vcpu = 2
             vram = 4
             [[template.vm.disk]]
+            name = "vdb1"
             path = "~/Iso/nixos.qcow2"
             size = "80G"
 

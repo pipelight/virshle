@@ -1,4 +1,6 @@
 mod net;
+mod utils;
+mod vm_template;
 // mod secret;
 pub mod vm;
 

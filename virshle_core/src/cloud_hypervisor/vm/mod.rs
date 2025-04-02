@@ -64,21 +64,24 @@ use tokio::fs;
 pub struct VirshleVmConfig {
     autostart: bool,
 }
+
 impl Default for VirshleVmConfig {
     fn default() -> Self {
         Self { autostart: false }
     }
 }
+
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum VmNet {
     Tap(Tap),
-    Bridge(Bridge),
+    VHostUser(VHostUser),
 }
+
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct Bridge {
-    // Bridge name
-    pub name: String,
+pub struct VHostUser {
+    // Tap interface name
+    pub name: Option<String>,
     // Request a static ip on the interface.
     pub ip: Option<String>,
 }
@@ -212,7 +215,7 @@ impl Vm {
                         let mut proc = Process::new(&cmd);
                         proc.run_piped()?;
                     }
-                    VmNet::Bridge(v) => {}
+                    VmNet::VHostUser(v) => {}
                 }
             }
         }

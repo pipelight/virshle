@@ -3,9 +3,14 @@ pkgs.mkShell {
   buildInputs = with pkgs.buildPackages; [
     openssl
     pkg-config
+
+    clang
+    llvmPackages.libclang
+
+    # rust vmm uses latest stable and oxalica tend to lag behind.break
+    # so we temporary force use of beta.
     (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
-    libvirt
-    libvirt-glib
+    rust-analyzer
   ];
   # SeaOrm Sqlite database
   DATABASE_URL = "sqlite:////var/lib/virshle/virshle.sqlite?mode=rwc";
@@ -16,4 +21,5 @@ pkgs.mkShell {
       \"url\": \"/var/lib/virshle/virshle.sqlite?mode=rwc\"
     }
   ]";
+  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang}/lib";
 }

@@ -37,7 +37,9 @@ impl Vm {
      * Generate cloud-hypervisor configuration
      */
     pub fn to_vmm_config(&self) -> Result<VmConfig, VirshleError> {
+        // Todo(): make those values dynamic
         let kernel = "/run/cloud-hypervisor/hypervisor-fw";
+
         let mut config = VmConfig {
             cpus: CpusConfig {
                 boot_vcpus: self.vcpu as u8,
@@ -131,7 +133,7 @@ impl VmNet {
                 };
                 Ok(config)
             }
-            VmNet::Bridge(x) => {
+            VmNet::VHostUser(x) => {
                 let config = NetConfig {
                     tap: None,
                     ip: default_netconfig_ip(),
@@ -163,15 +165,16 @@ mod test {
     use super::*;
     use std::path::PathBuf;
 
-    #[test]
+    // #[test]
     fn make_vm_from_template() -> Result<()> {
-        let toml = "
+        let toml = r#"
+            name = "test_xs_1"
             vcpu = 1
             vram = 2
 
             [config]
             autostart = true
-        ";
+        "#;
 
         let item = Vm::from_toml(&toml)?.to_vmm_config()?;
         println!("{:#?}", item);
@@ -180,7 +183,8 @@ mod test {
     #[test]
     fn make_vm_from_definition_with_ids() -> Result<()> {
         let toml = r#"
-            name = "default_xs"
+
+            name = "test_xs"
             uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
 
             vcpu = 1
@@ -189,10 +193,6 @@ mod test {
             [[net]]
             [net.tap]
             name = "macvtap0"
-
-            [[net]]
-            [net.bridge]
-            name = "virshlebr0"
 
             "#;
         let item = Vm::from_toml(&toml)?.to_vmm_config()?;

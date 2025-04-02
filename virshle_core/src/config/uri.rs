@@ -18,7 +18,7 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum LibvirtUri {
+pub enum Uri {
     LocalUri(LocalUri),
     SshUri(SshUri),
 }
@@ -35,20 +35,20 @@ pub struct LocalUri {
     path: String,
 }
 
-impl LibvirtUri {
+impl Uri {
     pub fn new(string: &str) -> Result<Self, VirshleError> {
         let url = Url::parse(string)?;
         match url.scheme() {
-            "ssh" => Ok(LibvirtUri::SshUri(SshUri {
+            "ssh" => Ok(Self::SshUri(SshUri {
                 username: url.username().to_owned(),
                 host: url.host().unwrap().to_string(),
                 path: url.path().to_owned(),
             })),
-            "file" => Ok(LibvirtUri::LocalUri(LocalUri {
+            "file" => Ok(Self::LocalUri(LocalUri {
                 path: url.path().to_owned(),
             })),
             _ => Err(
-                LibError::new("Couldn't determine the url scheme", "Try ssh:// or file://").into(),
+                LibError::new("Couldn't determine the uri scheme", "Try ssh:// or file://").into(),
             ),
         }
     }
@@ -61,22 +61,22 @@ mod tests {
     #[tokio::test]
     async fn try_parse_default_uri() -> Result<()> {
         let uri = "file:///path/to/socket";
-        let url = LibvirtUri::LocalUri(LocalUri {
+        let url = Uri::LocalUri(LocalUri {
             path: "/path/to/socket".to_owned(),
         });
-        let res = LibvirtUri::new(uri)?;
+        let res = Uri::new(uri)?;
         assert_eq!(url, res);
         Ok(())
     }
     #[tokio::test]
     async fn try_parse_ssh_uri() -> Result<()> {
         let uri = "ssh://admin@server/path/to/socket";
-        let url = LibvirtUri::SshUri(SshUri {
+        let url = Uri::SshUri(SshUri {
             username: "admin".to_owned(),
             host: "server".to_owned(),
             path: "/path/to/socket".to_owned(),
         });
-        let res = LibvirtUri::new(uri)?;
+        let res = Uri::new(uri)?;
         assert_eq!(url, res);
         Ok(())
     }

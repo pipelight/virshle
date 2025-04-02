@@ -2,7 +2,7 @@
 * This module is to connect to a virshle/libvirshle instance through ssh.
 */
 
-use crate::config::uri::{LibvirtUri, SshUri};
+use crate::config::uri::{SshUri, Uri};
 use std::net::TcpStream;
 
 use russh::client::{connect, Config, Handle, Handler};

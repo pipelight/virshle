@@ -23,8 +23,12 @@ pkgs.rustPlatform.buildRustPackage rec {
   buildInputs = with pkgs; [
     openssl
     pkg-config
-    libvirt
-    libvirt-glib
+
+    clang
+    llvmPackages.libclang
+
+    # rust vmm uses latest stable and oxalica tend to lag behind.break
+    # so we temporary force use of beta.
     (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
   ];
 

@@ -2,20 +2,24 @@
 
 Features:
 
-- Manage virtual machines with a **nobrainer cli**.
+- Light virtual machines.
 - Write resource definitions in **TOML**.
-- Use **predefined [templates](https://github.com/pipelight/virshle/templates)**.
-- Twist numerous clones of the same machine.
+- Use **predefined [templates](https://github.com/pipelight/virshle/templates)**
+  to twist numerous clones of the same machine.
 
 > [!IMPORTANT]  
-> Tool in very early development stage.
-> Should be used complementay to [virsh](https://github.com/libvirt/libvirt)
+> Tool in early development stage.
+> I wanted something as fast as possible,
+> so of course it runs on edgy tech by default.😈
+>
+> - openvswitch-dpdk (network)
+> - cloud-hypervisor (virtual machine manager)
 
 ## 🚀 Get started!
 
 ### Debug
 
-You can increase verbosity for each commands and get detailed logs.
+You can increase verbosity for each command and get detailed logs.
 
 ```sh
 virshle -vvvv
@@ -198,21 +202,9 @@ Install it on your system.
 }
 ```
 
-## Community/Contrib
-
-Join the matrix room.
-https://matrix.to/#/#virshle:matrix.org
-
 ## Thanks
 
 Inspired by:
 
-- libvirt and
-  [virsh](https://github.com/libvirt/libvirt).
+- [virsh](https://github.com/libvirt/libvirt).
 - [docker](https://github.com/docker/compose).
-
-Based on:
-
-- [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
-- rust-vmm
-- sqlite

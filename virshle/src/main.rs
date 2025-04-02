@@ -1,6 +1,5 @@
 use std::{process::ExitCode, u8};
 use virshle_core::cli::Cli;
-use virt;
 
 // Error Handling
 use log::trace;
@@ -24,7 +23,6 @@ The make handler functions is executed right after the main function
 to set up a verbose and colorful error/panic handler.
 */
 pub fn make_handler() -> Result<()> {
-    virt::error::clear_error_callback();
     miette::set_hook(Box::new(|_| {
         Box::new(
             MietteHandlerOpts::new()

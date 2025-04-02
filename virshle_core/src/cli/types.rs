@@ -1,7 +1,7 @@
 use crate::{
     // resources,
     // resources::{create, Net, ResourceType, Secret, Vm},
-    cloud_hypervisor::{Definition, Net, Vm},
+    cloud_hypervisor::{Definition, Net, Vm, VmTemplate},
     config::VirshleConfig,
     convert,
     Api,
@@ -36,6 +36,9 @@ pub enum Commands {
     Up(File),
     Down(File),
 
+    #[command(subcommand)]
+    Template(Display),
+
     // Crud classic style
     #[command(subcommand)]
     Vm(Crud),
@@ -68,6 +71,11 @@ pub enum CrudUuid {
     Create(File),
     Ls,
 }
+
+#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
+pub enum Display {
+    Ls,
+}
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct ResourceUuid {
     uuid: String,
@@ -93,6 +101,9 @@ impl Cli {
                 // remove unused managed files
                 // resources::clean()?;
             }
+            /*
+             * Run the background daemon and wait for http requests.
+             */
             Commands::Daemon => {
                 Api::run().await?;
             }
@@ -107,7 +118,7 @@ impl Cli {
             }
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    let template_map = config.get_vm_template()?;
+                    let template_map = config.get_vm_templates()?;
                     let template = template_map.get(&args.file);
                     if let Some(template) = template {
                         let vm = Vm::from(template);
@@ -136,6 +147,13 @@ impl Cli {
                     vm.delete().await?;
                 }
                 _ => {}
+            },
+            Commands::Template(args) => match args {
+                Display::Ls => {
+                    let templates: Vec<VmTemplate> =
+                        config.get_vm_templates()?.into_values().collect();
+                    VmTemplate::display(templates).await?;
+                }
             },
             Commands::Net(args) => match args {
                 Crud::Ls => {
