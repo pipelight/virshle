@@ -1,4 +1,4 @@
-use super::{Net, NetTemplate, Vm, VmTemplate};
+use super::{Vm, VmTemplate};
 use bon::{bon, Builder};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -6,13 +6,11 @@ use std::fs;
 // Error Handling
 use log::info;
 use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
-use virshle_error::{VirshleError, WrapError};
+use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Definition {
     pub vm: Option<Vec<Vm>>,
-    pub net: Option<Vec<Net>>,
 }
 impl Definition {
     pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
@@ -36,22 +34,13 @@ impl Definition {
         Ok(item)
     }
     // Create
-    pub async fn create_all(&self) -> Result<Self, VirshleError> {
-        self.create_networks().await?;
+    pub async fn create_all(&mut self) -> Result<Self, VirshleError> {
         self.create_vms().await?;
         Ok(self.to_owned())
     }
-    pub async fn create_vms(&self) -> Result<Self, VirshleError> {
-        if let Some(vms) = &self.vm {
+    pub async fn create_vms(&mut self) -> Result<Self, VirshleError> {
+        if let Some(vms) = &mut self.vm {
             for def in vms {
-                def.create().await?;
-            }
-        }
-        Ok(self.to_owned())
-    }
-    pub async fn create_networks(&self) -> Result<Self, VirshleError> {
-        if let Some(nets) = &self.net {
-            for def in nets {
                 def.create().await?;
             }
         }
@@ -60,7 +49,6 @@ impl Definition {
     // Delete
     pub async fn delete_all(&self) -> Result<Self, VirshleError> {
         self.delete_vms().await?;
-        self.delete_networks().await?;
         Ok(self.to_owned())
     }
     pub async fn delete_vms(&self) -> Result<Self, VirshleError> {
@@ -71,17 +59,8 @@ impl Definition {
         }
         Ok(self.to_owned())
     }
-    pub async fn delete_networks(&self) -> Result<Self, VirshleError> {
-        if let Some(nets) = &self.net {
-            for def in nets {
-                def.delete().await?;
-            }
-        }
-        Ok(self.to_owned())
-    }
     // Start
     pub async fn start_all(&mut self) -> Result<Self, VirshleError> {
-        self.start_networks().await?;
         self.start_vms().await?;
         Ok(self.to_owned())
     }
@@ -93,37 +72,22 @@ impl Definition {
         }
         Ok(self.to_owned())
     }
-    pub async fn start_networks(&self) -> Result<Self, VirshleError> {
-        if let Some(nets) = &self.net {
-            for def in nets {
-                def.start().await?;
-            }
-        }
-        Ok(self.to_owned())
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Template {
     pub vm: Option<Vec<VmTemplate>>,
-    pub net: Option<Vec<NetTemplate>>,
+    // pub net: Option<Vec<NetTemplate>>,
 }
 #[bon]
 impl Template {
     #[builder]
-    pub fn new(vm: Option<VmTemplate>, net: Option<NetTemplate>) -> Self {
+    pub fn new(vm: Option<VmTemplate>) -> Self {
         let mut vms = vec![];
         if let Some(vm) = vm {
             vms.push(vm);
         }
-        let mut nets = vec![];
-        if let Some(net) = net {
-            nets.push(net);
-        }
-        Template {
-            vm: Some(vms),
-            net: Some(nets),
-        }
+        Template { vm: Some(vms) }
     }
 }
 
@@ -144,7 +108,6 @@ impl Template {
         Ok(item)
     }
     pub async fn create_all(&self) -> Result<Self, VirshleError> {
-        self.create_networks().await?;
         self.create_vms().await?;
         Ok(self.to_owned())
     }
@@ -152,14 +115,6 @@ impl Template {
         if let Some(vms) = &self.vm {
             for def in vms {
                 Vm::from(def).create().await?;
-            }
-        }
-        Ok(self.to_owned())
-    }
-    pub async fn create_networks(&self) -> Result<Self, VirshleError> {
-        if let Some(nets) = &self.net {
-            for def in nets {
-                Net::from(def).create().await?;
             }
         }
         Ok(self.to_owned())
@@ -178,7 +133,7 @@ mod test {
         path.push("../templates/ch/vm/xs.toml");
         let path = path.display().to_string();
 
-        let def = Definition::from_file(&path)?;
+        let mut def = Definition::from_file(&path)?;
         def.create_all().await?;
         Ok(())
     }
@@ -200,7 +155,7 @@ mod test {
             ip = "192.168.200.1/24"
         "#;
 
-        let def = Definition::from_toml(&toml)?;
+        let mut def = Definition::from_toml(&toml)?;
         def.create_all().await?;
         Ok(())
     }

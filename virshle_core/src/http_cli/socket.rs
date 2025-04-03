@@ -1,5 +1,6 @@
 use std::path::Path;
 
+// Http
 use hyper::body::{Body, Bytes, Incoming};
 use hyper::client::conn::http1::{handshake, SendRequest};
 use hyper::{Request, Response as HyperResponse, StatusCode};
@@ -13,6 +14,10 @@ use serde_json::{from_slice, Value};
 use tokio::net::UnixStream;
 use tokio::spawn;
 use tokio::task::JoinHandle;
+
+// Structs
+use crate::cloud_hypervisor::Vm;
+use crate::config::MANAGED_DIR;
 
 // Error Handling
 use log::{debug, info};

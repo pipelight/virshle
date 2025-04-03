@@ -8,10 +8,8 @@ use std::path::Path;
 use super::path;
 
 // Error Handling
-use virshle_error::LibError;
-use virshle_error::VirshleError;
 use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
+use virshle_error::{CastError, LibError, TomlError, VirshleError};
 
 /**
 * Returns a toml string from a Value

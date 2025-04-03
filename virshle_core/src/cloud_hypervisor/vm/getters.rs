@@ -4,23 +4,9 @@ use serde::{Deserialize, Serialize};
 use tabled::{Table, Tabled};
 
 // Cloud Hypervisor
-use hyper::{Request, StatusCode};
-use vmm::api::VmInfoResponse;
-use vmm::{
-    vm::VmState as ChVmState,
-    vm_config::{
-        // defaults
-        default_console,
-        default_serial,
+use crate::cloud_hypervisor::vmm_types::{VmConfig, VmInfoResponse, VmState};
 
-        CpusConfig,
-        DiskConfig as ChDiskConfig,
-        MemoryConfig,
-        NetConfig,
-        RngConfig,
-        VmConfig,
-    },
-};
+use hyper::{Request, StatusCode};
 
 use std::fs;
 
@@ -39,7 +25,6 @@ use crate::config::MANAGED_DIR;
 // Error Handling
 use log::info;
 use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Vm {
@@ -53,9 +38,13 @@ impl Vm {
 
         let mut vms: Vec<Vm> = vec![];
         for e in records {
-            let res = serde_json::from_value(e.definition);
+            let res: Result<Vm, serde_json::Error> = serde_json::from_value(e.definition);
             let vm: Vm = match res {
-                Ok(v) => v,
+                Ok(mut v) => {
+                    // Populate struct with database id.
+                    v.id = Some(e.id as u64);
+                    v
+                }
                 Err(e) => {
                     let err = WrapError::builder()
                         .msg("Couldn't convert database record to valid resources")
@@ -81,7 +70,11 @@ impl Vm {
             .await?;
 
         if let Some(record) = record {
-            let vm: Vm = serde_json::from_value(record.definition)?;
+            let mut vm: Vm = serde_json::from_value(record.definition)?;
+
+            // Populate struct with database id.
+            vm.id = Some(record.id as u64);
+
             return Ok(vm);
         } else {
             let message = format!("Could not find a vm with the name: {}", name);
@@ -100,36 +93,38 @@ impl Vm {
             .await?;
 
         if let Some(record) = record {
-            let vm: Vm = serde_json::from_value(record.definition)?;
+            let mut vm: Vm = serde_json::from_value(record.definition)?;
+
+            // Populate struct with database id.
+            vm.id = Some(record.id as u64);
+
             return Ok(vm);
         } else {
             let message = format!("Could not find a vm with the uuid: {}", uuid);
             return Err(LibError::new(&message, "").into());
         }
     }
-}
+    /*
+     * Get a Vm definition from its id.
+     */
+    pub async fn get_by_id(id: &u64) -> Result<Self, VirshleError> {
+        // Retrive from database
+        let db = connect_db().await.unwrap();
+        let record = database::prelude::Vm::find()
+            .filter(database::entity::vm::Column::Id.eq(id.clone()))
+            .one(&db)
+            .await?;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
-pub enum VmState {
-    NotCreated,
-    Created,
-    Running,
-    Shutdown,
-    Paused,
-    BreakPoint,
-}
-impl From<ChVmState> for VmState {
-    fn from(ch_vm_state: ChVmState) -> Self {
-        let res = match ch_vm_state {
-            ChVmState::Created => VmState::Created,
-            ChVmState::Running => VmState::Running,
-            ChVmState::Shutdown => VmState::Shutdown,
-            ChVmState::Paused => VmState::Paused,
-            ChVmState::BreakPoint => VmState::BreakPoint,
-        };
-        return res;
+        if let Some(record) = record {
+            let vm: Vm = serde_json::from_value(record.definition)?;
+            return Ok(vm);
+        } else {
+            let message = format!("Could not find a vm with the id: {}", id);
+            return Err(LibError::new(&message, "").into());
+        }
     }
 }
+
 /*
 * Getters.
 * Get data from cloud-hypervisor on the file.
@@ -138,8 +133,19 @@ impl From<ChVmState> for VmState {
 */
 impl Vm {
     /*
-     * Should be renamed to get_info();
-     *
+     * Return vm network socket path.
+     */
+    pub fn get_net_socket(&self) -> Result<String, VirshleError> {
+        Ok(MANAGED_DIR.to_owned() + "/net/" + &self.uuid.to_string() + ".sock")
+    }
+    /*
+     * Return vm socket path.
+     */
+    pub fn get_socket(&self) -> Result<String, VirshleError> {
+        Ok(MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock")
+    }
+    /*
+     * Return vm info
      */
     pub async fn get_info(&self) -> Result<(), VirshleError> {
         let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
@@ -152,7 +158,6 @@ impl Vm {
         println!("{}", data);
 
         let data: VmInfoResponse = serde_json::from_str(&data)?;
-
         Ok(())
     }
     /*
@@ -197,7 +202,7 @@ mod test {
 
     // #[tokio::test]
     async fn fetch_info() -> Result<()> {
-        Vm::get_by_name("default_xs").await?.update().await?;
+        Vm::get_by_name("default_xs").await?.get_info().await?;
         Ok(())
     }
 

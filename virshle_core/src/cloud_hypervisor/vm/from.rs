@@ -17,8 +17,7 @@ use crate::config::MANAGED_DIR;
 // Error Handling
 use log::info;
 use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
-use virshle_error::{LibError, VirshleError, WrapError};
+use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
 impl From<vm::Model> for Vm {
     fn from(record: vm::Model) -> Self {
@@ -46,6 +45,18 @@ pub struct VmTemplate {
     pub net: Option<Vec<VmNet>>,
     pub config: Option<VirshleVmConfig>,
 }
+impl From<&VmTemplate> for Vm {
+    fn from(e: &VmTemplate) -> Self {
+        let mut vm = Vm {
+            vcpu: e.vcpu,
+            vram: e.vram,
+            net: e.net.clone(),
+            ..Default::default()
+        };
+        create_resources(e, &mut vm).unwrap();
+        vm
+    }
+}
 pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     if let Some(disks) = &template.disk {
         for disk in disks {
@@ -62,6 +73,7 @@ pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virshl
             // Create disk on host drive
             let file = fs::File::create(&target)?;
             fs::copy(&source, &target)?;
+
             // Set permissions
             let metadata = file.metadata()?;
             let mut perms = metadata.permissions();
@@ -77,18 +89,6 @@ pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virshl
         }
     }
     Ok(())
-}
-impl From<&VmTemplate> for Vm {
-    fn from(e: &VmTemplate) -> Self {
-        let mut vm = Vm {
-            vcpu: e.vcpu,
-            vram: e.vram,
-            net: e.net.clone(),
-            ..Default::default()
-        };
-        create_resources(e, &mut vm).unwrap();
-        vm
-    }
 }
 impl VmTemplate {
     pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
@@ -162,12 +162,7 @@ mod test {
             vram = 2
 
             [[net]]
-            [net.tap]
-            name = "macvtap0"
-
-            [[net]]
-            [net.bridge]
-            name = "virshlebr0"
+            [net.vhost]
 
             "#;
         let item = Vm::from_toml(&toml)?;

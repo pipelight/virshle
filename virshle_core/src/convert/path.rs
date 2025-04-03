@@ -9,10 +9,8 @@ use std::path::Path;
 use crate::config::MANAGED_DIR;
 
 // Error Handling
-use virshle_error::LibError;
-use virshle_error::VirshleError;
 use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
+use virshle_error::{LibError, VirshleError};
 
 pub fn relpath_to_copy(value: &mut Value, uuid: &str) -> Result<(), VirshleError> {
     if let Some(map) = value.as_object_mut() {

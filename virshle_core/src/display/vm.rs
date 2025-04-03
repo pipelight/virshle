@@ -1,11 +1,11 @@
-use super::utils::{display_ips, display_vram};
+use super::utils::{display_id, display_ips, display_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
 use human_bytes::human_bytes;
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::{
-    settings::{object::Columns, Disable, Style},
+    settings::{disable::Remove, object::Columns, Style},
     Table, Tabled,
 };
 use uuid::Uuid;
@@ -17,19 +17,22 @@ use virshle_error::VirshleError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct VmTable {
+    #[tabled(display = "display_id")]
+    pub id: Option<u64>,
     pub name: String,
     pub vcpu: u64,
-    #[tabled(display_with = "display_vram")]
+    #[tabled(display = "display_vram")]
     pub vram: u64,
-    #[tabled(display_with = "display_state")]
+    #[tabled(display = "display_state")]
     pub state: VmState,
-    #[tabled(display_with = "display_ips")]
+    #[tabled(display = "display_ips")]
     pub ips: Vec<String>,
     pub uuid: Uuid,
 }
 impl VmTable {
     async fn from(vm: &Vm) -> Result<Self, VirshleError> {
         let table = VmTable {
+            id: vm.id,
             name: vm.name.to_owned(),
             vcpu: vm.vcpu,
             vram: vm.vram,
@@ -62,12 +65,12 @@ impl VmTable {
         } else if log_enabled!(Level::Warn) {
             let mut res = Table::new(&items);
             res.with(Style::rounded());
-            res.with(Disable::column(Columns::last()));
+            res.with(Remove::column(Columns::last()));
             println!("{}", res);
         } else {
             let mut res = Table::new(&items);
-            res.with(Disable::column(Columns::last()));
-            res.with(Disable::column(Columns::last()));
+            res.with(Remove::column(Columns::last()));
+            res.with(Remove::column(Columns::last()));
             res.with(Style::rounded());
             println!("{}", res);
         }
@@ -99,6 +102,7 @@ mod test {
         // Get vms
         let vms = vec![
             VmTable {
+                id: None,
                 name: "TestOs".to_owned(),
                 vcpu: 2,
                 vram: 4_200_000,
@@ -107,6 +111,7 @@ mod test {
                 ips: vec![],
             },
             VmTable {
+                id: None,
                 name: "NixOs".to_owned(),
                 vcpu: 2,
                 vram: 4_200_000,

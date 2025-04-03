@@ -4,48 +4,45 @@ version = "0.1.1"
 edition = "2021"
 
 [dependencies]
+
 virshle_error = { path = "../virshle_error" }
-pipelight_error = { version = "0.2.9" }
-pipelight_exec = "0.2.8"
-# pipelight_exec = { path = "../../pipelight/pipelight_exec", features = [
-#   "procfs",
-# ] }
+pipelight_exec = "0.4.2"
 
 miette = { version = "7.2.0", features = ["fancy"] }
 serde_json = { version = "1.0.128", features = ["preserve_order"] }
-toml = "0.8.19"
 log = "0.4.22"
-thiserror = "1.0.63"
+thiserror = "2.0.12"
 serde = { version = "1.0.210", features = ["derive"] }
 # tabled = { version = "0.16.0", features = ["ansi"] }
-tabled = { version = "=0.15.0", features = ["ansi"] }
-strum = { version = "0.26.3", features = ["derive"] }
-convert_case = "0.6.0"
+tabled = { version = "0.18.0", features = ["ansi"] }
+strum = { version = "0.27.1", features = ["derive"] }
+convert_case = "0.8.0"
 owo-colors = "4.1.0"
 env_logger = "0.11.5"
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
-bat = "0.24.0"
+
+toml = { version = "0.8.19", features = ["parse", "preserve_order"] }
+bat = "0.25.0"
 crossterm = "0.28.1"
+
 shellexpand = "3.1.0"
 once_cell = "1.19.0"
 human_bytes = "0.4.3"
 names = "0.14.0"
-rand = "0.8.5"
+rand = "0.9.0"
 regex = "1.10.6"
-bon = "2.3.0"
+bon = "3.5.1"
 reqwest = "0.12.7"
 tokio = { version = "1.40.0", features = ["full"] }
+
+# http
 hyper-socket = "0.2.0"
 hyper = { version = "1.4.1", features = ["full"] }
 http-body-util = "0.1.2"
 hyper-util = "0.1.9"
 hyperlocal = "0.9.1"
-ureq = "2.10.1"
-config = "0.14.0"
+ureq = "3.0.10"
 
-vmm = { git = "https://github.com/cloud-hypervisor/cloud-hypervisor", features = [
-  "kvm",
-] }
 sea-orm = { version = "1.0.1", features = [
   "runtime-tokio-rustls",
   "sqlx-sqlite",
@@ -53,11 +50,14 @@ sea-orm = { version = "1.0.1", features = [
   "macros",
 ] }
 migration = { path = "../migration" }
-russh = "0.45.0"
+russh = "0.51.1"
 url = "2.5.2"
 async-trait = "0.1.83"
-axum = "0.7.7"
-tower = "0.5.1"
-clap-verbosity-flag = "2.2.2"
+axum = "0.8.3"
+
+# Cli
+clap-verbosity-flag = "3.0.2"
 clap = "4.5.20"
 clap_complete = "4.5.33"
+tower = "0.5.2"
+macaddr = { version = "1.0.1", features = ["serde"] }

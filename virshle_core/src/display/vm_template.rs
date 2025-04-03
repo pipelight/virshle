@@ -5,7 +5,7 @@ use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use tabled::{
-    settings::{object::Columns, Disable, Style},
+    settings::{object::Columns, Style},
     Table, Tabled,
 };
 
@@ -18,9 +18,9 @@ use virshle_error::VirshleError;
 pub struct VmTemplateTable {
     pub name: String,
     pub vcpu: u64,
-    #[tabled(display_with = "display_vram")]
+    #[tabled(display = "display_vram")]
     pub vram: u64,
-    #[tabled(display_with = "display_disks")]
+    #[tabled(display = "display_disks")]
     pub disk: Option<Vec<DiskTemplate>>,
 }
 

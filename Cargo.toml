@@ -10,8 +10,6 @@ members = [
   # Generate sqlite database
   "migration",
 
-  # Command line definition
-  # "cli",
 
   "virshle_core",
 

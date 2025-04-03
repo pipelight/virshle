@@ -5,11 +5,11 @@
 
 mod definition;
 mod disk;
-mod net;
 mod rand;
 mod vm;
+mod vmm_types;
 
 pub use definition::{Definition, Template};
 pub use disk::{Disk, DiskTemplate};
-pub use net::{Ip, LinkState, Net, NetTemplate};
-pub use vm::{Vm, VmState, VmTemplate};
+pub use vm::{Vm, VmTemplate};
+pub use vmm_types::{VmConfig, VmState};

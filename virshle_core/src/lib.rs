@@ -4,15 +4,26 @@
 #![allow(unused_must_use)]
 
 pub mod http_api;
+pub use http_api::Api;
+
 pub mod http_cli;
 
 pub mod cli;
 
+// Interact with cloud hypervisor processes and API.
 pub mod cloud_hypervisor;
 
-pub mod config;
-pub mod convert;
-pub mod database;
-pub mod display;
+// Host network manipulation.
+pub mod network;
+pub use network::Ip;
 
-pub use http_api::Api;
+pub mod config;
+
+// Deprecated: Toml to xml
+pub mod convert;
+
+// Stores vm definitions in sqlite database
+pub mod database;
+
+// Display virshle types in pretty tables.
+pub mod display;

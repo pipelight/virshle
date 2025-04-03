@@ -1,24 +1,22 @@
 pub mod cache;
 pub mod uri;
 
-use crate::cloud_hypervisor::{NetTemplate, Template, VmTemplate};
-
-use std::collections::HashMap;
+use crate::cloud_hypervisor::{Template, VmTemplate};
 
 // Global vars
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
 // Config
-use config::Config;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 
 // Error Handling
 use log::info;
-use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
-use virshle_error::{LibError, VirshleError, WrapError};
+use miette::{Error, IntoDiagnostic, Result};
+use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
 pub const MANAGED_DIR: &'static str = "/var/lib/virshle";
 pub const CONFIG_DIR: &'static str = "/etc/virshle";
@@ -75,12 +73,21 @@ impl VirshleConfig {
         }
         Ok(hashmap)
     }
+    pub fn get_template(&self, name: &str) -> Result<VmTemplate, VirshleError> {
+        let templates = self.get_vm_templates()?;
+        let res = templates.get(name);
+        match res {
+            Some(res) => Ok(res.to_owned()),
+            None => {
+                let message = format!("Couldn't find template {:?}", name);
+                let err = LibError::new(&message, "Check configuration file.");
+                Err(err.into())
+            }
+        }
+    }
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {
-        let settings = Config::builder()
-            .add_source(config::File::with_name(path))
-            .build()?;
-        let config = settings.try_deserialize::<VirshleConfig>()?;
-        Ok(config)
+        let string = fs::read_to_string(path)?;
+        Self::from_toml(&string)
     }
     pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
         let res = toml::from_str::<Self>(&string);
@@ -173,10 +180,6 @@ mod tests {
             vram = 16
             size = "180G"
 
-            # Default network ipv4 only
-            [[template.net]]
-            name = "default"
-            ip = "192.168.200.1/24"
         "#;
 
         let res = VirshleConfig::from_toml(&toml)?;

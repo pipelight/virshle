@@ -1,4 +1,3 @@
-mod net;
 mod utils;
 mod vm_template;
 // mod secret;
@@ -10,7 +9,7 @@ pub mod vm;
 use log::{log_enabled, Level};
 use miette::Result;
 use tabled::{
-    settings::{object::Columns, Disable, Style},
+    settings::{disable::Remove, object::Columns, Style},
     Table, Tabled,
 };
 
@@ -27,7 +26,7 @@ where
         println!("{}", res);
     } else {
         let mut res = Table::new(&vec);
-        res.with(Disable::column(Columns::single(0)));
+        res.with(Remove::column(Columns::single(0)));
         res.with(Style::rounded());
         println!("{}", res);
     }

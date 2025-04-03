@@ -1,16 +1,10 @@
-use bat::PrettyPrinter;
-use crossterm::{execute, style::Stylize, terminal::size};
-use log::{info, log_enabled, Level};
-use rand::seq::SliceRandom;
-use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::Path;
-
-use crate::config::MANAGED_DIR;
+// Random
+use rand::prelude::IndexedRandom;
 
 // Error Handling
 use miette::{IntoDiagnostic, Result};
-use pipelight_error::{CastError, TomlError};
 use virshle_error::{LibError, VirshleError};
 
 pub fn random_place() -> Result<String, VirshleError> {
@@ -35,8 +29,8 @@ pub fn random_place() -> Result<String, VirshleError> {
 
     let res = format!(
         "{}_{}",
-        firstnames.choose(&mut rand::thread_rng()).unwrap(),
-        lastnames.choose(&mut rand::thread_rng()).unwrap()
+        firstnames.choose(&mut rand::rng()).unwrap(),
+        lastnames.choose(&mut rand::rng()).unwrap()
     );
 
     Ok(res)
@@ -63,8 +57,8 @@ pub fn random_name() -> Result<String, VirshleError> {
 
     let res = format!(
         "{}_{}",
-        firstnames.choose(&mut rand::thread_rng()).unwrap(),
-        lastnames.choose(&mut rand::thread_rng()).unwrap()
+        firstnames.choose(&mut rand::rng()).unwrap(),
+        lastnames.choose(&mut rand::rng()).unwrap()
     );
     Ok(res)
 }

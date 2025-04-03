@@ -1,21 +1,3 @@
-use crate::{
-    // resources,
-    // resources::{create, Net, ResourceType, Secret, Vm},
-    cloud_hypervisor::{Definition, Net, Vm, VmTemplate},
-    config::VirshleConfig,
-    convert,
-    Api,
-};
-use std::fs;
-use std::path::Path;
-
-// Logger
-use env_logger::Builder;
-use log::LevelFilter;
-
-// Error Handling
-use miette::{IntoDiagnostic, Result};
-
 use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 
@@ -32,46 +14,65 @@ pub enum Commands {
     Prune,
     Daemon,
 
-    // Declarative docker compose style
+    // TODO: Declarative docker compose style
+    #[command(hide = true)]
     Up(File),
+    #[command(hide = true)]
     Down(File),
 
+    /// Operations on networks
+    #[command(subcommand, hide = true)]
+    Net(Crud),
+
+    /// Operations on templates
     #[command(subcommand)]
     Template(Display),
 
-    // Crud classic style
+    /// Operations on virtual machines
     #[command(subcommand)]
     Vm(Crud),
-    #[command(subcommand)]
-    Net(Crud),
-    #[command(subcommand)]
-    Secret(CrudUuid),
 }
+
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct File {
-    file: String,
+    #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
+        conflicts_with = "template",
+    )]
+    pub file: Option<String>,
+    #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
+    pub template: Option<String>,
 }
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Crud {
+    /// Creates a virtual machine.
+    #[command(arg_required_else_help = true)]
     Create(File),
-    Update(File),
-    Start(Resource),
-    Stop(Resource),
-    Inspect(Resource),
+    /// Removes(destroy) a virtual machine.
+    #[command(arg_required_else_help = true)]
     Rm(Resource),
+    /// Starts/Restart a virtual machine.
+    #[command(arg_required_else_help = true)]
+    Start(Resource),
+    /// Stops a virtual machine.
+    #[command(arg_required_else_help = true)]
+    Stop(Resource),
+    /// Inspect a virtual machine.
+    #[command(arg_required_else_help = true)]
+    Inspect(Resource),
+
+    /// List existing vms.
     Ls,
+
+    #[command(hide = true)]
+    Update(File),
 }
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct Resource {
-    name: String,
+    #[arg(long, conflicts_with = "id")]
+    pub name: Option<String>,
+    #[arg(long, conflicts_with = "name")]
+    pub id: Option<u64>,
 }
-#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
-pub enum CrudUuid {
-    Rm(ResourceUuid),
-    Create(File),
-    Ls,
-}
-
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Display {
     Ls,
@@ -79,150 +80,4 @@ pub enum Display {
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct ResourceUuid {
     uuid: String,
-}
-
-impl Cli {
-    pub async fn run() -> Result<()> {
-        let cli = Cli::parse();
-        Self::switch(cli).await?;
-        Ok(())
-    }
-    pub async fn switch(cli: Cli) -> Result<()> {
-        // Set verbosity
-        let verbosity = cli.verbose.log_level_filter();
-        std::env::set_var("VIRSHLE_LOG", verbosity.to_string().to_lowercase());
-        Builder::from_env("VIRSHLE_LOG").init();
-
-        // Get config
-        let config = VirshleConfig::get()?;
-
-        match cli.commands {
-            Commands::Prune => {
-                // remove unused managed files
-                // resources::clean()?;
-            }
-            /*
-             * Run the background daemon and wait for http requests.
-             */
-            Commands::Daemon => {
-                Api::run().await?;
-            }
-            Commands::Up(args) => {
-                let mut def = Definition::from_file(&args.file)?;
-                def.create_all().await?;
-                def.start_all().await?;
-            }
-            Commands::Down(args) => {
-                let def = Definition::from_file(&args.file)?;
-                def.delete_all().await?;
-            }
-            Commands::Vm(args) => match args {
-                Crud::Create(args) => {
-                    let template_map = config.get_vm_templates()?;
-                    let template = template_map.get(&args.file);
-                    if let Some(template) = template {
-                        let vm = Vm::from(template);
-                        vm.create().await?;
-                    } else {
-                        let vm = Vm::from_file(&args.file)?;
-                        vm.create().await?;
-                    }
-                }
-                Crud::Inspect(resource) => {
-                    let vm = Vm::get_by_name(&resource.name).await?;
-                    vm.get_info().await?;
-                }
-                Crud::Start(resource) => {
-                    let mut vm = Vm::get_by_name(&resource.name).await?;
-                    vm.start().await?;
-                }
-                Crud::Stop(resource) => {
-                    Vm::get_by_name(&resource.name).await?.shutdown().await?;
-                }
-                Crud::Ls => {
-                    Vm::display(Vm::get_all().await?).await?;
-                }
-                Crud::Rm(resource) => {
-                    let vm = Vm::get_by_name(&resource.name).await?;
-                    vm.delete().await?;
-                }
-                _ => {}
-            },
-            Commands::Template(args) => match args {
-                Display::Ls => {
-                    let templates: Vec<VmTemplate> =
-                        config.get_vm_templates()?.into_values().collect();
-                    VmTemplate::display(templates).await?;
-                }
-            },
-            Commands::Net(args) => match args {
-                Crud::Ls => {
-                    Net::display(Net::get_all().await?).await?;
-                }
-                Crud::Rm(resource) => {
-                    let net = Net::get_by_name(&resource.name).await?;
-                    net.delete().await?;
-                }
-                Crud::Create(args) => {
-                    let net = Net::from_file(&args.file)?;
-                    net.create().await?;
-                }
-                Crud::Start(resource) => {
-                    let net = Net::get_by_name(&resource.name).await?;
-                    net.start().await?;
-                }
-                _ => {}
-            },
-            Commands::Secret(args) => match args {
-                CrudUuid::Ls => {
-                    // display::default(Secret::get_all()?)?;
-                }
-                CrudUuid::Rm(resource) => {
-                    // Secret::delete(&resource.uuid)?;
-                }
-                CrudUuid::Create(args) => {
-                    // Secret::set(&args.file)?;
-                }
-            },
-            _ => {}
-        };
-
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Cli;
-    use clap::Parser;
-    use miette::Result;
-
-    #[tokio::test]
-    async fn parse_command_line() -> Result<()> {
-        println!("");
-        let e = "virshle --help";
-        let os_str: Vec<&str> = e.split(' ').collect();
-        let cli = Cli::parse_from(os_str);
-        Cli::switch(cli).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn get_domains() -> Result<()> {
-        println!("");
-        let e = "virshle vm ls";
-        let os_str: Vec<&str> = e.split(' ').collect();
-        let cli = Cli::parse_from(os_str);
-        Cli::switch(cli).await?;
-        Ok(())
-    }
-    #[tokio::test]
-    async fn get_networks() -> Result<()> {
-        println!("");
-        let e = "virshle net ls";
-        let os_str: Vec<&str> = e.split(' ').collect();
-        let cli = Cli::parse_from(os_str);
-        Cli::switch(cli).await?;
-        Ok(())
-    }
 }

@@ -7,8 +7,11 @@ use std::net::TcpStream;
 
 use russh::client::{connect, Config, Handle, Handler};
 use russh::keys::agent::client::AgentClient;
-use russh::keys::{key::PublicKey, load_secret_key};
-use russh::{ChannelMsg, CryptoVec, Disconnect};
+use russh::{
+    keys::load_secret_key,
+    keys::{PrivateKeyWithHashAlg, PublicKey},
+    ChannelMsg, CryptoVec, Disconnect,
+};
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
 
@@ -49,7 +52,7 @@ struct Client {}
 // More SSH event handlers
 // can be defined in this trait
 // In this example, we're only using Channel, so these aren't needed.
-#[async_trait]
+// #[async_trait]/
 impl Handler for Client {
     type Error = russh::Error;
 
@@ -84,12 +87,8 @@ impl Session {
 
         let mut session = connect(config, addrs, sh).await?;
         let auth_res = session
-            .authenticate_publickey(user, Arc::new(key_pair))
+            .authenticate_publickey(user, PrivateKeyWithHashAlg::new(Arc::new(key_pair), None))
             .await?;
-
-        if !auth_res {
-            // anyhow::bail!("Authentication failed");
-        }
 
         Ok(Self { session })
     }
@@ -101,7 +100,6 @@ impl Session {
     pub async fn open() -> Result<Self, VirshleError> {
         let mut agent = AgentClient::connect_env().await?;
 
-        // let public_key;
         let mut public_keys: Vec<PublicKey> = vec![];
         for key in agent.request_identities().await? {
             public_keys.push(key);
@@ -121,9 +119,11 @@ impl Session {
         let mut session = connect(config, addrs, sh).await?;
 
         for key in public_keys {
-            let agent = AgentClient::connect_env().await?;
-            let (_, auth_res) = session.authenticate_future(user, key, agent).await;
-            if auth_res? {
+            let mut agent = AgentClient::connect_env().await?;
+            let auth_res = session
+                .authenticate_publickey_with(user, key, None, &mut agent)
+                .await?;
+            if auth_res.success() {
                 return Ok(Self { session });
             }
         }
