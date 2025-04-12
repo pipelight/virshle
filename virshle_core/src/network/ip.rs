@@ -13,172 +13,47 @@ use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
 
+use super::InterfaceState;
+
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct Interface {
-    #[serde(alias = "_uuid")]
-    uuid: Uuid,
-    #[serde(alias = "ifindex")]
+pub struct IpInterface {
+    #[serde(rename = "ifindex")]
     pub index: Option<u64>,
-    #[serde(alias = "ifname")]
+    #[serde(rename = "ifname")]
     pub name: String,
-    #[serde(alias = "mac", alias = "mac_in_use")]
+    #[serde(rename = "address")]
     pub mac: Option<String>,
-    // #[serde(alias = "address")]
-    // pub ips: Vec<IpAddr>,
+    #[serde(rename = "operstate")]
+    pub state: String,
 }
 
 #[derive(Default, Clone, Debug)]
 pub struct Ip;
 
 impl Ip {
-    pub fn get_interfaces(&self) -> Result<Vec<Interface>, VirshleError> {
+    pub fn get_interfaces(&self) -> Result<Vec<IpInterface>, VirshleError> {
         let cmd = "ip -j a".to_owned();
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
 
-        let mut interfaces: Vec<Interface> = vec![];
+        let mut interfaces: Vec<IpInterface> = vec![];
         if let Some(stdout) = res.io.stdout {
             interfaces = serde_json::from_str(&stdout)?;
         }
         Ok(interfaces)
     }
-}
+    pub fn get_main_interface(&self) -> Result<IpInterface, VirshleError> {
+        let interfaces = self.get_interfaces()?;
+        let main = interfaces.iter().find(|e| e.name.starts_with("en"));
 
-#[derive(Default, Clone, Debug)]
-pub struct Ovs;
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct OvsResponse {
-    data: Vec<Vec<Value>>,
-    headings: Vec<String>,
-}
-
-// pub struct OvsResponse {
-//     bridges: Vec<Bridge>,
-// }
-
-pub enum OvsValue {
-    String,
-    Map,
-    Set,
-    Bool,
-}
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct Bridge {
-    #[serde(alias = "_uuid")]
-    uuid: Uuid,
-    name: String,
-    ports: Vec<String>,
-}
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct Port {
-    uuid: Uuid,
-    name: String,
-    // interfaces: Vec<Interface>
-}
-
-impl Ovs {
-    /*
-     * Convert ovs json types into sane and readable json.
-     * Recursive
-     */
-    pub fn bad_json_to_good_json(value: &Value) -> Result<Value, VirshleError> {
-        if let Some(array) = value.as_array() {
-            let mut array = array.clone();
-            let data_type = array.remove(0);
-            let data_type = data_type.as_str().unwrap();
-
-            let data = array.remove(0).to_owned();
-
-            return match data_type {
-                // Identifier
-                "uuid" => Ok(data.to_owned()),
-                // Array or Vec
-                "set" => {
-                    let data = data.as_array().unwrap();
-
-                    let mut new_value = vec![];
-                    for item in data {
-                        let mut item = item.as_array().unwrap().to_vec();
-                        if !item.is_empty() {
-                            let heading = item.remove(0);
-                            let heading = heading.as_str().unwrap().to_owned();
-                            let data = item.remove(0);
-                            new_value.push(data.to_owned());
-                        }
-                    }
-                    return Ok(Value::Array(new_value));
-                }
-                // Object
-                "map" => {
-                    // for item in array
-                    let data = data.as_array().unwrap();
-
-                    let mut new_value = Map::new();
-                    for item in data {
-                        let mut item = item.as_array().unwrap().to_vec();
-                        if !item.is_empty() {
-                            let heading = item.remove(0);
-                            let heading = heading.as_str().unwrap().to_owned();
-                            let data = item.remove(0);
-                            new_value.insert(heading, data.to_owned());
-                        }
-                    }
-                    return Ok(Value::Object(new_value));
-                }
-                _ => {
-                    return Ok(Value::Null);
-                }
-            };
-        } else if value.is_string() || value.is_boolean() || value.is_number() {
-            return Ok(value.to_owned());
-        } else {
-            return Ok(Value::Null);
-        }
-    }
-    /*
-     * Convert ovs-vsctl json to better json
-     */
-    pub fn to_json(response: &str) -> Result<Value, VirshleError> {
-        let ovs_reponse: OvsResponse = serde_json::from_str(&response)?;
-
-        // Iterate response elements
-        let mut items: Vec<Value> = vec![];
-        for item in ovs_reponse.data {
-            let mut kv = Map::new();
-            for (key, value) in ovs_reponse.headings.iter().zip(item) {
-                kv.insert(key.to_owned(), Self::bad_json_to_good_json(&value)?);
+        match main {
+            None => {
+                let message = "Couldn't find main ethernet interface.";
+                let help = "Do you have eno1 or ens3..?";
+                return Err(LibError::new(message, help).into());
             }
-            items.push(Value::Object(kv.clone()));
-        }
-        let value = Value::Array(items.clone());
-        Ok(value)
-    }
-    pub fn get_bridges(&self) -> Result<Vec<Bridge>, VirshleError> {
-        let cmd = "sudo ovs-vsctl -f json list bridge".to_owned();
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        let mut bridges = vec![];
-        if let Some(stdout) = res.io.stdout {
-            bridges = serde_json::from_value(Self::to_json(&stdout)?)?;
-        }
-        Ok(bridges)
-    }
-    pub fn get_interfaces(&self) -> Result<Vec<Interface>, VirshleError> {
-        let cmd = "sudo ovs-vsctl -f json list interface".to_owned();
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        let mut bridges = vec![];
-        if let Some(stdout) = res.io.stdout {
-            bridges = serde_json::from_value(Self::to_json(&stdout)?)?;
-        }
-        Ok(bridges)
+            Some(v) => return Ok(v.to_owned()),
+        };
     }
 }
 
@@ -186,7 +61,8 @@ impl Ovs {
 mod test {
     use super::*;
 
-    // #[test]
+    // Ip command
+    #[test]
     fn test_ip_get_interfaces() -> Result<()> {
         let ip = Ip::default();
         let res = ip.get_interfaces()?;
@@ -194,45 +70,12 @@ mod test {
         println!("{:#?}", res);
         Ok(())
     }
-
-    // #[test]
-    fn test_ovs_get_bridges() -> Result<()> {
-        let ovs = Ovs::default();
-        let res = ovs.get_bridges();
-        println!("{:#?}", res);
-        Ok(())
-    }
     #[test]
-    fn test_ovs_get_interfaces() -> Result<()> {
-        let ovs = Ovs::default();
-        let res = ovs.get_interfaces();
+    fn test_ip_get_main_interface() -> Result<()> {
+        let ip = Ip::default();
+        let res = ip.get_main_interface()?;
+
         println!("{:#?}", res);
-        Ok(())
-    }
-    // #[test]
-    fn test_bridges_to_json() -> Result<()> {
-        let cmd = "sudo ovs-vsctl -f json list bridge".to_owned();
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        if let Some(stdout) = res.io.stdout {
-            let res = Ovs::to_json(&stdout)?;
-            println!("{:#?}", res);
-        }
-
-        Ok(())
-    }
-    #[test]
-    fn test_interfaces_to_json() -> Result<()> {
-        let cmd = "sudo ovs-vsctl -f json list interface".to_owned();
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        if let Some(stdout) = res.io.stdout {
-            let res = Ovs::to_json(&stdout)?;
-            println!("{:#?}", res);
-        }
-
         Ok(())
     }
 }
