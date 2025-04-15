@@ -6,7 +6,11 @@ pub use from::VmTemplate;
 
 use super::vmm_types::VmConfig;
 
-// Cloud Hypervisor
+// Ovs
+use crate::network::Ovs;
+// Network socket
+use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
+
 use uuid::Uuid;
 
 use hyper::{Request, StatusCode};
@@ -101,22 +105,15 @@ impl Vm {
      * And delete vm ressources and process.
      */
     pub async fn delete(&self) -> Result<Self, VirshleError> {
-        // Remove running processes
-        Finder::new()
-            .seed("cloud-hypervisor")
-            .seed(&self.uuid.to_string())
-            .search_no_parents()?
-            .kill()?;
-
-        // Purge disk/net
-
-        // Clean existing socket
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
-        let path = Path::new(&socket);
-        if path.exists() {
-            fs::remove_file(&socket).await?;
+        // Remove process and artifacts.
+        self._clean_vmm().await?;
+        // Remove disks from filesystem
+        for disk in &self.disk {
+            let path = Path::new(&disk.path);
+            if path.exists() {
+                fs::remove_file(&disk.path).await?;
+            }
         }
-
         // Remove record from database
         let db = connect_db().await?;
         let record = database::prelude::Vm::find()
@@ -167,7 +164,7 @@ impl Vm {
     }
 
     /*
-     * Delete cloud-hypervisor running process,
+     * Delete the associated cloud-hypervisor running process,
      * and remove process artifacts (socket).
      */
     async fn _clean_vmm(&self) -> Result<(), VirshleError> {
@@ -177,8 +174,15 @@ impl Vm {
             .seed(&self.uuid.to_string())
             .search_no_parents()?
             .kill()?;
-        // Remove existing socket
+
+        // Remove existing ch api socket
         let socket = &self.get_socket()?;
+        let path = Path::new(&socket);
+        if path.exists() {
+            fs::remove_file(&socket).await?;
+        }
+        // Remove existing ovs network socket
+        let socket = &self.get_net_socket()?;
         let path = Path::new(&socket);
         if path.exists() {
             fs::remove_file(&socket).await?;
@@ -190,7 +194,7 @@ impl Vm {
      * Start or Restart a Vm
      */
     async fn start_vmm(&self) -> Result<(), VirshleError> {
-        // Safeguard: remove old process.
+        // Safeguard: remove old process and artifacts
         self._clean_vmm().await?;
 
         // If connection doesn't exist
@@ -213,7 +217,6 @@ impl Vm {
     // }
 
     pub async fn create(&mut self) -> Result<Self, VirshleError> {
-        // self.create_network();
         self.save_definition().await?;
         Ok(self.to_owned())
     }
@@ -232,6 +235,8 @@ impl Vm {
      * Start the virtual machine.
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
+        Ovs::create_vm_socket(&self)?;
+
         self.start_vmm().await?;
         self.push_config_to_vmm().await?;
 
@@ -239,6 +244,12 @@ impl Vm {
         let endpoint = "/api/v1/vm.boot";
         let conn = Connection::open(&socket).await?;
         let response = conn.put::<()>(endpoint, None).await?;
+
+        if !response.status().is_success() {
+            let message = "Couldn't create vm.";
+            return Err(LibError::new(&message, &response.to_string().await?).into());
+        }
+
         Ok(())
     }
 

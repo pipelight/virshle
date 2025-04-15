@@ -6,8 +6,7 @@
 
 # Can't set tap device mac with ovs-vsctl
 # But it seems to be based on device name.
-#
-mac="52:3d:2b:1d:dd:24"
+ 
 ifname="vm1"
 brname="br0"
 uuid="test"
@@ -39,7 +38,6 @@ sudo ovs-vsctl \
 
 sudo ovs-vsctl \
   -- add-port $brname $ifname \
-  -- set interface $ifname mac=\"$mac\" \
   -- set interface $ifname type=dpdkvhostuserclient \
   -- set interface $ifname options:vhost-server-path=/tmp/vhost-user1 \
   -- set interface $ifname options:n_rxq=2
@@ -53,4 +51,4 @@ cloud-hypervisor \
     --console off \
     --serial tty \
     --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw" \
-    --net mac=$mac,vhost_user=true,socket=/tmp/vhost-user1,num_queues=4,vhost_mode=server
+    --net vhost_user=true,socket=/tmp/vhost-user1,num_queues=4,vhost_mode=server

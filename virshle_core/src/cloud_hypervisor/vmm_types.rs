@@ -14,6 +14,21 @@ use std::path::PathBuf;
 
 // Cpu
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ConsoleConfig {
+    pub mode: ConsoleOutputMode,
+}
+#[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub enum ConsoleOutputMode {
+    #[default]
+    Off,
+    Pty,
+    Tty,
+    File,
+    Socket,
+    Null,
+}
+// Cpu
+#[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct CpusConfig {
     pub boot_vcpus: u64,
     pub max_vcpus: u64,
@@ -26,9 +41,7 @@ pub struct CpusConfig {
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct MemoryConfig {
     pub size: u64,
-    #[serde(default)]
     pub shared: bool,
-    #[serde(default)]
     pub hugepages: bool,
     #[serde(default)]
     pub hugepage_size: Option<u64>,
@@ -56,15 +69,21 @@ impl From<&Disk> for DiskConfig {
         }
     }
 }
+// Disk efi bootloader
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PayloadConfig {
+    pub kernel: Option<String>,
+    pub cmdline: Option<String>,
+}
 
 // Network
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct NetConfig {
-    #[serde(default)]
     pub vhost_user: bool,
     pub vhost_socket: Option<String>,
     #[serde(default)]
     pub vhost_mode: VhostMode,
+    num_queues: Option<u64>,
     // Removed ch unused default
     #[serde(flatten)]
     other: serde_json::Value,
@@ -104,6 +123,12 @@ pub struct VmConfig {
     pub memory: MemoryConfig,
     pub disks: Option<Vec<DiskConfig>>,
     pub net: Option<Vec<NetConfig>>,
+
+    // Hardcoded into virshle for now.
+    pub payload: Option<PayloadConfig>,
+    pub console: Option<ConsoleConfig>,
+    pub serial: Option<ConsoleConfig>,
+
     #[serde(flatten)]
     other: serde_json::Value,
 }
@@ -121,12 +146,29 @@ impl From<&Vm> for VmConfig {
             },
             memory: MemoryConfig {
                 size: e.vram * u64::pow(1024, 3),
+                shared: true,
+                hugepages: true,
                 ..Default::default()
             },
             disks: None,
             net: None,
             ..Default::default()
         };
+
+        // Add bootloader
+        let payload = PayloadConfig {
+            kernel: Some("/run/cloud-hypervisor/hypervisor-fw".to_owned()),
+            cmdline: Some(
+                "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw".to_owned(),
+            ),
+        };
+        config.payload = Some(payload);
+        config.console = Some(ConsoleConfig {
+            mode: ConsoleOutputMode::Off,
+        });
+        config.serial = Some(ConsoleConfig {
+            mode: ConsoleOutputMode::Tty,
+        });
 
         // Add disks
         let mut disk: Vec<DiskConfig> = vec![];
@@ -140,7 +182,8 @@ impl From<&Vm> for VmConfig {
             let mut net: Vec<NetConfig> = vec![];
             for def in networks {
                 net.push(NetConfig {
-                    vhost_user: Default::default(),
+                    vhost_user: true,
+                    num_queues: Some(e.vcpu * 2),
                     vhost_socket: e.get_net_socket().ok(),
                     vhost_mode: VhostMode::Server,
                     ..Default::default()

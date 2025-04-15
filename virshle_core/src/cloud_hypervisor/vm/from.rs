@@ -60,6 +60,7 @@ impl From<&VmTemplate> for Vm {
 pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     if let Some(disks) = &template.disk {
         for disk in disks {
+            let source = shellexpand::tilde(&disk.path).to_string();
             let target = format!(
                 "{}{}{}_{}.img",
                 MANAGED_DIR.to_owned(),
@@ -67,8 +68,6 @@ pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virshl
                 vm.uuid,
                 disk.name
             );
-
-            let source = shellexpand::tilde(&disk.path).to_string();
 
             // Create disk on host drive
             let file = fs::File::create(&target)?;

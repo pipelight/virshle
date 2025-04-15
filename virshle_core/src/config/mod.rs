@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 // Error Handling
 use log::info;
@@ -35,6 +35,25 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
+    /*
+     * Ensure virshle directories and configuration exists.
+     */
+    pub async fn init() -> Result<(), VirshleError> {
+        let directories = [
+            MANAGED_DIR.to_owned(),
+            MANAGED_DIR.to_owned() + "/disk",
+            MANAGED_DIR.to_owned() + "/net",
+            MANAGED_DIR.to_owned() + "/socket",
+            CONFIG_DIR.to_owned(),
+        ];
+        for directory in directories {
+            let path = Path::new(&directory);
+            if !path.exists() {
+                tokio::fs::create_dir_all(&directory).await?;
+            }
+        }
+        Ok(())
+    }
     /*
      * Get config from crate directory
      */
@@ -62,6 +81,7 @@ impl VirshleConfig {
 
         let path = path.display().to_string();
         let config = Self::from_file(&path)?;
+
         Ok(config)
     }
     pub fn get_vm_templates(&self) -> Result<HashMap<String, VmTemplate>, VirshleError> {

@@ -3,6 +3,7 @@ pub use ip::Ip;
 pub use std::str::FromStr;
 
 pub mod ovs;
+pub use ovs::Ovs;
 
 // Error handling
 use miette::{IntoDiagnostic, Result};

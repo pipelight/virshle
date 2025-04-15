@@ -122,6 +122,9 @@ impl Cli {
                     VmTemplate::display(templates).await?;
                 }
             },
+            Commands::Init => {
+                VirshleConfig::init().await?;
+            }
             _ => {}
         };
 

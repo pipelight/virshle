@@ -13,6 +13,7 @@ pub struct Cli {
 pub enum Commands {
     Prune,
     Daemon,
+    Init,
 
     // TODO: Declarative docker compose style
     #[command(hide = true)]
