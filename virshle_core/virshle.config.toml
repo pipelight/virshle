@@ -30,9 +30,9 @@ vram = 2
 name = "os"
 path = "~/Iso/nixos.efi.img"
 size = "50G"
-
 [[template.vm.net]]
-[template.vm.net.vhost]
+name = "main"
+[template.vm.net.type.vhost]
 
 [[template.vm]]
 name = "s"

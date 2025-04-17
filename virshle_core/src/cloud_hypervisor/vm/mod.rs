@@ -1,16 +1,20 @@
 pub mod from;
 pub mod getters;
+pub mod provision;
 
 pub use crate::cloud_hypervisor::VmState;
 pub use from::VmTemplate;
 
 use super::vmm_types::VmConfig;
 
+use std::fmt;
+
 // Ovs
 use crate::network::Ovs;
 // Network socket
 use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 
+use convert_case::{Case, Casing};
 use uuid::Uuid;
 
 use hyper::{Request, StatusCode};
@@ -58,15 +62,30 @@ impl Default for VirshleVmConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct VmNet {
+    pub name: String,
+    #[serde(rename = "type")]
+    pub _type: NetType,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub enum VmNet {
+pub enum NetType {
     Vhost(Vhost),
+}
+impl fmt::Display for NetType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match self {
+            NetType::Vhost(v) => "vhost".to_owned(),
+        };
+        write!(f, "{}", string)
+    }
 }
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Vhost {
     // Set static mac address or random if none.
     pub mac: Option<String>,
-    // Request a static ip on the interface.
+    // Request a static ipv4 ip on the interface.
     pub ip: Option<String>,
 }
 
@@ -102,7 +121,7 @@ impl Default for Vm {
 impl Vm {
     /*
      * Remove a vm definition from database.
-     * And delete vm ressources and process.
+     * And delete vm resources and process.
      */
     pub async fn delete(&self) -> Result<Self, VirshleError> {
         // Remove process and artifacts.
@@ -159,7 +178,7 @@ impl Vm {
     }
 
     async fn connection(&self) -> Result<Connection, VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let socket = self.get_socket()?;
         Connection::open(&socket).await
     }
 
@@ -181,12 +200,11 @@ impl Vm {
         if path.exists() {
             fs::remove_file(&socket).await?;
         }
-        // Remove existing ovs network socket
-        let socket = &self.get_net_socket()?;
-        let path = Path::new(&socket);
-        if path.exists() {
-            fs::remove_file(&socket).await?;
-        }
+
+        // Remove existing network socket
+        // and ovs config
+        Ovs::remove_net_sockets(self);
+
         Ok(())
     }
 
@@ -224,7 +242,7 @@ impl Vm {
      * Shut the virtual machine down.
      */
     pub async fn shutdown(&self) -> Result<(), VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.shutdown";
         let conn = Connection::open(&socket).await?;
 
@@ -235,12 +253,12 @@ impl Vm {
      * Start the virtual machine.
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
-        Ovs::create_vm_socket(&self)?;
+        Ovs::create_net_sockets(&self)?;
 
         self.start_vmm().await?;
         self.push_config_to_vmm().await?;
 
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.boot";
         let conn = Connection::open(&socket).await?;
         let response = conn.put::<()>(endpoint, None).await?;
@@ -259,7 +277,7 @@ impl Vm {
     async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
         let config = VmConfig::from(self);
 
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.create";
         let conn = Connection::open(&socket).await?;
 

@@ -11,5 +11,5 @@ mod vmm_types;
 
 pub use definition::{Definition, Template};
 pub use disk::{Disk, DiskTemplate};
-pub use vm::{Vm, VmTemplate};
+pub use vm::{Vm, VmNet, VmTemplate};
 pub use vmm_types::{VmConfig, VmState};

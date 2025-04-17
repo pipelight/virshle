@@ -178,18 +178,18 @@ impl From<&Vm> for VmConfig {
         config.disks = Some(disk);
 
         // Add networks
-        if let Some(networks) = &e.net {
-            let mut net: Vec<NetConfig> = vec![];
-            for def in networks {
-                net.push(NetConfig {
+        if let Some(nets) = &e.net {
+            let mut net_configs: Vec<NetConfig> = vec![];
+            for net in nets {
+                net_configs.push(NetConfig {
                     vhost_user: true,
                     num_queues: Some(e.vcpu * 2),
-                    vhost_socket: e.get_net_socket().ok(),
+                    vhost_socket: e.get_net_socket(&net).ok(),
                     vhost_mode: VhostMode::Server,
                     ..Default::default()
                 });
             }
-            config.net = Some(net);
+            config.net = Some(net_configs);
         }
         config
     }

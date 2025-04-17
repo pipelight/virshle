@@ -11,14 +11,14 @@ pub fn ensure_cache_dir() -> Result<(), VirshleError> {
 }
 
 /**
-* Convert string into url and fetch ressources to cache.
+* Convert string into url and fetch resources to cache.
 */
 pub fn get_image_from_url(url: &str) -> Result<(), VirshleError> {
     Ok(())
 }
 
 /**
-* Check if url ressource is in cache.
+* Check if url resource is in cache.
 */
 pub fn is_cached(url: &str) -> Result<(), VirshleError> {
     Ok(())

@@ -1,9 +1,17 @@
 use super::{VirshleVmConfig, Vm, VmNet};
 use crate::cloud_hypervisor::{Disk, DiskTemplate};
 
+// Pretty print
+use bat::PrettyPrinter;
+use crossterm::{execute, style::Stylize, terminal::size};
+use log::{info, log_enabled, Level};
+
 use serde::{Deserialize, Serialize};
+
+// Filesystem manipulation
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 
 //Database
 use crate::database;
@@ -15,7 +23,6 @@ use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertRe
 use crate::config::MANAGED_DIR;
 
 // Error Handling
-use log::info;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
@@ -57,17 +64,23 @@ impl From<&VmTemplate> for Vm {
         vm
     }
 }
+
 pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
+    let directories = [
+        format!("{MANAGED_DIR}/vm/{}", vm.uuid),
+        format!("{MANAGED_DIR}/vm/{}/disk", vm.uuid),
+        format!("{MANAGED_DIR}/vm/{}/net", vm.uuid),
+    ];
+    for directory in directories {
+        let path = Path::new(&directory);
+        if !path.exists() {
+            fs::create_dir_all(&directory)?;
+        }
+    }
     if let Some(disks) = &template.disk {
         for disk in disks {
             let source = shellexpand::tilde(&disk.path).to_string();
-            let target = format!(
-                "{}{}{}_{}.img",
-                MANAGED_DIR.to_owned(),
-                "/disk/",
-                vm.uuid,
-                disk.name
-            );
+            let target = format!("{MANAGED_DIR}/vm/{}/disk/{}", vm.uuid, disk.name);
 
             // Create disk on host drive
             let file = fs::File::create(&target)?;
@@ -130,6 +143,21 @@ impl Vm {
         };
         Ok(item)
     }
+    pub fn to_toml(&self) -> Result<String, VirshleError> {
+        let string: String = toml::to_string(self).map_err(CastError::from)?;
+        if log_enabled!(Level::Warn) {
+            let (cols, _) = size()?;
+            let divider = "-".repeat((cols / 3).into());
+            println!("{}", format!("{divider}toml{divider}").green());
+            PrettyPrinter::new()
+                .input_from_bytes(string.as_bytes())
+                .language("toml")
+                .print()?;
+            println!("{}", format!("{divider}----{divider}").green());
+            println!("");
+        }
+        Ok(string)
+    }
 }
 
 #[cfg(test)]
@@ -138,31 +166,53 @@ mod test {
     use std::path::PathBuf;
 
     #[test]
-    fn make_vm_from_template() -> Result<()> {
-        let toml = "
+    fn display_vm_to_toml() -> Result<()> {
+        let vm = Vm::default();
+        let string = vm.to_toml()?;
+        println!("");
+        PrettyPrinter::new()
+            .input_from_bytes(string.as_bytes())
+            .language("toml")
+            .print()
+            .into_diagnostic()?;
+        Ok(())
+    }
+    #[test]
+    fn make_vm_template_from_toml() -> Result<()> {
+        let toml = r#"
+            name = "my_template"
+
             vcpu = 1
             vram = 2
 
-            [config]
-            autostart = true
-        ";
+            [[disk]]
+            name = "os"
+            path = "~/tmp/disk/template.iso"
 
-        let item = Vm::from_toml(&toml)?;
+            [[net]]
+            name = "main"
+            [net.type.vhost]
+        "#;
+        let item = VmTemplate::from_toml(&toml)?;
         println!("{:#?}", item);
         Ok(())
     }
     #[test]
-    fn make_vm_from_definition_with_ids() -> Result<()> {
+    fn make_vm_from_toml() -> Result<()> {
         let toml = r#"
-            name = "default_xs"
+            name = "my_test_vm"
             uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
 
             vcpu = 1
             vram = 2
 
-            [[net]]
-            [net.vhost]
+            [[disk]]
+            name = "os"
+            path = "~/tmp/disk/uuid.iso"
 
+            [[net]]
+            name = "main"
+            [net.type.vhost]
             "#;
         let item = Vm::from_toml(&toml)?;
         println!("{:#?}", item);

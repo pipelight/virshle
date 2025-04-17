@@ -57,9 +57,12 @@ pub enum Crud {
     /// Stops a virtual machine.
     #[command(arg_required_else_help = true)]
     Stop(Resource),
-    /// Inspect a virtual machine.
+    /// Parse a virtual machine toml configuration.
     #[command(arg_required_else_help = true)]
-    Inspect(Resource),
+    Config(Resource),
+    /// Inspect a created virtual machine configuration (cloud-hypervisor api).
+    #[command(arg_required_else_help = true)]
+    Info(Resource),
 
     /// List existing vms.
     Ls,

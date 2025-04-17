@@ -2,6 +2,8 @@ pub mod cache;
 pub mod uri;
 
 use crate::cloud_hypervisor::{Template, VmTemplate};
+use crate::database;
+use crate::network::Ovs;
 
 // Global vars
 use once_cell::sync::Lazy;
@@ -39,11 +41,10 @@ impl VirshleConfig {
      * Ensure virshle directories and configuration exists.
      */
     pub async fn init() -> Result<(), VirshleError> {
+        // Create storage/config directories
         let directories = [
             MANAGED_DIR.to_owned(),
-            MANAGED_DIR.to_owned() + "/disk",
-            MANAGED_DIR.to_owned() + "/net",
-            MANAGED_DIR.to_owned() + "/socket",
+            MANAGED_DIR.to_owned() + "/vm",
             CONFIG_DIR.to_owned(),
         ];
         for directory in directories {
@@ -52,6 +53,14 @@ impl VirshleConfig {
                 tokio::fs::create_dir_all(&directory).await?;
             }
         }
+        // Ensure vm database
+        database::connect_db().await?;
+
+        // Clean ovs vm switch config
+        Ovs::_clean_vm_bridge().await?;
+
+        // Create virshle daemon socket
+
         Ok(())
     }
     /*
@@ -99,8 +108,14 @@ impl VirshleConfig {
         match res {
             Some(res) => Ok(res.to_owned()),
             None => {
-                let message = format!("Couldn't find template {:?}", name);
-                let err = LibError::new(&message, "Check configuration file.");
+                let message = format!("Couldn't find template {:#?}", name);
+                let templates_name = templates
+                    .iter()
+                    .map(|e| e.0.to_owned())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let help = format!("Available templates are:\n[{templates_name}]");
+                let err = LibError::new(&message, &help);
                 Err(err.into())
             }
         }

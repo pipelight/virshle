@@ -4,7 +4,7 @@ pub use types::*;
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::VirshleConfig,
-    convert, Api,
+    Api,
 };
 use clap::Parser;
 use std::fs;
@@ -74,12 +74,14 @@ impl Cli {
                         vm.create().await?;
                     }
                 }
-                Crud::Inspect(args) => {
+                Crud::Info(args) => {
                     if let Some(name) = args.name {
                         let vm = Vm::get_by_name(&name).await?;
+                        vm.to_toml()?;
                         vm.get_info().await?;
                     } else if let Some(id) = args.id {
                         let vm = Vm::get_by_id(&id).await?;
+                        vm.to_toml()?;
                         vm.get_info().await?;
                     }
                 }

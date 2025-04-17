@@ -1,4 +1,4 @@
-use super::Vm;
+use super::{Vm, VmNet};
 
 use serde::{Deserialize, Serialize};
 use tabled::{Table, Tabled};
@@ -77,8 +77,9 @@ impl Vm {
 
             return Ok(vm);
         } else {
-            let message = format!("Could not find a vm with the name: {}", name);
-            return Err(LibError::new(&message, "").into());
+            let message = format!("Couldn't find a vm with the name: {}", name);
+            let help = "Are you sure this vm exist?";
+            return Err(LibError::new(&message, help).into());
         }
     }
     /*
@@ -100,8 +101,10 @@ impl Vm {
 
             return Ok(vm);
         } else {
-            let message = format!("Could not find a vm with the uuid: {}", uuid);
-            return Err(LibError::new(&message, "").into());
+            let message = format!("Couldn't find a vm with the uuid: {}", uuid);
+
+            let help = "Are you sure this vm exist?";
+            return Err(LibError::new(&message, help).into());
         }
     }
     /*
@@ -119,8 +122,9 @@ impl Vm {
             let vm: Vm = serde_json::from_value(record.definition)?;
             return Ok(vm);
         } else {
-            let message = format!("Could not find a vm with the id: {}", id);
-            return Err(LibError::new(&message, "").into());
+            let message = format!("Couldn't find a vm with the id: {}", id);
+            let help = "Are you sure this vm exist?";
+            return Err(LibError::new(&message, help).into());
         }
     }
 }
@@ -135,20 +139,44 @@ impl Vm {
     /*
      * Return vm network socket path.
      */
-    pub fn get_net_socket(&self) -> Result<String, VirshleError> {
-        Ok(MANAGED_DIR.to_owned() + "/net/" + &self.uuid.to_string() + ".sock")
+    pub fn get_net_socket(&self, net: &VmNet) -> Result<String, VirshleError> {
+        let path = format!(
+            "{MANAGED_DIR}/vm/{}/net/{}_{}.sock",
+            self.uuid, net._type, net.name
+        );
+        Ok(path)
+    }
+    /*
+     * Return vm's disks directory path.
+     */
+    pub fn get_disk_dir(&self) -> Result<String, VirshleError> {
+        let path = format!("{MANAGED_DIR}/vm/{}/disk", self.uuid);
+        Ok(path)
+    }
+    /*
+     * Return path where to mount vm pipelight-init disk to.
+     *
+     * This path is used to provision a pipelight-init disk (cloud-init alternative)
+     * with user defined data, mainly:
+     * - network interface ips (Ipv4 / Ipv6)
+     * - hostname
+     */
+    pub fn get_mount_dir(&self) -> Result<String, VirshleError> {
+        let path = format!("{MANAGED_DIR}/vm/{}/tmp", self.uuid);
+        Ok(path)
     }
     /*
      * Return vm socket path.
      */
     pub fn get_socket(&self) -> Result<String, VirshleError> {
-        Ok(MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock")
+        let path = format!("{MANAGED_DIR}/vm/{}/ch.sock", self.uuid);
+        Ok(path)
     }
     /*
      * Return vm info
      */
     pub async fn get_info(&self) -> Result<(), VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
         let conn = Connection::open(&socket).await?;
@@ -165,7 +193,7 @@ impl Vm {
      *
      */
     pub async fn get_state(&self) -> Result<VmState, VirshleError> {
-        let socket = MANAGED_DIR.to_owned() + "/socket/" + &self.uuid.to_string() + ".sock";
+        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
         let conn = Connection::open(&socket).await;

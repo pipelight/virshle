@@ -16,6 +16,7 @@ use virshle_error::{LibError, VirshleError};
 pub struct DiskTemplate {
     pub name: String,
     pub path: String,
+    pub size: Option<String>,
     pub readonly: Option<bool>,
 }
 
@@ -28,22 +29,9 @@ pub struct Disk {
 impl From<&DiskTemplate> for Disk {
     fn from(e: &DiskTemplate) -> Self {
         Self {
-            name: "os".to_owned(),
+            name: e.name.to_owned(),
             path: e.path.to_owned(),
             readonly: e.readonly,
         }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    // Error Handling
-    use miette::{IntoDiagnostic, Result};
-
-    #[test]
-    fn make_handled_disk() -> Result<()> {
-        Ok(())
     }
 }

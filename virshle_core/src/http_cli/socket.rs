@@ -31,11 +31,29 @@ pub struct Connection {
 
 impl Connection {
     pub async fn open(socket: &str) -> Result<Self, VirshleError> {
-        let stream: TokioIo<UnixStream> =
-            TokioIo::new(UnixStream::connect(Path::new(socket)).await?);
+        let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(socket)).await {
+            Err(e) => {
+                let help = format!("Does the following socket exist?\n{socket}");
+                let err = WrapError::builder()
+                    .msg("Couldn't connect to socket")
+                    .help(&help)
+                    .origin(VirshleError::from(e).into())
+                    .build();
+                return Err(err.into());
+            }
+            Ok(v) => TokioIo::new(v),
+        };
 
         let connection: Connection = match handshake(stream).await {
-            Err(error) => return Err(error.into()),
+            Err(e) => {
+                let help = format!("Does the following socket exist?\n{socket}");
+                let err = WrapError::builder()
+                    .msg("Couldn't connnect to socket")
+                    .help(&help)
+                    .origin(VirshleError::from(e).into())
+                    .build();
+                return Err(err.into());
+            }
             Ok((sender, connection)) => Self {
                 sender,
                 connection: spawn(async move { connection.await }),

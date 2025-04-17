@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};
 use std::collections::HashMap;
+use std::fmt;
 use std::str::FromStr;
 use uuid::Uuid;
 
 // Network primitives
 use macaddr::MacAddr8;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
 // Error handling
 use log::info;
 use miette::{IntoDiagnostic, Result};
@@ -15,6 +17,10 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 // Cloud-hypervisor
 use crate::cloud_hypervisor::Vm;
+
+//Fs
+use std::fs;
+use std::path::Path;
 
 use crate::network::InterfaceState;
 mod json;
@@ -69,6 +75,8 @@ impl OvsPort {
 pub struct OvsInterface {
     #[serde(rename = "_uuid")]
     pub uuid: Uuid,
+    #[serde(default, rename = "type")]
+    pub _type: Option<OvsInterfaceType>,
     #[serde(rename = "ifindex")]
     pub index: Option<u64>,
     pub name: String,
@@ -78,53 +86,91 @@ pub struct OvsInterface {
     pub state: String,
 }
 
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OvsInterfaceType {
+    #[default]
+    System,
+    Internal,
+    Patch,
+    DpdkVhostUserClient,
+}
+impl fmt::Display for OvsInterfaceType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match self {
+            OvsInterfaceType::Internal => "internal".to_owned(),
+            OvsInterfaceType::Patch => "patch".to_owned(),
+            OvsInterfaceType::DpdkVhostUserClient => "dpdkvhostuserclient".to_owned(),
+            OvsInterfaceType::System => "system".to_owned(),
+        };
+        write!(f, "{}", string)
+    }
+}
+
 impl Ovs {
-    pub fn remove_vm_socket(vm: &Vm) -> Result<(), VirshleError> {
-        let vm_bridge_name = "br0";
+    /*
+     * Remove network sockets assiociated to a VM,
+     * from filesystem and from ovs configuration.
+     */
+    pub fn remove_net_sockets(vm: &Vm) -> Result<(), VirshleError> {
+        let vm_bridge_name = Self::get_vm_bridge()?.name;
         let vm_name = vm.name.clone();
-        let net_socket_path = vm.get_net_socket()?;
 
-        let cmd = format!(
-            "sudo ovs-vsctl \
-            -- --may-exist add-port {vm_bridge_name} {vm_name} \
-            -- set interface {vm_name} type=dpdkvhostuserclient \
-            -- set interface {vm_name} options:vhost-server-path={net_socket_path} options:n_rxq=2"
-        );
+        if let Some(nets) = &vm.net {
+            for net in nets {
+                // Remove existing ovs network sockets from filesystem
+                let socket = &vm.get_net_socket(&net)?;
+                let path = Path::new(&socket);
+                if path.exists() {
+                    fs::remove_file(&socket)?;
+                }
+                // Remove existing ovs network sockets from ovs config
+                let cmd = format!(
+                    "sudo ovs-vsctl \
+                    -- --may-exist del-port {vm_bridge_name} {vm_name}"
+                );
+                let mut proc = Process::new();
+                let res = proc.stdin(&cmd).run()?;
 
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
+                if let Some(stderr) = res.io.stderr {
+                    let message = "Ovs command failed";
+                    let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
 
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-
-            return Err(LibError::new(message, &help).into());
+                    return Err(LibError::new(message, &help).into());
+                }
+            }
         }
-
         Ok(())
     }
-    pub fn create_vm_socket(vm: &Vm) -> Result<(), VirshleError> {
+    /*
+     * Create network sockets in ovs configuration only (not on fs).
+     *
+     * Cloud hypervisor will automatically create a network socket on filesystem
+     * when starting the vm.
+     */
+    pub fn create_net_sockets(vm: &Vm) -> Result<(), VirshleError> {
         let vm_bridge_name = "br0";
         let vm_name = vm.name.clone();
-        let net_socket_path = vm.get_net_socket()?;
 
-        let cmd = format!(
-            "sudo ovs-vsctl \
-            -- --may-exist add-port {vm_bridge_name} {vm_name} \
-            -- set interface {vm_name} type=dpdkvhostuserclient \
-            -- set interface {vm_name} options:vhost-server-path={net_socket_path} options:n_rxq=2"
-        );
+        if let Some(nets) = &vm.net {
+            for net in nets {
+                let net_socket_path = vm.get_net_socket(&net)?;
+                let cmd = format!(
+                "sudo ovs-vsctl \
+                -- --may-exist add-port {vm_bridge_name} {vm_name} \
+                -- set interface {vm_name} type=dpdkvhostuserclient \
+                -- set interface {vm_name} options:vhost-server-path={net_socket_path} options:n_rxq=2"
+                );
+                let mut proc = Process::new();
+                let res = proc.stdin(&cmd).run()?;
 
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-
-            return Err(LibError::new(message, &help).into());
+                if let Some(stderr) = res.io.stderr {
+                    let message = "Ovs command failed";
+                    let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+                    return Err(LibError::new(message, &help).into());
+                }
+            }
         }
-
         Ok(())
     }
     /*
@@ -176,6 +222,28 @@ impl Ovs {
             None => {
                 let message = "Couldn't identify the main bridge";
                 let help = "Did you set up a main virtual switch correctly?";
+                return Err(LibError::new(message, help).into());
+            }
+        }
+    }
+    pub fn get_vm_bridge() -> Result<OvsBridge, VirshleError> {
+        let bridges = Self::get_bridges()?;
+        let bridge = bridges.iter().find(|e| {
+            e.ports
+                .iter()
+                .find(|e| {
+                    e.interface.name.starts_with("patch")
+                        && e.interface
+                            .name
+                            .ends_with(&Self::get_main_bridge().unwrap().name)
+                })
+                .is_some()
+        });
+        match bridge {
+            Some(v) => Ok(v.to_owned()),
+            None => {
+                let message = "Couldn't identify the vm dedicated bridge";
+                let help = "Did you set up a vm virtual switch correctly?";
                 return Err(LibError::new(message, help).into());
             }
         }
@@ -272,6 +340,7 @@ impl Ovs {
 
         let mut bridges = vec![];
         if let Some(stdout) = res.io.stdout {
+            println!("{:#?}", stdout);
             bridges = serde_json::from_value(Self::to_json(&stdout)?)?;
         }
         Ok(bridges)
@@ -300,6 +369,37 @@ impl Ovs {
                 return Err(LibError::new(&message, help).into());
             }
         }
+    }
+    /*
+     * Remove ports from brigde if no related vm exists in database
+     */
+    pub async fn _clean_vm_bridge() -> Result<(), VirshleError> {
+        let vms_name: Vec<String> = Vm::get_all()
+            .await?
+            .iter()
+            .map(|e| e.name.to_owned())
+            .collect();
+        let vm_bridge = Ovs::get_vm_bridge()?;
+
+        let mut cmd = format!("sudo ovs-vsctl");
+        for port in vm_bridge.ports {
+            if !vms_name.contains(&port.name) {
+                if let Some(_type) = &port.interface._type {
+                    match _type {
+                        OvsInterfaceType::DpdkVhostUserClient => {
+                            cmd += &format!(
+                                " -- --if-exists del-port {} {}",
+                                vm_bridge.name, port.name
+                            );
+                        }
+                        _ => {}
+                    };
+                }
+            }
+        }
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+        Ok(())
     }
 }
 
@@ -336,11 +436,18 @@ mod test {
     }
 
     // Create main switch.
-    #[test]
+    // #[test]
     fn test_ovs_make_patch() -> Result<()> {
         Ovs::make_host_switch()?;
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_clean_vm_bridge() -> Result<()> {
+        Ovs::_clean_vm_bridge().await?;
+        Ok(())
+    }
+
     // #[test]
     // fn test_ip_get_main_switch() -> Result<()> {
     //     let res = Ovs::get_main_switch()?;

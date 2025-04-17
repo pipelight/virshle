@@ -29,6 +29,7 @@ impl Ovs {
             let mut kv = Map::new();
             for (key, value) in ovs_reponse.headings.iter().zip(item) {
                 kv.insert(key.to_owned(), Self::convert_bad_json_to_good_json(&value)?);
+                if key == "type" {}
             }
             items.push(Value::Object(kv.clone()));
         }
@@ -42,8 +43,8 @@ impl Ovs {
      * Flatten ovs-vsctl crazy json values into sane and usable values.
      */
     fn convert_bad_json_to_good_json(value: &Value) -> Result<Value, VirshleError> {
-        if let Some(array) = value.as_array() {
-            let mut array = array.clone();
+        if value.is_array() {
+            let mut array = value.as_array().unwrap().to_owned();
             let data_type = array.remove(0);
             let data_type = data_type.as_str().unwrap();
 
@@ -89,7 +90,15 @@ impl Ovs {
                     return Ok(Value::Null);
                 }
             };
-        } else if value.is_string() || value.is_boolean() || value.is_number() {
+        } else if value.is_string() {
+            // Safeguard: remove empty string and empty quoted strings
+            let string: String = value.to_string().trim().trim_matches('"').to_owned();
+            if string.is_empty() {
+                return Ok(Value::Null);
+            } else {
+                return Ok(value.to_owned());
+            }
+        } else if value.is_boolean() || value.is_number() {
             return Ok(value.to_owned());
         } else {
             return Ok(Value::Null);
