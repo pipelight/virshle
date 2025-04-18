@@ -177,13 +177,14 @@ impl Ovs {
      * Split host main network interface to provide connectivity to vms.
      * see: ./README.md
      */
-    pub fn make_host_switch() -> Result<(), VirshleError> {
+    pub async fn ensure_switches() -> Result<(), VirshleError> {
         // Not fully implemented.
         // Consider there is already a main ovs switch on host
         // and link it to vm switch.
 
         // Will do the job for now.
-        Self::set_vm_bridge()?;
+        Self::_set_vm_bridge()?;
+        Self::_clean_vm_bridge().await?;
         Ok(())
     }
 
@@ -248,7 +249,11 @@ impl Ovs {
             }
         }
     }
-    pub fn set_vm_bridge() -> Result<(), VirshleError> {
+    /*
+     * Create a virtual switch/bridge on host
+     * to plug vms network main port in.
+     */
+    pub fn _set_vm_bridge() -> Result<(), VirshleError> {
         let vm_bridge_name = "br0";
         let main_bridge_name = Self::get_main_bridge()?.name;
 
@@ -274,6 +279,38 @@ impl Ovs {
             return Err(LibError::new(message, &help).into());
         }
 
+        Ok(())
+    }
+    /*
+     * Remove dpdkvhostuserclient ports from vm brigde
+     * if not related to an existing vm in database.
+     */
+    pub async fn _clean_vm_bridge() -> Result<(), VirshleError> {
+        let vms_name: Vec<String> = Vm::get_all()
+            .await?
+            .iter()
+            .map(|e| e.name.to_owned())
+            .collect();
+        let vm_bridge = Ovs::get_vm_bridge()?;
+
+        let mut cmd = format!("sudo ovs-vsctl");
+        for port in vm_bridge.ports {
+            if !vms_name.contains(&port.name) {
+                if let Some(_type) = &port.interface._type {
+                    match _type {
+                        OvsInterfaceType::DpdkVhostUserClient => {
+                            cmd += &format!(
+                                " -- --if-exists del-port {} {}",
+                                vm_bridge.name, port.name
+                            );
+                        }
+                        _ => {}
+                    };
+                }
+            }
+        }
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
         Ok(())
     }
 
@@ -340,7 +377,6 @@ impl Ovs {
 
         let mut bridges = vec![];
         if let Some(stdout) = res.io.stdout {
-            println!("{:#?}", stdout);
             bridges = serde_json::from_value(Self::to_json(&stdout)?)?;
         }
         Ok(bridges)
@@ -370,37 +406,6 @@ impl Ovs {
             }
         }
     }
-    /*
-     * Remove ports from brigde if no related vm exists in database
-     */
-    pub async fn _clean_vm_bridge() -> Result<(), VirshleError> {
-        let vms_name: Vec<String> = Vm::get_all()
-            .await?
-            .iter()
-            .map(|e| e.name.to_owned())
-            .collect();
-        let vm_bridge = Ovs::get_vm_bridge()?;
-
-        let mut cmd = format!("sudo ovs-vsctl");
-        for port in vm_bridge.ports {
-            if !vms_name.contains(&port.name) {
-                if let Some(_type) = &port.interface._type {
-                    match _type {
-                        OvsInterfaceType::DpdkVhostUserClient => {
-                            cmd += &format!(
-                                " -- --if-exists del-port {} {}",
-                                vm_bridge.name, port.name
-                            );
-                        }
-                        _ => {}
-                    };
-                }
-            }
-        }
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -408,37 +413,37 @@ mod test {
     use super::*;
 
     // Brigdges
-    // #[test]
+    #[test]
     fn test_ovs_get_bridges() -> Result<()> {
         let res = Ovs::get_bridges()?;
-        println!("{:#?}", res);
+        // println!("{:#?}", res);
         Ok(())
     }
-    // #[test]
+    #[test]
     fn test_ovs_get_main_bridge() -> Result<()> {
         let res = Ovs::get_main_bridge()?;
-        println!("{:#?}", res);
+        // println!("{:#?}", res);
         Ok(())
     }
     // Ports
-    // #[test]
+    #[test]
     fn test_ovs_get_ports() -> Result<()> {
         let res = Ovs::get_ports();
-        println!("{:#?}", res);
+        // println!("{:#?}", res);
         Ok(())
     }
     // Interfaces
-    // #[test]
+    #[test]
     fn test_ovs_get_interfaces() -> Result<()> {
         let res = Ovs::get_interfaces();
-        println!("{:#?}", res);
+        // println!("{:#?}", res);
         Ok(())
     }
 
     // Create main switch.
-    // #[test]
-    fn test_ovs_make_patch() -> Result<()> {
-        Ovs::make_host_switch()?;
+    #[tokio::test]
+    async fn test_ovs_config_host() -> Result<()> {
+        Ovs::ensure_switches().await?;
         Ok(())
     }
 
@@ -447,12 +452,4 @@ mod test {
         Ovs::_clean_vm_bridge().await?;
         Ok(())
     }
-
-    // #[test]
-    // fn test_ip_get_main_switch() -> Result<()> {
-    //     let res = Ovs::get_main_switch()?;
-    //
-    //     println!("{:#?}", res);
-    //     Ok(())
-    // }
 }

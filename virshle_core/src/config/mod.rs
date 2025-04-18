@@ -56,8 +56,8 @@ impl VirshleConfig {
         // Ensure vm database
         database::connect_db().await?;
 
-        // Clean ovs vm switch config
-        Ovs::_clean_vm_bridge().await?;
+        // Ensure host and vm switches configuration
+        Ovs::ensure_switches().await?;
 
         // Create virshle daemon socket
 

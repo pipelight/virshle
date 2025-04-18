@@ -13,6 +13,8 @@ pub struct Cli {
 pub enum Commands {
     Prune,
     Daemon,
+
+    /// Init/Ensure system global configuration (openvswitches, directories, database).
     Init,
 
     // TODO: Declarative docker compose style
