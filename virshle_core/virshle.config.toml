@@ -10,19 +10,6 @@ url = "ssh://anon@localhost:22/var/lib/virshle/virshle.sock"
 # Vms
 # Standard sizes with decents presets.
 [[template.vm]]
-name = "xs-init"
-vcpu = 1
-vram = 2
-[[template.vm.disk]]
-name = "os"
-path = "~/Iso/nixos.efi.img"
-size = "50G"
-[[template.vm.disk]]
-name = "init"
-path = "~/Iso/pipelight-init.img"
-size = "10M"
-
-[[template.vm]]
 name = "xs"
 vcpu = 1
 vram = 2

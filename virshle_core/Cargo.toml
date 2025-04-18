@@ -62,3 +62,4 @@ clap_complete = "4.5.33"
 tower = "0.5.2"
 macaddr = { version = "1.0.1", features = ["serde"] }
 sys-mount = { version = "3.0.1", features = ["loop"] }
+tera = "1.20.0"

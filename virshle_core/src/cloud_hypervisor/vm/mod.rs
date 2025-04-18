@@ -1,6 +1,9 @@
 pub mod from;
+
+pub mod init;
+
+pub mod crud;
 pub mod getters;
-pub mod provision;
 
 pub use crate::cloud_hypervisor::VmState;
 pub use from::VmTemplate;
@@ -11,8 +14,6 @@ use std::fmt;
 
 // Ovs
 use crate::network::Ovs;
-// Network socket
-use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 
 use convert_case::{Case, Casing};
 use uuid::Uuid;
@@ -119,93 +120,9 @@ impl Default for Vm {
 }
 
 impl Vm {
-    /*
-     * Remove a vm definition from database.
-     * And delete vm resources and process.
-     */
-    pub async fn delete(&self) -> Result<Self, VirshleError> {
-        // Remove process and artifacts.
-        self._clean_vmm().await?;
-        // Remove disks from filesystem
-        for disk in &self.disk {
-            let path = Path::new(&disk.path);
-            if path.exists() {
-                fs::remove_file(&disk.path).await?;
-            }
-        }
-        // Remove record from database
-        let db = connect_db().await?;
-        let record = database::prelude::Vm::find()
-            .filter(database::entity::vm::Column::Name.eq(&self.name))
-            .one(&db)
-            .await?;
-        if let Some(record) = record {
-            database::prelude::Vm::delete(record.into_active_model())
-                .exec(&db)
-                .await?;
-        }
-        Ok(self.to_owned())
-    }
-    /*
-     * Persists vm into the sqlite database at: `/var/lib/virshle/virshle.sqlite`
-     *
-     * ```rust
-     * vm.save_definition()?;
-     * ```
-     *
-     * You can find the definition by name and bring the vm
-     * back up with:
-     *
-     * ```rust
-     * Vm::get("vm_name")?.start()?;
-     * ```
-     */
-    async fn save_definition(&mut self) -> Result<(), VirshleError> {
-        // Save Vm to db.
-        let record = database::entity::vm::ActiveModel {
-            uuid: ActiveValue::Set(self.uuid.to_string()),
-            name: ActiveValue::Set(self.name.clone()),
-            definition: ActiveValue::Set(serde_json::to_value(&self)?),
-            ..Default::default()
-        };
-
-        let db = connect_db().await?;
-        let res: InsertResult<vm::ActiveModel> =
-            database::prelude::Vm::insert(record).exec(&db).await?;
-        self.id = Some(res.last_insert_id as u64);
-
-        Ok(())
-    }
-
     async fn connection(&self) -> Result<Connection, VirshleError> {
         let socket = self.get_socket()?;
         Connection::open(&socket).await
-    }
-
-    /*
-     * Delete the associated cloud-hypervisor running process,
-     * and remove process artifacts (socket).
-     */
-    async fn _clean_vmm(&self) -> Result<(), VirshleError> {
-        // Remove running vm hypervisor process
-        Finder::new()
-            .seed("cloud-hypervisor")
-            .seed(&self.uuid.to_string())
-            .search_no_parents()?
-            .kill()?;
-
-        // Remove existing ch api socket
-        let socket = &self.get_socket()?;
-        let path = Path::new(&socket);
-        if path.exists() {
-            fs::remove_file(&socket).await?;
-        }
-
-        // Remove existing network socket
-        // and ovs config
-        Ovs::remove_net_sockets(self);
-
-        Ok(())
     }
 
     /*
@@ -213,7 +130,7 @@ impl Vm {
      */
     async fn start_vmm(&self) -> Result<(), VirshleError> {
         // Safeguard: remove old process and artifacts
-        self._clean_vmm().await?;
+        self.delete_ch_proc()?;
 
         // If connection doesn't exist
         if self.connection().await.is_err() {
@@ -231,13 +148,6 @@ impl Vm {
         Ok(())
     }
 
-    // pub async fn create_network(&mut self) -> Result<Self, VirshleError> {
-    // }
-
-    pub async fn create(&mut self) -> Result<Self, VirshleError> {
-        self.save_definition().await?;
-        Ok(self.to_owned())
-    }
     /*
      * Shut the virtual machine down.
      */
@@ -253,7 +163,7 @@ impl Vm {
      * Start the virtual machine.
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
-        Ovs::create_net_sockets(&self)?;
+        self.create_networks()?;
 
         self.start_vmm().await?;
         self.push_config_to_vmm().await?;

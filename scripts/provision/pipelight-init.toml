@@ -1,0 +1,14 @@
+[[pipelines]]
+name = "init"
+
+[[pipelines.steps]]
+name = "set hostname"
+commands = ["echo $HOSTNAME >> /etc/hostname"]
+
+# [[pipelines.steps]]
+# name = "root authorized sshkey"
+# commands = ["cat .ssh/id_rsa_key.pub >> /root/.ssh/authorized_keys"]
+#
+# [[pipelines.steps]]
+# name = "default user(anon) authorized sshkey"
+# commands = ["cat .ssh/id_rsa_key.pub >> /home/anon/.ssh/authorized_keys"]

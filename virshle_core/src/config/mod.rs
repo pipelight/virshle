@@ -59,7 +59,8 @@ impl VirshleConfig {
         // Ensure host and vm switches configuration
         Ovs::ensure_switches().await?;
 
-        // Create virshle daemon socket
+        // TODO():
+        // Create virshle daemon socket (for API calls)
 
         Ok(())
     }

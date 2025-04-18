@@ -50,6 +50,10 @@ pub enum VirshleError {
     #[diagnostic(code(virshle::io::error))]
     UuidError(#[from] uuid::Error),
 
+    #[error(transparent)]
+    #[diagnostic(code(parse::error))]
+    TeraError(#[from] tera::Error),
+
     ////////////////////////////////
     // Process execution
     #[error(transparent)]

@@ -26,3 +26,4 @@ hyper = { version = "1.4.1", features = ["full"] }
 url = "2.5.2"
 sea-orm = { version = "1.0.1" }
 russh = "0.51.1"
+tera = "1.20.0"

@@ -140,10 +140,7 @@ impl Vm {
      * Return vm network socket path.
      */
     pub fn get_net_socket(&self, net: &VmNet) -> Result<String, VirshleError> {
-        let path = format!(
-            "{MANAGED_DIR}/vm/{}/net/{}_{}.sock",
-            self.uuid, net._type, net.name
-        );
+        let path = format!("{MANAGED_DIR}/vm/{}/net/{}.sock", self.uuid, net.name);
         Ok(path)
     }
     /*
