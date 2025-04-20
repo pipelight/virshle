@@ -30,7 +30,7 @@ pub struct DiskTemplate {
     pub readonly: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Disk {
     pub name: String,
     pub path: String,
@@ -63,7 +63,7 @@ impl<'a> From<&'a InitDisk<'a>> for Disk {
         Self {
             name: "init".to_owned(),
             path,
-            readonly: Some(true),
+            ..Default::default() // readonly: Some(true),
         }
     }
 }
@@ -98,8 +98,7 @@ impl UserData {
         [[pipelines.steps]]
         name = "set hostname"
         commands = [
-            "touch /etc/hostname",
-            "source ./init.env && echo {} >> /etc/hostname"
+            "sysctl -w kernel.hostname='{}'"
         ]
         "#,
             self.hostname
@@ -162,7 +161,7 @@ impl InitDisk<'_> {
         };
 
         let mount_dir = self.vm.get_mount_dir()?;
-        let target = format!("{mount_dir}/pipelight-init");
+        let target = format!("{mount_dir}/pipelight-init/pipelight.toml");
 
         // Remove old pipeline
         let path = Path::new(&target);
@@ -188,10 +187,15 @@ impl InitDisk<'_> {
         let target = format!("{mount_dir}/pipelight-init");
 
         // Create a fresh pipelight-init disk.
-        let commands = vec![
+        let mut commands = vec![
             format!("dd if=/dev/null of={source} bs=1M seek=10"),
             format!("mkfs.vfat -F 32 -n INIT {source}"),
         ];
+
+        #[cfg(debug_assertions)]
+        commands.push(format!("sudo chmod 766 {source}"));
+        #[cfg(not(debug_assertions))]
+        commands.push(format!("chmod o+w {source}"));
 
         for cmd in commands {
             let mut proc = Process::new();
@@ -222,6 +226,7 @@ impl InitDisk<'_> {
         let target = format!("{mount_dir}/pipelight-init");
 
         // Ensure mounting directory exists and nothing is already mounted.
+        self.umount().ok();
         fs::create_dir_all(&target)?;
 
         let mut commands = vec![];
@@ -229,7 +234,9 @@ impl InitDisk<'_> {
         // TODO(): add systemd unit mountcap.
         // Mount need root priviledge
         #[cfg(debug_assertions)]
-        commands.push(format!("sudo mount -t vfat -o loop {source} {target}"));
+        commands.push(format!(
+            "sudo mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
+        ));
         #[cfg(not(debug_assertions))]
         commands.push(format!("mount -t vfat -o loop {source} {target}"));
 
@@ -291,15 +298,14 @@ impl InitDisk<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bat::PrettyPrinter;
 
-    // #[tokio::test]
+    #[tokio::test]
     async fn test_init_disk() -> Result<()> {
         // let vm = Vm::default();
         let vms = Vm::get_all().await?;
         let mut vm = vms.first().unwrap().to_owned();
 
-        let init_disk = vm.create_init_disk()?;
+        let init_disk = InitDisk { vm: &mut vm };
         init_disk.create()?.mount()?.write_init_files()?.umount()?;
 
         // println!("{:#?}", res);
@@ -313,14 +319,8 @@ mod test {
             ..Default::default()
         };
         let res = user_data.to_pipelight_toml_config()?;
-        // println!("{}", res);
 
-        PrettyPrinter::new()
-            .input_from_bytes(res.as_bytes())
-            .language("toml")
-            .print()
-            .into_diagnostic()?;
-
+        println!("{}", res);
         Ok(())
     }
 }

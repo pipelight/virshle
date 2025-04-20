@@ -64,7 +64,7 @@ impl From<&Disk> for DiskConfig {
     fn from(e: &Disk) -> Self {
         DiskConfig {
             path: Some(PathBuf::from(&e.path)),
-            readonly: Default::default(),
+            readonly: e.readonly.unwrap_or(Default::default()),
             ..Default::default()
         }
     }
@@ -163,12 +163,19 @@ impl From<&Vm> for VmConfig {
             ),
         };
         config.payload = Some(payload);
-        config.console = Some(ConsoleConfig {
-            mode: ConsoleOutputMode::Off,
-        });
+
+        // Attach/Detach from standard output.
         config.serial = Some(ConsoleConfig {
             mode: ConsoleOutputMode::Tty,
         });
+        config.console = match e.config.attach {
+            true => Some(ConsoleConfig {
+                mode: ConsoleOutputMode::Tty,
+            }),
+            false => Some(ConsoleConfig {
+                mode: ConsoleOutputMode::Off,
+            }),
+        };
 
         // Add disks
         let mut disk: Vec<DiskConfig> = vec![];

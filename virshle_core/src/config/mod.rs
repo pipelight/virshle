@@ -1,7 +1,7 @@
 pub mod cache;
 pub mod uri;
 
-use crate::cloud_hypervisor::{Template, VmTemplate};
+use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
 use crate::network::Ovs;
 
@@ -37,10 +37,24 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
-    /*
-     * Ensure virshle directories and configuration exists.
-     */
-    pub async fn init() -> Result<(), VirshleError> {
+    pub async fn _clean_filetree() -> Result<(), VirshleError> {
+        let vms = Vm::get_all().await?;
+        let uuids: Vec<String> = vms.iter().map(|e| e.uuid.to_string()).collect();
+
+        let path = format!("{MANAGED_DIR}/vm");
+        let path = Path::new(&path);
+        for entry in path.read_dir()? {
+            if let Ok(entry) = entry {
+                if entry.path().is_dir() {
+                    if !uuids.contains(&entry.file_name().to_str().unwrap().to_owned()) {
+                        fs::remove_dir_all(entry.path())?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    pub fn ensure_filetree() -> Result<(), VirshleError> {
         // Create storage/config directories
         let directories = [
             MANAGED_DIR.to_owned(),
@@ -50,11 +64,21 @@ impl VirshleConfig {
         for directory in directories {
             let path = Path::new(&directory);
             if !path.exists() {
-                tokio::fs::create_dir_all(&directory).await?;
+                fs::create_dir_all(&directory)?;
             }
         }
+        Ok(())
+    }
+    /*
+     * Ensure virshle directories and configuration exists.
+     */
+    pub async fn init() -> Result<(), VirshleError> {
+        Self::ensure_filetree();
+
         // Ensure vm database
         database::connect_db().await?;
+        // Remove vm files that do not match any db entry
+        Self::_clean_filetree().await?;
 
         // Ensure host and vm switches configuration
         Ovs::ensure_switches().await?;

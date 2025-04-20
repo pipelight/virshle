@@ -22,13 +22,20 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
 impl Vm {
-    pub fn create_init_disk(&mut self) -> Result<InitDisk, VirshleError> {
+    /*
+     * Create and provision an init disk,
+     * and add it vm config.
+     */
+    pub fn add_init_disk(&mut self) -> Result<&Self, VirshleError> {
+        // Make disk
         let init_disk = InitDisk { vm: self };
+        init_disk.create()?.mount()?.write_init_files()?.umount()?;
 
-        init_disk.create()?.mount()?;
-        init_disk.umount()?;
+        // Add to vm config
+        let disk = Disk::from(&init_disk);
+        self.disk.push(disk);
 
-        Ok(init_disk)
+        Ok(self)
     }
 }
 
@@ -43,7 +50,7 @@ mod test {
         let mut vm = vms.first().unwrap().to_owned();
         // println!("{:#?}", &vm);
 
-        vm.create_init_disk()?;
+        vm.add_init_disk()?;
         Ok(())
     }
 }

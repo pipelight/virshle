@@ -116,7 +116,7 @@ impl Ovs {
 
         let cmd = format!(
             "sudo ovs-vsctl \
-            -- --if-exist del-port {vm_bridge_name} {name}"
+            -- --if-exists del-port {vm_bridge_name} {name}"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -255,6 +255,7 @@ impl Ovs {
             -- --may-exist add-port {main_bridge_name} patch_{main_bridge_name}_{vm_bridge_name} \
             -- set interface patch_{main_bridge_name}_{vm_bridge_name} type=patch options:peer=patch_{vm_bridge_name}_{main_bridge_name} \
             -- --may-exist add-br {vm_bridge_name} \
+            -- set bridge {vm_bridge_name} datapath_type=netdev \
             -- --may-exist add-port {vm_bridge_name} patch_{vm_bridge_name}_{main_bridge_name} \
             -- set interface patch_{vm_bridge_name}_{main_bridge_name} type=patch options:peer=patch_{main_bridge_name}_{vm_bridge_name}"
         );
@@ -264,6 +265,7 @@ impl Ovs {
             -- --may-exist add-port {main_bridge_name} patch_{main_bridge_name}_{vm_bridge_name} \
             -- set interface patch_{main_bridge_name}_{vm_bridge_name} type=patch options:peer=patch_{vm_bridge_name}_{main_bridge_name} \
             -- --may-exist add-br {vm_bridge_name} \
+            -- set bridge {vm_bridge_name} datapath_type=netdev \
             -- --may-exist add-port {vm_bridge_name} patch_{vm_bridge_name}_{main_bridge_name} \
             -- set interface patch_{vm_bridge_name}_{main_bridge_name} type=patch options:peer=patch_{main_bridge_name}_{vm_bridge_name}"
         );

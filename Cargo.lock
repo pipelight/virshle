@@ -6204,7 +6204,6 @@ dependencies = [
  "strum 0.27.1",
  "sys-mount",
  "tabled",
- "tera",
  "thiserror 2.0.12",
  "tokio 1.44.1",
  "toml",

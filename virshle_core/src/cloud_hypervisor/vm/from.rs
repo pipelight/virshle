@@ -60,12 +60,16 @@ impl From<&VmTemplate> for Vm {
             net: e.net.clone(),
             ..Default::default()
         };
-        create_resources(e, &mut vm).unwrap();
+        ensure_directories(e, &mut vm).unwrap();
+        create_disks(e, &mut vm).unwrap();
         vm
     }
 }
 
-pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
+/*
+* Ensure vm storage directories exists on host.
+*/
+pub fn ensure_directories(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     let directories = [
         format!("{MANAGED_DIR}/vm/{}", vm.uuid),
         format!("{MANAGED_DIR}/vm/{}/disk", vm.uuid),
@@ -77,6 +81,14 @@ pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virshl
             fs::create_dir_all(&directory)?;
         }
     }
+    Ok(())
+}
+
+/*
+* Copy template disks (if some)
+* to vm storage directory and set file permissions.
+*/
+pub fn create_disks(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     if let Some(disks) = &template.disk {
         for disk in disks {
             let source = shellexpand::tilde(&disk.path).to_string();
@@ -89,7 +101,7 @@ pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virshl
             // Set permissions
             let metadata = file.metadata()?;
             let mut perms = metadata.permissions();
-            perms.set_mode(0o755);
+            perms.set_mode(0o766);
             fs::set_permissions(&target, perms)?;
 
             // Push disk path to vm def
@@ -102,6 +114,7 @@ pub fn create_resources(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virshl
     }
     Ok(())
 }
+
 impl VmTemplate {
     pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(file_path)?;

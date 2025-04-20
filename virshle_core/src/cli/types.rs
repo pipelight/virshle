@@ -55,7 +55,7 @@ pub enum Crud {
     Rm(Resource),
     /// Starts/Restart a virtual machine.
     #[command(arg_required_else_help = true)]
-    Start(Resource),
+    Start(StartArgs),
     /// Stops a virtual machine.
     #[command(arg_required_else_help = true)]
     Stop(Resource),
@@ -79,6 +79,22 @@ pub struct Resource {
     #[arg(long, conflicts_with = "name")]
     pub id: Option<u64>,
 }
+
+#[derive(Debug, Args, Clone, Eq, PartialEq)]
+pub struct StartArgs {
+    #[arg(long, conflicts_with = "id")]
+    pub name: Option<String>,
+    #[arg(long, conflicts_with = "name")]
+    pub id: Option<u64>,
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub attach: bool,
+}
+
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Display {
     Ls,

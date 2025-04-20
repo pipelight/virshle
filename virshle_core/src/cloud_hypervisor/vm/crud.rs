@@ -1,4 +1,5 @@
 use super::{Disk, Vm, VmNet};
+use crate::config::MANAGED_DIR;
 
 // Process
 use pipelight_exec::{Finder, Process};
@@ -24,13 +25,13 @@ use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
     /*
-     * Add vm config to database and create resources.
-     * (but do not start ch process)
+     * Add vm config to database.
+     * Resources are not created there but rather on vm start.
      */
     pub async fn create(&mut self) -> Result<Self, VirshleError> {
         // Persist vm config into database
         self.create_db_record().await?;
-        // Then create resources
+
         Ok(self.to_owned())
     }
 
@@ -74,7 +75,6 @@ impl Vm {
         }
         Ok(net)
     }
-
     /*
      * Remove a vm definition from database.
      * And delete vm resources and process.
@@ -158,6 +158,18 @@ impl Vm {
             fs::remove_file(&socket)?;
         }
 
+        Ok(())
+    }
+    /*
+     * Remove vm working directory and dependencies filetree.
+     * Usually at : `/var/lib/virshle/vm/{vm_uuid}`.
+     */
+    pub fn delete_filetree(&self) -> Result<(), VirshleError> {
+        let directory = self.get_dir()?;
+        let path = Path::new(&directory);
+        if path.exists() {
+            fs::remove_dir_all(&directory)?;
+        }
         Ok(())
     }
 }

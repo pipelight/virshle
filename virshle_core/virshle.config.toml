@@ -27,7 +27,7 @@ vcpu = 2
 vram = 4
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/pipelight-init.img"
+path = "~/Iso/nixos.efi.img"
 size = "80G"
 
 [[template.vm]]

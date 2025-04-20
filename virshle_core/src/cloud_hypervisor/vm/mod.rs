@@ -1,64 +1,48 @@
+pub mod crud;
 pub mod from;
-
+pub mod getters;
 pub mod init;
 
-pub mod crud;
-pub mod getters;
-
-pub use crate::cloud_hypervisor::VmState;
+// Reexports
 pub use from::VmTemplate;
 
 use super::vmm_types::VmConfig;
 
 use std::fmt;
 
-// Ovs
-use crate::network::Ovs;
-
-use convert_case::{Case, Casing};
-use uuid::Uuid;
-
-use hyper::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-use pipelight_exec::{Finder, Process};
+use pipelight_exec::Process;
 use std::io::Write;
-use tabled::{Table, Tabled};
+use std::process::{Command, Stdio};
 
 use super::disk::Disk;
 use super::rand::random_name;
+use uuid::Uuid;
 
 // Http
 use crate::http_cli::Connection;
 
 //Database
-use crate::database;
-use crate::database::connect_db;
 use crate::database::entity::{prelude::*, *};
-use sea_orm::{
-    prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult, IntoActiveModel,
-};
-
-use crate::config::MANAGED_DIR;
-use crate::display::vm::*;
 
 // Error Handling
-use log::info;
 use miette::{IntoDiagnostic, Result};
-use virshle_error::{CastError, LibError, VirshleError};
-
-use serde_json::{from_slice, Value};
-use tokio::fs;
+use virshle_error::{LibError, VirshleError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct VirshleVmConfig {
-    autostart: bool,
+    pub autostart: bool,
+    pub attach: bool,
 }
 
 impl Default for VirshleVmConfig {
     fn default() -> Self {
-        Self { autostart: false }
+        Self {
+            autostart: false,
+            attach: false,
+        }
     }
 }
 
@@ -101,7 +85,9 @@ pub struct Vm {
     pub net: Option<Vec<VmNet>>,
     pub uuid: Uuid,
     pub disk: Vec<Disk>,
-    pub config: Option<VirshleVmConfig>,
+
+    #[serde(skip)]
+    pub config: VirshleVmConfig,
 }
 impl Default for Vm {
     fn default() -> Self {
@@ -132,12 +118,18 @@ impl Vm {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
 
-        // If connection doesn't exist
+        // If can't establish connection to socket,
+        // Then start new process.
         if self.connection().await.is_err() {
-            let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
-            let mut proc = Process::new();
-            proc.stdin(&cmd).background().detach().run()?;
-
+            if self.config.attach {
+                let proc = Command::new("cloud-hypervisor")
+                    .args(["--api-socket", &self.get_socket()?])
+                    .spawn()?;
+            } else {
+                let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
+                let mut proc = Process::new();
+                proc.stdin(&cmd).background().detach().run()?;
+            }
             // Wait until socket is created
             let socket = &self.get_socket()?;
             let path = Path::new(socket);
@@ -159,13 +151,24 @@ impl Vm {
         let response = conn.put::<()>(endpoint, None).await?;
         Ok(())
     }
+
+    pub fn attach(&mut self) -> Result<&mut Self, VirshleError> {
+        self.config.attach = true;
+        Ok(self)
+    }
+
     /*
-     * Start the virtual machine.
+     * Create needed resources (network)
+     * And start the virtual machine and .
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
         self.create_networks()?;
 
         self.start_vmm().await?;
+
+        // Provision with user defined data
+        self.add_init_disk()?;
+
         self.push_config_to_vmm().await?;
 
         let socket = &self.get_socket()?;

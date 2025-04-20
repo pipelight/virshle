@@ -88,10 +88,18 @@ impl Cli {
                 Crud::Start(args) => {
                     if let Some(name) = args.name {
                         let mut vm = Vm::get_by_name(&name).await?;
-                        vm.start().await?;
+                        if args.attach {
+                            vm.attach()?.start().await?;
+                        } else {
+                            vm.start().await?;
+                        }
                     } else if let Some(id) = args.id {
                         let mut vm = Vm::get_by_id(&id).await?;
-                        vm.start().await?;
+                        if args.attach {
+                            vm.attach()?.start().await?;
+                        } else {
+                            vm.start().await?;
+                        }
                     }
                 }
                 Crud::Stop(args) => {
