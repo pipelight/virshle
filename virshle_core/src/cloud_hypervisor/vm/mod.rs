@@ -32,14 +32,24 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct VirshleVmConfig {
+pub struct Account {
+    uuid: String,
+    name: String,
+}
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct VmConfigPlus {
+    /// The account the vm is linked to.
+    pub owner: Option<Account>,
+
+    // Unused
     pub autostart: bool,
     pub attach: bool,
 }
 
-impl Default for VirshleVmConfig {
+impl Default for VmConfigPlus {
     fn default() -> Self {
         Self {
+            owner: Default::default(),
             autostart: false,
             attach: false,
         }
@@ -86,9 +96,11 @@ pub struct Vm {
     pub uuid: Uuid,
     pub disk: Vec<Disk>,
 
-    #[serde(skip)]
-    pub config: VirshleVmConfig,
+    // Very optional vm parameters.
+    /// Room for additional parameters (unused for now).
+    pub config: Option<VmConfigPlus>,
 }
+
 impl Default for Vm {
     fn default() -> Self {
         Self {
@@ -100,6 +112,7 @@ impl Default for Vm {
             net: None,
             uuid: Uuid::new_v4(),
             disk: vec![],
+
             config: Default::default(),
         }
     }
@@ -121,10 +134,12 @@ impl Vm {
         // If can't establish connection to socket,
         // Then start new process.
         if self.connection().await.is_err() {
-            if self.config.attach {
-                let proc = Command::new("cloud-hypervisor")
-                    .args(["--api-socket", &self.get_socket()?])
-                    .spawn()?;
+            if let Some(config) = &self.config {
+                if config.attach {
+                    let proc = Command::new("cloud-hypervisor")
+                        .args(["--api-socket", &self.get_socket()?])
+                        .spawn()?;
+                }
             } else {
                 let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
                 let mut proc = Process::new();
@@ -153,10 +168,16 @@ impl Vm {
     }
 
     pub fn attach(&mut self) -> Result<&mut Self, VirshleError> {
-        self.config.attach = true;
+        match &mut self.config {
+            Some(v) => v.attach = true,
+            None => {
+                let mut config = VmConfigPlus::default();
+                config.attach = true;
+                self.config = Some(config);
+            }
+        }
         Ok(self)
     }
-
     /*
      * Create needed resources (network)
      * And start the virtual machine and .

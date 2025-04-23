@@ -23,7 +23,7 @@ const create_env = pipeline("build_image", () => [
   step("build crocuda nixos standard images", () => [
     // "nix flake update ~/Fast/nixos/general",
     "nix build \
-      ~/Fast/nixos/general/#vm.default \
+      ~/Fast/nixos/general/#vm.iso \
       --override-input crocuda \
       ~/Fast/nixos/crocuda.nixos",
     "cp ~/Fast/nixos/general/result/nixos.img \

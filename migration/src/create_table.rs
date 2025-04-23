@@ -8,7 +8,7 @@
 //!
 
 use miette::{IntoDiagnostic, Result};
-use sea_orm_migration::prelude::*;
+use sea_orm_migration::{prelude::*, schema::*};
 use sea_query::Index;
 
 #[derive(DeriveMigrationName)]
@@ -23,35 +23,10 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Vm::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Vm::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Vm::Uuid).string().not_null().unique_key())
-                    .col(ColumnDef::new(Vm::Name).string().not_null().unique_key())
-                    .col(ColumnDef::new(Vm::Definition).json().not_null())
-                    .to_owned(),
-            )
-            .await?;
-        // Networks list
-        manager
-            .create_table(
-                Table::create()
-                    .table(Net::Table)
-                    .if_not_exists()
-                    .col(
-                        ColumnDef::new(Net::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
-                    .col(ColumnDef::new(Net::Uuid).string().not_null().unique_key())
-                    .col(ColumnDef::new(Net::Name).string().not_null().unique_key())
-                    .col(ColumnDef::new(Net::Definition).json().not_null())
+                    .col(pk_auto(Vm::Id))
+                    .col(string_uniq(Vm::Uuid))
+                    .col(string_uniq(Vm::Name))
+                    .col(json(Vm::Definition))
                     .to_owned(),
             )
             .await?;
@@ -61,9 +36,7 @@ impl MigrationTrait for Migration {
         manager
             .drop_table(Table::drop().table(Vm::Table).to_owned())
             .await?;
-        manager
-            .drop_table(Table::drop().table(Net::Table).to_owned())
-            .await?;
+
         Ok(())
     }
 }
@@ -78,12 +51,20 @@ pub enum Vm {
 }
 
 #[derive(DeriveIden, Debug)]
-pub enum Net {
+pub enum Account {
     Table,
     Id,
     Uuid,
     Name,
     Definition,
+}
+
+#[derive(DeriveIden, Debug)]
+pub enum AccountVm {
+    Table,
+    Id,
+    AccountId,
+    VmId,
 }
 
 #[cfg(test)]

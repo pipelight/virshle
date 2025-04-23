@@ -23,7 +23,8 @@ doc = false
 
 [dependencies]
 # cli = { path = "../cli" }
-virshle_core = { path = "../virshle_core/" }
+virshle_core = { path = "../virshle_core" }
+virshle_error = { path = "../virshle_error" }
 miette = { version = "7.2.0", features = ["fancy"] }
 log = "0.4.22"
 serde = { version = "1.0.210", features = ["derive"] }

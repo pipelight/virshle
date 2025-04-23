@@ -6163,6 +6163,7 @@ dependencies = [
  "serde",
  "tokio 1.44.1",
  "virshle_core",
+ "virshle_error",
 ]
 
 [[package]]
@@ -6179,6 +6180,7 @@ dependencies = [
  "convert_case 0.8.0",
  "crossterm",
  "env_logger",
+ "futures",
  "http-body-util",
  "human_bytes",
  "hyper 1.6.0",

@@ -192,16 +192,28 @@ impl Vm {
         let data: VmInfoResponse = serde_json::from_str(&data)?;
         Ok(())
     }
+
+    pub fn is_attach(&self) -> Result<bool, VirshleError> {
+        if let Some(config) = &self.config {
+            return Ok(config.attach);
+        } else {
+            return Ok(false);
+        };
+    }
+
     /*
      * Should be renamed to get_info();
      *
      */
+    pub fn get_state_sync(&self) -> Result<VmState, VirshleError> {
+        futures::executor::block_on(self.get_state())
+    }
+
     pub async fn get_state(&self) -> Result<VmState, VirshleError> {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
         let conn = Connection::open(&socket).await;
-
         let state = match conn {
             Ok(v) => {
                 let response = v.get(endpoint).await?;

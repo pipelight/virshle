@@ -53,7 +53,7 @@ impl From<&DiskTemplate> for Disk {
 */
 #[derive(Debug, Eq, PartialEq)]
 pub struct InitDisk<'a> {
-    pub vm: &'a mut Vm,
+    pub vm: &'a Vm,
 }
 
 impl<'a> From<&'a InitDisk<'a>> for Disk {
@@ -93,15 +93,15 @@ impl UserData {
         .to_owned();
 
         // Add hostname
+        let hostname = "vm-".to_owned() + &self.hostname;
         p_config += &format!(
             r#"
         [[pipelines.steps]]
         name = "set hostname"
         commands = [
-            "sysctl -w kernel.hostname='{}'"
+            "sysctl -w kernel.hostname='{hostname}'"
         ]
-        "#,
-            self.hostname
+        "#
         );
 
         // Add public ipv6

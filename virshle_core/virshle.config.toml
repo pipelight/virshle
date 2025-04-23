@@ -1,14 +1,20 @@
-[[connect]]
-name = "default"
-url = "file:///var/lib/virshle/virshle.sock"
+#########################
+# Instance (This host credentials)
 
-[[connect]]
-name = "default-ssh"
-url = "ssh://anon@localhost:22/var/lib/virshle/virshle.sock"
+name = "deku"
+uuid = "0a87a428-8753-40bb-93a1-aabd19e6c1c4"
 
-[template]
-# Vms
-# Standard sizes with decents presets.
+#########################
+# Nodes
+
+[[node]]
+name = "rpi4b"
+url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
+
+
+#########################
+# Templates: 
+# vm standard sizes with decents presets.
 [[template.vm]]
 name = "xs"
 vcpu = 1
@@ -39,8 +45,7 @@ name = "os"
 path = "~/Iso/nixos.efi.img"
 size = "100G"
 
-#########################
-# Big vms
+# Big vms (for beta release)
 
 # [[template.vm]]
 # name = "l"
@@ -48,7 +53,7 @@ size = "100G"
 # vram = 10
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Fast/nixos/vm/result/nixos.img"
+# path = "~/Iso/nixos.efi.img"
 # size = "150G"
 #
 # [[template.vm]]
@@ -57,12 +62,5 @@ size = "100G"
 # vram = 16
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Fast/nixos/vm/result/nixos.img"
-# size = "180G"#
-
-##########################
-# Internal network for fast vm communication
-
-# [[template.net]]
-# name = "default"
-# subnet = "192.168.200.1/24" #CIDR notation
+# path = "~/Iso/nixos.efi.img"
+# size = "180G"

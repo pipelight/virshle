@@ -4,7 +4,7 @@ Features:
 
 - Light virtual machines.
 - Write resource definitions in **TOML**.
-- Use **predefined [templates](https://github.com/pipelight/virshle/templates)**
+- Use **predefined [templates](https://github.com/pipelight/virshle/virshle_core/virshle.config.toml)**
   to twist numerous clones of the same machine.
 
 > [!IMPORTANT]  

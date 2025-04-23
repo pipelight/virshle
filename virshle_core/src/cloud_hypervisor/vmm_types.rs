@@ -168,7 +168,8 @@ impl From<&Vm> for VmConfig {
         config.serial = Some(ConsoleConfig {
             mode: ConsoleOutputMode::Tty,
         });
-        config.console = match e.config.attach {
+
+        config.console = match e.is_attach().unwrap() {
             true => Some(ConsoleConfig {
                 mode: ConsoleOutputMode::Tty,
             }),
@@ -222,7 +223,9 @@ mod test {
         size = "50G"
 
         [[net]]
-        [net.vhost]
+        name = "main"
+        [net.type.vhost]
+
         "#;
 
         let vm_template = VmTemplate::from_toml(&toml)?;
@@ -237,7 +240,7 @@ mod test {
         Ok(())
     }
 
-    // #[test]
+    #[test]
     fn make_vm_from_definition_with_ids() -> Result<()> {
         let toml = r#"
         name = "test_xs"
@@ -251,7 +254,8 @@ mod test {
         size = "50G"
 
         [[net]]
-        [net.vhost]
+        name = "main"
+        [net.type.vhost]
         "#;
 
         let vm = Vm::from_toml(&toml)?;

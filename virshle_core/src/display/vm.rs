@@ -30,7 +30,7 @@ pub struct VmTable {
     pub uuid: Uuid,
 }
 impl VmTable {
-    async fn from(vm: &Vm) -> Result<Self, VirshleError> {
+    async fn from(vm: Vm) -> Result<Self, VirshleError> {
         let table = VmTable {
             id: vm.id,
             name: vm.name.to_owned(),
@@ -81,7 +81,7 @@ impl Vm {
     pub async fn display(items: Vec<Vm>) -> Result<()> {
         let mut table: Vec<VmTable> = vec![];
         for e in items {
-            table.push(VmTable::from(&e).await?);
+            table.push(VmTable::from(e).await?);
         }
         VmTable::display(table).await?;
         Ok(())

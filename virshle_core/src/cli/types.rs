@@ -36,15 +36,6 @@ pub enum Commands {
     Vm(Crud),
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq)]
-pub struct File {
-    #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
-        conflicts_with = "template",
-    )]
-    pub file: Option<String>,
-    #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
-    pub template: Option<String>,
-}
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Crud {
     /// Creates a virtual machine.
@@ -72,6 +63,17 @@ pub enum Crud {
     #[command(hide = true)]
     Update(File),
 }
+
+#[derive(Debug, Args, Clone, Eq, PartialEq)]
+pub struct File {
+    #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
+        conflicts_with = "template",
+    )]
+    pub file: Option<String>,
+    #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
+    pub template: Option<String>,
+}
+
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct Resource {
     #[arg(long, conflicts_with = "id")]

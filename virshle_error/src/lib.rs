@@ -74,10 +74,11 @@ pub enum VirshleError {
     #[diagnostic(code(hyper::error))]
     HyprHttpError(#[from] hyper::http::Error),
 
+    ////////////////////////////////
     // Ssh
     #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    SshError(#[from] russh::Error),
+    #[diagnostic(code(russh::error))]
+    RushError(#[from] russh::Error),
 
     #[error(transparent)]
     #[diagnostic(code(ssh::error))]

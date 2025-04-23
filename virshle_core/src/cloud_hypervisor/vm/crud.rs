@@ -4,6 +4,10 @@ use crate::config::MANAGED_DIR;
 // Process
 use pipelight_exec::{Finder, Process};
 
+// Filesystem
+use std::fs;
+use std::path::Path;
+
 //Database
 use crate::database;
 use crate::database::connect_db;
@@ -11,9 +15,6 @@ use crate::database::entity::{prelude::*, *};
 use sea_orm::{
     prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult, IntoActiveModel,
 };
-// Filesystem
-use std::fs;
-use std::path::Path;
 
 // Ovs
 use crate::network::Ovs;
@@ -140,7 +141,6 @@ impl Vm {
         }
         Ok(net)
     }
-
     /*
      * Remove running vm hypervisor process if any
      * and assiociated socket.

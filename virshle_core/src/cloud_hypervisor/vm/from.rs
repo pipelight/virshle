@@ -1,4 +1,4 @@
-use super::{VirshleVmConfig, Vm, VmNet};
+use super::{Vm, VmConfigPlus, VmNet};
 use crate::cloud_hypervisor::{Disk, DiskTemplate};
 
 // Pretty print
@@ -50,7 +50,7 @@ pub struct VmTemplate {
     pub uuid: Option<Uuid>,
     pub disk: Option<Vec<DiskTemplate>>,
     pub net: Option<Vec<VmNet>>,
-    pub config: Option<VirshleVmConfig>,
+    pub config: Option<VmConfigPlus>,
 }
 impl From<&VmTemplate> for Vm {
     fn from(e: &VmTemplate) -> Self {
@@ -132,6 +132,7 @@ impl VmTemplate {
         Ok(item)
     }
 }
+
 impl Vm {
     /*
      * Create a vm from a file containing a Toml definition.
