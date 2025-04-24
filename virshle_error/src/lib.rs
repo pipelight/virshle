@@ -20,6 +20,10 @@ pub enum VirshleError {
     // Type convertion
     #[error(transparent)]
     #[diagnostic(code(parse::error))]
+    ParseIntError(#[from] std::num::ParseIntError),
+
+    #[error(transparent)]
+    #[diagnostic(code(parse::error))]
     ParseError(#[from] url::ParseError),
 
     #[error(transparent)]

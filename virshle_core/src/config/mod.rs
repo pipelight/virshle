@@ -1,12 +1,15 @@
 pub mod cache;
 pub mod load;
-pub mod uri;
+pub mod node;
+
+pub use node::{Node, SshUri, Uri};
 
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
 use crate::network::Ovs;
 
 // Global vars
+use crate::http_api::Server;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
@@ -26,32 +29,29 @@ pub const CONFIG_DIR: &'static str = "/etc/virshle";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VirshleConfig {
-    pub connect: Option<Vec<Node>>,
+    node: Option<Vec<Node>>,
     pub template: Option<Template>,
 }
 impl Default for VirshleConfig {
     fn default() -> Self {
         Self {
-            connect: Some(vec![Node::default()]),
+            node: Some(vec![Node::default()]),
             template: None,
         }
     }
 }
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Node {
-    pub name: String,
-    pub url: String,
-}
-impl Default for Node {
-    fn default() -> Self {
-        let url = "file://".to_owned() + MANAGED_DIR + "/virshle.sock";
-        Self {
-            name: "default".to_owned(),
-            url,
-        }
-    }
-}
 impl VirshleConfig {
+    /*
+     * Returns nodes defined in configuration,
+     * plus the default local node.
+     */
+    pub fn get_nodes(&self) -> Result<Vec<Node>, VirshleError> {
+        let mut nodes: Vec<Node> = vec![Node::default()];
+        if let Some(node) = &self.node {
+            nodes.extend(node.to_owned());
+        }
+        Ok(nodes)
+    }
     pub async fn _clean_filetree() -> Result<(), VirshleError> {
         let vms = Vm::get_all().await?;
         let uuids: Vec<String> = vms.iter().map(|e| e.uuid.to_string()).collect();

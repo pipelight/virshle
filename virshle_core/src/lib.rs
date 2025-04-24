@@ -5,7 +5,7 @@
 
 // Virshle daemon http Rest API
 pub mod http_api;
-pub use http_api::Api;
+pub use http_api::{Client, Server};
 
 // Toml configuration structs.
 pub mod config;

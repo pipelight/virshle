@@ -17,7 +17,6 @@ use tokio::task::JoinHandle;
 
 // Structs
 use crate::cloud_hypervisor::Vm;
-use crate::config::MANAGED_DIR;
 
 // Error Handling
 use log::{debug, info};

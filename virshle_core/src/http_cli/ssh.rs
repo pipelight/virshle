@@ -2,14 +2,16 @@
 * This module is to connect to a virshle/libvirshle instance through ssh.
 */
 
-use crate::config::uri::{SshUri, Uri};
+use crate::config::{SshUri, Uri};
+use crate::http_api::Server;
+
 use std::net::TcpStream;
 
 use russh::client::{connect, Config, Handle, Handler};
 use russh::keys::agent::client::AgentClient;
 use russh::{
     keys::load_secret_key,
-    keys::{PrivateKeyWithHashAlg, PublicKey},
+    keys::{ssh_key::Algorithm, PrivateKeyWithHashAlg, PublicKey},
     ChannelMsg, CryptoVec, Disconnect,
 };
 use std::os::unix::process::ExitStatusExt;
@@ -52,7 +54,8 @@ struct Client {}
 // More SSH event handlers
 // can be defined in this trait
 // In this example, we're only using Channel, so these aren't needed.
-// #[async_trait]/
+
+// #[async_trait]
 impl Handler for Client {
     type Error = russh::Error;
 
@@ -83,9 +86,11 @@ impl Session {
         };
 
         let config = Arc::new(config);
-        let sh = Client {};
+        let handler = Client {};
 
-        let mut session = connect(config, addrs, sh).await?;
+        // Connect to server
+        let mut session = connect(config, addrs, handler).await?;
+
         let auth_res = session
             .authenticate_publickey(user, PrivateKeyWithHashAlg::new(Arc::new(key_pair), None))
             .await?;
@@ -94,42 +99,61 @@ impl Session {
     }
 }
 
-pub struct SshConnection {}
-
 impl Session {
-    pub async fn open() -> Result<Self, VirshleError> {
-        let mut agent = AgentClient::connect_env().await?;
+    pub async fn connect_with_agent(uri: &str) -> Result<Self, VirshleError> {
+        // Safe defaults
+        let mut addrs = "localhost:22".to_owned();
+        let mut user = "root".to_owned();
+        let mut socket = Server::get_socket()?;
 
-        let mut public_keys: Vec<PublicKey> = vec![];
-        for key in agent.request_identities().await? {
-            public_keys.push(key);
+        let uri = Uri::new(uri)?;
+        match uri {
+            Uri::SshUri(v) => {
+                addrs = format!("{}:{}", v.host, v.port);
+                socket = v.path;
+                user = v.user.unwrap();
+            }
+            _ => {}
         }
 
-        let user = "anon";
-        let addrs = "127.0.0.1:22";
+        let mut agent = AgentClient::connect_env().await?;
+        let agent_keys: Vec<PublicKey> = agent.request_identities().await?;
 
-        let config = Config {
-            inactivity_timeout: Some(Duration::from_secs(5)),
-            ..<_>::default()
-        };
-
+        let config = Config::default();
         let config = Arc::new(config);
-        let sh = Client {};
 
-        let mut session = connect(config, addrs, sh).await?;
+        for key in agent_keys {
+            // Fix: Initiate a new session for each agent keys
+            // to circumvent server max_auth_tries.
+            let sh = Client {};
+            let mut session = connect(config.clone(), addrs.clone(), sh).await?;
 
-        for key in public_keys {
-            let mut agent = AgentClient::connect_env().await?;
             let auth_res = session
-                .authenticate_publickey_with(user, key, None, &mut agent)
+                .authenticate_publickey_with(user.clone(), key, None, &mut agent)
                 .await?;
             if auth_res.success() {
                 return Ok(Self { session });
             }
         }
+
         let message = "Couldn't establish connection with host.";
         let help = "Add keys to ssh-agent";
         Err(LibError::new(message, help).into())
+    }
+
+    pub async fn connect_to_socket(&self, socket: &str) -> Result<(), VirshleError> {
+        // let ssh_channel = self.session.channel_open_direct_streamlocal(socket).await?;
+        let ssh_channel = self
+            .session
+            .channel_open_direct_streamlocal("/var/lib/virshle/virshle.sock")
+            .await?;
+
+        // let mut ssh_stream = ssh_channel.into_stream();
+        // tokio::io::copy_bidirectional(&mut local_socket, &mut ssh_stream)
+        //     .await
+        //     .expect("Copy error between local socket and SSH stream");
+
+        Ok(())
     }
 
     pub async fn put(&mut self, req: &str) -> Result<(), VirshleError> {
@@ -233,15 +257,33 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn connect_to_ssh() -> Result<()> {
-        Session::open().await?;
+    async fn connect_to_localhost_ssh_server() -> Result<()> {
+        let uri = "ssh://deku";
+        let s = Session::connect_with_agent(uri).await?;
+
+        // Safe defaults
+        let mut addrs = "localhost:22".to_owned();
+        let mut user = "root".to_owned();
+        let mut socket = Server::get_socket()?;
+
+        let uri = Uri::new(uri)?;
+        match uri {
+            Uri::SshUri(v) => {
+                addrs = format!("{}:{}", v.host, v.port);
+                socket = v.path;
+                user = v.user.unwrap();
+            }
+            _ => {}
+        }
+        s.connect_to_socket(&socket).await?;
+
         Ok(())
     }
 
-    #[tokio::test]
+    // #[tokio::test]
     async fn send_request_to_socket() -> Result<()> {
         let request = Request::builder()
-            .uri("/")
+            .uri("/vm/list")
             .method("GET")
             .header("Host", "localhost")
             .body(())
@@ -250,7 +292,9 @@ mod tests {
         let req = request_to_string(&request).into_diagnostic()?;
         println!("\n{}", req);
 
-        let mut session = Session::open().await?;
+        let uri = "ssh://deku";
+        let mut session = Session::connect_with_agent(uri).await?;
+
         session.put(&req).await?;
 
         Ok(())

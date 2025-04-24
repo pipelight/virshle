@@ -4,7 +4,7 @@ pub use types::*;
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::VirshleConfig,
-    Api,
+    Server,
 };
 use clap::Parser;
 use std::fs;
@@ -40,12 +40,6 @@ impl Cli {
             Commands::Up(args) => {}
             Commands::Down(args) => {}
             /*
-             * Operations on virtual networks
-             */
-            Commands::Net(args) => match args {
-                _ => {}
-            },
-            /*
              * Remove unused managed files
              * resources::clean()?;
              */
@@ -55,7 +49,7 @@ impl Cli {
              * Run the background daemon and wait for http requests.
              */
             Commands::Daemon => {
-                Api::run().await?;
+                Server::run().await?;
             }
             /*
              * Operations on virtual machines

@@ -121,13 +121,11 @@ mod tests {
     #[test]
     fn get_config_from_toml() -> Result<()> {
         let toml = r#"
-            [[connect]]
-            name = "default"
-            url = "file:///var/lib/virshle/virshle.sock"
 
-            [[connect]]
-            name = "default-ssh"
-            url = "ssh://anon@localhost:22/var/lib/virshle/virshle.sock"
+            [node]
+            [[node]]
+            name = "self"
+            url = "anon@localhost:22"
 
             [template]
             # Vms
