@@ -30,7 +30,7 @@ pub struct UnixConnection {
     connection: JoinHandle<Result<(), hyper::Error>>,
 }
 
-impl Connection for UnixConnection {
+impl Connection<UnixConnection> for UnixConnection {
     async fn open(socket: &str) -> Result<Self, VirshleError> {
         let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(socket)).await {
             Err(e) => {
@@ -85,6 +85,7 @@ impl Connection for UnixConnection {
             .method("POST")
             .header("Host", "localhost")
             .header("Content-Type", "application/json");
+
         let request = match body {
             None => request.body(Full::new(Bytes::new())),
             Some(value) => request.body(Full::new(Bytes::from(
@@ -114,6 +115,7 @@ impl Connection for UnixConnection {
 
         self.execute(url, request?).await
     }
+
     async fn execute(
         mut self,
         url: &str,

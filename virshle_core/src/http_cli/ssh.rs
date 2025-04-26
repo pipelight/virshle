@@ -19,12 +19,12 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt
 use tokio::net::ToSocketAddrs;
 use tokio::net::UnixStream;
 
-use russh::client::{connect, Config, Handle, Handler};
+use russh::client::{connect, Config, Handle, Handler, Msg};
 use russh::keys::agent::client::AgentClient;
 use russh::{
     keys::load_secret_key,
     keys::{ssh_key::Algorithm, PrivateKeyWithHashAlg, PublicKey},
-    ChannelMsg, CryptoVec, Disconnect,
+    ChannelMsg, ChannelStream, CryptoVec, Disconnect,
 };
 use std::net::TcpStream;
 use std::sync::Arc;
@@ -126,7 +126,7 @@ impl SshConnection {
         match channel {
             Ok(channel) => {
                 info!("Connected to socket at {:?}", self.uri);
-                // let stream : TokioIo<UnixStream> =  tokio::io::
+                let stream: TokioIo<ChannelStream<Msg>> = TokioIo::new(channel.into_stream());
             }
             Err(e) => {
                 let message = format!("Couldn't connect to virshle socket at:\n{:?}", socket);
@@ -258,7 +258,7 @@ mod tests {
     async fn connect_to_localhost_ssh_server() -> Result<()> {
         let uri = "ssh://deku";
         let session = SshConnection::connect_with_agent(uri).await?;
-        session.disconnect().await?;
+        session.close().await?;
         Ok(())
     }
     #[tokio::test]
@@ -266,7 +266,7 @@ mod tests {
         let uri = "ssh://deku";
         let session = SshConnection::connect_with_agent(uri).await?;
         session.connect_to_socket().await?;
-        session.disconnect().await?;
+        session.close().await?;
         Ok(())
     }
 

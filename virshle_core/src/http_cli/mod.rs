@@ -21,10 +21,31 @@ pub trait Connection<S>
 where
     S: Sized,
 {
-    fn execute() -> Result<(), VirshleError>;
-    fn get() -> Result<(), VirshleError>;
-    fn post() -> Result<(), VirshleError>;
-    fn put() -> Result<(), VirshleError>;
-    fn open() -> Result<S, VirshleError>;
+    /*
+     * Open connection to
+     * - unix socket
+     * - or ssh then unix socket
+     */
+    fn open() -> Result<Self, VirshleError>;
+    /*
+     * Close connection
+     */
     fn close() -> Result<(), VirshleError>;
+    /*
+     * Send an http GET request to socket.
+     */
+    fn get() -> Result<(), VirshleError>;
+    /*
+     * Send an http POST request to socket.
+     */
+    fn post() -> Result<(), VirshleError>;
+    /*
+     * Send an http PUT request to socket.
+     */
+    fn put() -> Result<(), VirshleError>;
+    /*
+     * Send the http request.
+     * Internally used by get(), post() and put() methods.
+     */
+    fn execute(&mut self) -> Result<(), VirshleError>;
 }
