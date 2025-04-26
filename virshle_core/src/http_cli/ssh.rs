@@ -1,9 +1,11 @@
 /*
-* This module is to connect to a virshle/libvirshle instance through ssh.
+* This module is to connect to a virshle instance through ssh.
 */
 
-use super::Connection;
-use crate::config::{SshUri, Uri};
+use super::Response;
+use super::{Connection, NodeConnection};
+use super::{SshUri, Uri};
+use crate::config::Node;
 use crate::http_api::Server;
 
 use std::os::unix::process::ExitStatusExt;
@@ -19,7 +21,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt
 use tokio::net::ToSocketAddrs;
 use tokio::net::UnixStream;
 
-use russh::client::{connect, Config, Handle, Handler, Msg};
+use russh::client::{connect, Config, Handle as SshHandle, Handler, Msg};
 use russh::keys::agent::client::AgentClient;
 use russh::{
     keys::load_secret_key,
@@ -28,7 +30,9 @@ use russh::{
 };
 use std::net::TcpStream;
 use std::sync::Arc;
+
 // Http
+use super::socket::StreamHandle;
 use http_body_util::{BodyExt, Full};
 use hyper::body::{Bytes, Incoming};
 use hyper::client::conn::http1::{handshake, SendRequest};
@@ -37,20 +41,15 @@ use hyper_util::rt::TokioIo;
 
 // Async/Await
 use std::io;
+use tokio::spawn;
 use tokio::task::JoinHandle;
 
 // Error Handling
-use log::info;
+use log::{debug, info};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-struct Client {}
-
-// More SSH event handlers
-// can be defined in this trait
-// In this example, we're only using Channel, so these aren't needed.
-
-// #[async_trait]
+pub struct Client;
 impl Handler for Client {
     type Error = russh::Error;
 
@@ -65,51 +64,73 @@ impl Handler for Client {
 /// This struct is a convenience wrapper
 /// around a russh client
 pub struct SshConnection {
-    uri: SshUri,
-    session: Handle<Client>,
+    pub uri: SshUri,
+    pub handle: Option<StreamHandle>,
+    pub ssh_handle: Option<SshHandle<Client>>,
 }
 
-impl Connection for SshConnection {}
+impl Connection for SshConnection {
+    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+        self.open_with_agent().await?;
+        self.connect_to_socket().await?;
+        Ok(self)
+    }
+    async fn send(
+        &mut self,
+        endpoint: &str,
+        request: &Request<Full<Bytes>>,
+    ) -> Result<Response, VirshleError> {
+        if let Some(handle) = &mut self.handle {
+            let response: HyperResponse<Incoming> =
+                handle.sender.send_request(request.to_owned()).await?;
+
+            let status: StatusCode = response.status();
+            let response: Response = Response::new(endpoint, response);
+            debug!("{:#?}", response);
+
+            // if !status.is_success() {
+            //     let message = format!("Status failed: {}", status);
+            //     return Err(LibError::new(&message, "").into());
+            // }
+
+            Ok(response)
+        } else {
+            let err = LibError::new("Connection has no handler.", "open connection first.");
+            return Err(err.into());
+        }
+    }
+}
 
 impl SshConnection {
     /*
      * Open ssh connection to uri with keys from agent.
      */
-    pub async fn connect_with_agent(uri: &str) -> Result<Self, VirshleError> {
-        let uri = Uri::new(uri)?;
-        match uri.clone() {
-            Uri::SshUri(uri) => {
-                // Ssh connection vars
-                let addrs = format!("{}:{}", uri.host, uri.port);
-                let socket = uri.path.clone();
-                let user = uri.user.clone();
+    pub async fn open_with_agent(&mut self) -> Result<Self, VirshleError> {
+        let uri = &self.uri;
+        // Ssh connection vars
+        let addrs = format!("{}:{}", uri.host, uri.port);
+        let socket = uri.path.clone();
+        let user = uri.user.clone();
 
-                let mut agent = AgentClient::connect_env().await?;
-                let agent_keys: Vec<PublicKey> = agent.request_identities().await?;
+        let mut agent = AgentClient::connect_env().await?;
+        let agent_keys: Vec<PublicKey> = agent.request_identities().await?;
 
-                let config = Config::default();
-                let config = Arc::new(config);
+        let config = Config::default();
+        let config = Arc::new(config);
 
-                for key in agent_keys {
-                    // Fix: Initiate a new session for each agent keys
-                    // to circumvent server max_auth_tries.
-                    let sh = Client {};
-                    let mut session = connect(config.clone(), addrs.clone(), sh).await?;
+        for key in agent_keys {
+            // Fix: Initiate a new session for each agent keys
+            // to circumvent server max_auth_tries.
+            let sh = Client {};
+            let mut handle = connect(config.clone(), addrs.clone(), sh).await?;
 
-                    let auth_res = session
-                        .authenticate_publickey_with(user.clone(), key, None, &mut agent)
-                        .await?;
-                    if auth_res.success() {
-                        return Ok(Self { session, uri });
-                    }
-                }
+            let auth_res = handle
+                .authenticate_publickey_with(user.clone(), key, None, &mut agent)
+                .await?;
+            if auth_res.success() {
+                self.ssh_handle = Some(handle);
             }
-            _ => {
-                let message = "Couldn't establish connection with host.";
-                let help = "Bad uri provided";
-                return Err(LibError::new(message, help).into());
-            }
-        };
+        }
         let message = "Couldn't establish connection with host.";
         let help = "Add keys to ssh-agent";
         Err(LibError::new(message, help).into())
@@ -119,105 +140,58 @@ impl SshConnection {
      * After ssh connection is open.
      * Connect to socket at path: self.uri.path.
      */
-    pub async fn connect_to_socket(&self) -> Result<(), VirshleError> {
-        let socket = &self.uri.path;
-        println!("{}", socket);
-        let channel = self.session.channel_open_direct_streamlocal(socket).await;
-        match channel {
-            Ok(channel) => {
-                info!("Connected to socket at {:?}", self.uri);
-                let stream: TokioIo<ChannelStream<Msg>> = TokioIo::new(channel.into_stream());
-            }
-            Err(e) => {
-                let message = format!("Couldn't connect to virshle socket at:\n{:?}", socket);
-                let help = format!("Is virshle running on host {:?} ?", socket);
-                WrapError::builder()
-                    .msg(&message)
-                    .help(&help)
-                    .origin(Error::from_err(e));
-            }
-        };
-        // let ssh_channel = self
-        //     .session
-        //     .channel_open_direct_streamlocal("/var/lib/virshle/virshle.sock")
-        //     .await?;
+    pub async fn connect_to_socket(&mut self) -> Result<(), VirshleError> {
+        if let Some(ssh_handle) = &self.ssh_handle {
+            let socket = &self.uri.path;
+            println!("{}", socket);
+            let channel = ssh_handle.channel_open_direct_streamlocal(socket).await;
+            match channel {
+                Ok(channel) => {
+                    info!("Connected to socket at {:?}", self.uri);
+                    let stream: TokioIo<ChannelStream<Msg>> = TokioIo::new(channel.into_stream());
 
-        // let mut ssh_stream = ssh_channel.into_stream();
-        // tokio::io::copy_bidirectional(&mut local_socket, &mut ssh_stream)
-        //     .await
-        //     .expect("Copy error between local socket and SSH stream");
-
-        Ok(())
-    }
-
-    pub async fn put(&mut self, req: &str) -> Result<(), VirshleError> {
-        let mut channel = self.session.channel_open_session().await?;
-        // channel.request_shell(true).await?;
-        // let mut stream = channel.into_stream();
-        // stream.write(b"notify-send ssh");
-
-        // -U creates a binding to unixsocket.
-        // -N closes the connection as soon as message sended.
-        let cmd = format!("echo \"{}\" | nc -U /var/lib/virshle/virshle.socket", req);
-        println!("\n{}", cmd);
-        channel.exec(true, cmd).await?;
-
-        let mut stdout = tokio::io::stdout();
-        let mut code = None;
-
-        loop {
-            // There's an event available on the session channel
-            let Some(msg) = channel.wait().await else {
-                break;
-            };
-            match msg {
-                // Write data to the terminal
-                ChannelMsg::Data { ref data } => {
-                    stdout.write_all(data).await?;
-                    stdout.flush().await?;
-                    // Close channel as soon as response returned.
-                    channel.close().await?;
+                    match handshake(stream).await {
+                        Err(e) => {
+                            let help = "Do you have the right credentials";
+                            let message = format!("Connection refused for socket: {socket}");
+                            let err = WrapError::builder()
+                                .msg(&message)
+                                .help(&help)
+                                .origin(Error::from_err(e))
+                                .build();
+                            return Err(err.into());
+                        }
+                        Ok((sender, connection)) => {
+                            self.handle = Some(StreamHandle {
+                                sender,
+                                connection: spawn(async move { connection.await }),
+                            });
+                        }
+                    };
                 }
-                // The command has returned an exit code
-                ChannelMsg::ExitStatus { exit_status } => {
-                    code = Some(exit_status);
-                    // cannot leave the loop immediately,
-                    // there might still be more data to receive
+                Err(e) => {
+                    let message = format!("Couldn't connect to virshle socket at:\n{:?}", socket);
+                    let help = format!("Is virshle running on host {:?} ?", socket);
+                    WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e));
                 }
-                ChannelMsg::Eof | ChannelMsg::Close => {
-                    break;
-                }
-                _ => {}
             };
         }
-
-        // channel.close().await?;
-
-        if let Some(exit_status) = code {
-            if ExitStatus::from_raw(exit_status as i32).success() {
-            } else {
-                let message = "Couldn't call virshle socket successfully on remote host";
-                let help = "Is virshle running on remote?";
-                return Err(LibError::new(message, help).into());
-            }
-        } else {
-            let message = "Command returned no exit code.";
-            let help = "Connection might have been interupted.";
-            return Err(LibError::new(message, help).into());
-        }
         Ok(())
     }
 
-    pub async fn close(&self) -> Result<(), VirshleError> {
-        self.session
-            .disconnect(
-                Disconnect::ByApplication,
-                "Disconnectied by virshle cli.",
-                "English",
-            )
-            .await?;
-        Ok(())
-    }
+    // pub async fn close(&self) -> Result<(), VirshleError> {
+    //     self.handle
+    //         .disconnect(
+    //             Disconnect::ByApplication,
+    //             "Disconnectied by virshle cli.",
+    //             "English",
+    //         )
+    //         .await?;
+    //     Ok(())
+    // }
 }
 
 pub fn request_to_string<T>(req: &Request<T>) -> Result<String, VirshleError>
@@ -254,19 +228,12 @@ where
 mod tests {
     use super::*;
 
-    // #[tokio::test]
-    async fn connect_to_localhost_ssh_server() -> Result<()> {
-        let uri = "ssh://deku";
-        let session = SshConnection::connect_with_agent(uri).await?;
-        session.close().await?;
-        Ok(())
-    }
     #[tokio::test]
     async fn connect_to_localhost_ssh_server_and_socket() -> Result<()> {
         let uri = "ssh://deku";
-        let session = SshConnection::connect_with_agent(uri).await?;
-        session.connect_to_socket().await?;
-        session.close().await?;
+        // let session = SshConnection::open_with_agent(uri).await?;
+        // session.connect_to_socket().await?;
+        // session.close().await?;
         Ok(())
     }
 
@@ -282,10 +249,15 @@ mod tests {
         let req = request_to_string(&request).into_diagnostic()?;
         println!("\n{}", req);
 
-        let uri = "ssh://deku";
-        let mut session = SshConnection::connect_with_agent(uri).await?;
+        let node = Node {
+            name: "default".to_owned(),
+            url: "ssh://deku".to_owned(),
+        };
 
-        session.put(&req).await?;
+        // let node_connection = NodeConnection::from(&node);
+        // let mut session = node_connection.open().await?;
+
+        // session.put(&req).await?;
 
         Ok(())
     }

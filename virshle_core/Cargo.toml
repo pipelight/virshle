@@ -50,7 +50,7 @@ sea-orm = { version = "1.0.1", features = [
   "macros",
 ] }
 migration = { path = "../migration" }
-russh = "0.51.1"
+russh = "0.52.0"
 url = "2.5.2"
 async-trait = "0.1.83"
 axum = "0.8.3"

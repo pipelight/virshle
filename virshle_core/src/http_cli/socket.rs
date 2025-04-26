@@ -1,175 +1,121 @@
-use std::path::Path;
+/*
+* This module is to connect to a virshle instance through local socket.
+*/
+
+use super::Response;
+use super::{Connection, HttpRequest, NodeConnection};
+use super::{LocalUri, Uri};
+use crate::cloud_hypervisor::Vm;
+use crate::config::Node;
 
 // Http
+use http_body_util::{BodyExt, Full};
 use hyper::body::{Body, Bytes, Incoming};
 use hyper::client::conn::http1::{handshake, SendRequest};
 use hyper::{Request, Response as HyperResponse, StatusCode};
-
-use http_body_util::{BodyExt, Full};
 use hyper_util::rt::TokioIo;
+
+use tokio::spawn;
+use tokio::task::JoinHandle;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, Value};
 
+// Socket
+use std::path::Path;
 use tokio::net::UnixStream;
-use tokio::spawn;
-use tokio::task::JoinHandle;
-
-// Structs
-use crate::cloud_hypervisor::Vm;
-// Traits
-use super::Connection;
 
 // Error Handling
 use log::{debug, info};
-use miette::{IntoDiagnostic, Result};
+use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
+/// This struct is a convenience wrapper
+/// around a unixsocket
 pub struct UnixConnection {
-    sender: SendRequest<Full<Bytes>>,
-    connection: JoinHandle<Result<(), hyper::Error>>,
+    pub uri: LocalUri,
+    pub handle: Option<StreamHandle>,
+}
+impl UnixConnection {
+    pub fn new(path: &str) -> Self {
+        Self {
+            uri: LocalUri {
+                path: path.to_owned(),
+            },
+            handle: None,
+        }
+    }
 }
 
-impl Connection<UnixConnection> for UnixConnection {
-    async fn open(socket: &str) -> Result<Self, VirshleError> {
-        let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(socket)).await {
+pub struct StreamHandle {
+    pub sender: SendRequest<Full<Bytes>>,
+    pub connection: JoinHandle<Result<(), hyper::Error>>,
+}
+
+impl Connection for UnixConnection {
+    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+        let socket = &self.uri.path;
+        let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(&socket)).await {
             Err(e) => {
                 let help = format!("Does the following socket exist?\n{socket}");
                 let err = WrapError::builder()
                     .msg("Couldn't connect to socket")
                     .help(&help)
-                    .origin(VirshleError::from(e).into())
+                    .origin(Error::from_err(e))
                     .build();
                 return Err(err.into());
             }
             Ok(v) => TokioIo::new(v),
         };
 
-        let connection: Self = match handshake(stream).await {
+        match handshake(stream).await {
             Err(e) => {
-                let help = format!("Does the following socket exist?\n{socket}");
+                let help = "Do you have the right credentials";
+                let message = format!("Connection refused for socket: {socket}");
                 let err = WrapError::builder()
-                    .msg("Couldn't connnect to socket")
+                    .msg(&message)
                     .help(&help)
-                    .origin(VirshleError::from(e).into())
+                    .origin(Error::from_err(e))
                     .build();
                 return Err(err.into());
             }
-            Ok((sender, connection)) => Self {
-                sender,
-                connection: spawn(async move { connection.await }),
-            },
+            Ok((sender, connection)) => {
+                self.handle = Some(StreamHandle {
+                    sender,
+                    connection: spawn(async move { connection.await }),
+                });
+            }
         };
-
-        Ok(connection)
-    }
-    async fn close(socket: &str) -> Result<(), VirshleError> {
-        Ok(())
-    }
-    async fn get(self, url: &str) -> Result<Response, VirshleError> {
-        let request = Request::builder()
-            .uri(url)
-            .method("GET")
-            .header("Host", "localhost")
-            .body(Full::new(Bytes::new()));
-
-        self.execute(url, request?).await
+        Ok(self)
     }
 
-    async fn post<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
-    where
-        T: Serialize,
-    {
-        let request = Request::builder()
-            .uri(url)
-            .method("POST")
-            .header("Host", "localhost")
-            .header("Content-Type", "application/json");
-
-        let request = match body {
-            None => request.body(Full::new(Bytes::new())),
-            Some(value) => request.body(Full::new(Bytes::from(
-                serde_json::to_value(value).unwrap().to_string(),
-            ))),
-        };
-
-        self.execute(url, request?).await
-    }
-
-    async fn put<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
-    where
-        T: Serialize,
-    {
-        let request = Request::builder()
-            .uri(url)
-            .method("PUT")
-            .header("Host", "localhost")
-            .header("Content-Type", "application/json");
-
-        let request = match body {
-            None => request.body(Full::new(Bytes::new())),
-            Some(value) => request.body(Full::new(Bytes::from(
-                serde_json::to_value(value).unwrap().to_string(),
-            ))),
-        };
-
-        self.execute(url, request?).await
-    }
-
-    async fn execute(
-        mut self,
-        url: &str,
-        request: Request<Full<Bytes>>,
+    async fn send(
+        &mut self,
+        endpoint: &str,
+        request: &Request<Full<Bytes>>,
     ) -> Result<Response, VirshleError> {
-        let response: hyper::Response<Incoming> = self.sender.send_request(request).await?;
+        if let Some(handle) = &mut self.handle {
+            let response: HyperResponse<Incoming> =
+                handle.sender.send_request(request.to_owned()).await?;
 
-        let status: StatusCode = response.status();
-        let response: Response = Response::new(url, response, self.connection);
-        debug!("{:#?}", response);
+            let status: StatusCode = response.status();
+            let response: Response = Response::new(endpoint, response);
+            debug!("{:#?}", response);
 
-        // if !status.is_success() {
-        //     let message = format!("Status failed: {}", status);
-        //     return Err(LibError::new(&message, "").into());
-        // }
-        //
-        Ok(response)
-    }
-}
+            // if !status.is_success() {
+            //     let message = format!("Status failed: {}", status);
+            //     return Err(LibError::new(&message, "").into());
+            // }
 
-impl UnixConnection {}
-#[derive(Debug)]
-pub struct Response {
-    pub url: String,
-    pub inner: HyperResponse<Incoming>,
-    pub connection: JoinHandle<Result<(), hyper::Error>>,
-}
-
-impl Response {
-    fn new(
-        url: &str,
-        response: HyperResponse<Incoming>,
-        connection: JoinHandle<Result<(), hyper::Error>>,
-    ) -> Self {
-        Self {
-            url: url.to_owned(),
-            inner: response,
-            connection,
+            Ok(response)
+        } else {
+            let err = LibError::new("Connection has no handler.", "open connection first.");
+            return Err(err.into());
         }
     }
-    pub fn status(&self) -> StatusCode {
-        self.inner.status()
-    }
-    pub async fn into_bytes(self) -> Result<Bytes, VirshleError> {
-        let data = self.inner.into_body().collect().await?;
-        let data = data.to_bytes();
-        Ok(data)
-    }
-    pub async fn to_string(self) -> Result<String, VirshleError> {
-        let status: StatusCode = self.inner.status();
-        let data: Bytes = self.into_bytes().await?;
-        let value: String = String::from_utf8(data.to_vec())?;
-        Ok(value)
-    }
+    // async fn close(socket: &str) -> Result<(), VirshleError> {
+    //     Ok(())
+    // }
 }
 
 #[cfg(test)]
@@ -218,16 +164,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn try_send_req() -> Result<()> {
-        let path = "./test.sock";
-        // Create socket in other thread.
-        spawn(async { create_socket(path).await.unwrap() });
-        sleep(Duration::from_millis(100)).await;
+    async fn try_send_local_request() -> Result<()> {
+        let node = Node::default();
+        let mut node_connection = NodeConnection::from(&node);
 
-        let conn = UnixConnection::open(path).await?;
-        // conn.get("/vms").await?;
+        let conn = node_connection.open().await?;
+        conn.get("/vm/list").await?;
 
-        remove_socket(path).await?;
         Ok(())
     }
 }

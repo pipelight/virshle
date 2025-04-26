@@ -22,7 +22,7 @@ use super::rand::random_name;
 use uuid::Uuid;
 
 // Http
-use crate::http_cli::Connection;
+use crate::http_cli::{Connection, HttpRequest, NodeConnection, VmConnection};
 
 //Database
 use crate::database::entity::{prelude::*, *};
@@ -119,9 +119,11 @@ impl Default for Vm {
 }
 
 impl Vm {
-    async fn connection(&self) -> Result<Connection, VirshleError> {
-        let socket = self.get_socket()?;
-        Connection::open(&socket).await
+    async fn connection(&self) -> Result<NodeConnection, VirshleError> {
+        let socket = &self.get_socket()?;
+        let mut conn = NodeConnection::UnixConnection(VmConnection::new(socket));
+        conn.open().await?;
+        Ok(conn)
     }
 
     /*
@@ -161,7 +163,7 @@ impl Vm {
     pub async fn shutdown(&self) -> Result<(), VirshleError> {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.shutdown";
-        let conn = Connection::open(&socket).await?;
+        let mut conn = self.connection().await?;
 
         let response = conn.put::<()>(endpoint, None).await?;
         Ok(())
@@ -194,7 +196,7 @@ impl Vm {
 
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.boot";
-        let conn = Connection::open(&socket).await?;
+        let mut conn = self.connection().await?;
         let response = conn.put::<()>(endpoint, None).await?;
 
         if !response.status().is_success() {
@@ -213,7 +215,7 @@ impl Vm {
 
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.create";
-        let conn = Connection::open(&socket).await?;
+        let mut conn = self.connection().await?;
 
         let response = conn.put::<VmConfig>(endpoint, Some(config)).await?;
         Ok(())

@@ -2,14 +2,13 @@ pub mod cache;
 pub mod load;
 pub mod node;
 
-pub use node::{Node, SshUri, Uri};
+pub use node::Node;
 
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
 use crate::network::Ovs;
 
 // Global vars
-use crate::http_api::Server;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
