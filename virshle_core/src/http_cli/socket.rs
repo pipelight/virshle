@@ -17,19 +17,21 @@ use tokio::task::JoinHandle;
 
 // Structs
 use crate::cloud_hypervisor::Vm;
+// Traits
+use super::Connection;
 
 // Error Handling
 use log::{debug, info};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub struct Connection {
+pub struct UnixConnection {
     sender: SendRequest<Full<Bytes>>,
     connection: JoinHandle<Result<(), hyper::Error>>,
 }
 
-impl Connection {
-    pub async fn open(socket: &str) -> Result<Self, VirshleError> {
+impl Connection for UnixConnection {
+    async fn open(socket: &str) -> Result<Self, VirshleError> {
         let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(socket)).await {
             Err(e) => {
                 let help = format!("Does the following socket exist?\n{socket}");
@@ -43,7 +45,7 @@ impl Connection {
             Ok(v) => TokioIo::new(v),
         };
 
-        let connection: Connection = match handshake(stream).await {
+        let connection: Self = match handshake(stream).await {
             Err(e) => {
                 let help = format!("Does the following socket exist?\n{socket}");
                 let err = WrapError::builder()
@@ -61,27 +63,10 @@ impl Connection {
 
         Ok(connection)
     }
-
-    async fn execute(
-        mut self,
-        url: &str,
-        request: Request<Full<Bytes>>,
-    ) -> Result<Response, VirshleError> {
-        let response: hyper::Response<Incoming> = self.sender.send_request(request).await?;
-
-        let status: StatusCode = response.status();
-        let response: Response = Response::new(url, response, self.connection);
-        debug!("{:#?}", response);
-
-        // if !status.is_success() {
-        //     let message = format!("Status failed: {}", status);
-        //     return Err(LibError::new(&message, "").into());
-        // }
-        //
-        Ok(response)
+    async fn close(socket: &str) -> Result<(), VirshleError> {
+        Ok(())
     }
-
-    pub async fn get(self, url: &str) -> Result<Response, VirshleError> {
+    async fn get(self, url: &str) -> Result<Response, VirshleError> {
         let request = Request::builder()
             .uri(url)
             .method("GET")
@@ -91,7 +76,7 @@ impl Connection {
         self.execute(url, request?).await
     }
 
-    pub async fn post<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
+    async fn post<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
     where
         T: Serialize,
     {
@@ -109,7 +94,8 @@ impl Connection {
 
         self.execute(url, request?).await
     }
-    pub async fn put<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
+
+    async fn put<T>(self, url: &str, body: Option<T>) -> Result<Response, VirshleError>
     where
         T: Serialize,
     {
@@ -128,7 +114,27 @@ impl Connection {
 
         self.execute(url, request?).await
     }
+    async fn execute(
+        mut self,
+        url: &str,
+        request: Request<Full<Bytes>>,
+    ) -> Result<Response, VirshleError> {
+        let response: hyper::Response<Incoming> = self.sender.send_request(request).await?;
+
+        let status: StatusCode = response.status();
+        let response: Response = Response::new(url, response, self.connection);
+        debug!("{:#?}", response);
+
+        // if !status.is_success() {
+        //     let message = format!("Status failed: {}", status);
+        //     return Err(LibError::new(&message, "").into());
+        // }
+        //
+        Ok(response)
+    }
 }
+
+impl UnixConnection {}
 #[derive(Debug)]
 pub struct Response {
     pub url: String,
@@ -216,7 +222,7 @@ mod tests {
         spawn(async { create_socket(path).await.unwrap() });
         sleep(Duration::from_millis(100)).await;
 
-        let conn = Connection::open(path).await?;
+        let conn = UnixConnection::open(path).await?;
         // conn.get("/vms").await?;
 
         remove_socket(path).await?;

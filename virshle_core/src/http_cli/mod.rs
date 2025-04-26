@@ -12,4 +12,19 @@
 mod socket;
 mod ssh;
 
-pub use socket::Connection;
+pub use socket::UnixConnection;
+
+// Error Handling
+use virshle_error::{LibError, VirshleError, WrapError};
+
+pub trait Connection<S>
+where
+    S: Sized,
+{
+    fn execute() -> Result<(), VirshleError>;
+    fn get() -> Result<(), VirshleError>;
+    fn post() -> Result<(), VirshleError>;
+    fn put() -> Result<(), VirshleError>;
+    fn open() -> Result<S, VirshleError>;
+    fn close() -> Result<(), VirshleError>;
+}

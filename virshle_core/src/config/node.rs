@@ -1,5 +1,6 @@
 use crate::http_api::Server;
 use crate::http_cli::Connection;
+use std::fmt;
 use url::Url;
 
 use serde::{Deserialize, Serialize};
@@ -54,10 +55,19 @@ pub enum Uri {
     // A connection to
     SshUri(SshUri),
 }
+impl fmt::Display for Uri {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let string = match self {
+            Uri::SshUri(uri) => uri.to_string(),
+            Uri::LocalUri(uri) => uri.to_string(),
+        };
+        write!(f, "{}", string)
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SshUri {
-    pub user: Option<String>,
+    pub user: String,
     pub host: String,
     pub path: String,
     pub port: u64,
@@ -67,11 +77,21 @@ impl Default for SshUri {
         let user = get_user_by_uid(get_current_uid()).unwrap();
         let username = user.name().to_str().unwrap().to_owned();
         Self {
-            user: Some(username),
+            user: username,
             host: "localhost".to_owned(),
             path: Server::get_socket().unwrap(),
             port: 22,
         }
+    }
+}
+impl fmt::Display for SshUri {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ssh://{}@{}:{}", self.user, self.host, self.path)
+    }
+}
+impl fmt::Display for LocalUri {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unix://{}", self.path)
     }
 }
 
@@ -85,9 +105,7 @@ impl Uri {
         let url = Url::parse(string)?;
         match url.scheme() {
             "ssh" => Ok(Self::SshUri(Self::parse_ssh_url(&url)?)),
-            "unix" => Ok(Self::LocalUri(LocalUri {
-                path: url.path().to_owned(),
-            })),
+            "unix" => Ok(Self::LocalUri(Self::parse_local_url(&url)?)),
             _ => Err(
                 LibError::new("Couldn't determine the uri scheme", "Try ssh:// or file://").into(),
             ),
@@ -104,7 +122,7 @@ impl Uri {
         }
         // Set username if some.
         if !url.username().is_empty() {
-            uri.user = Some(url.username().to_owned());
+            uri.user = url.username().to_owned();
         }
         // An empty path is parsed as "/" by the Url lib.
         // Set path if a non empty one is set.
@@ -120,14 +138,8 @@ impl Uri {
     /*
      * Helper to easily parse a url with lacking segments into a virshle socket uri.
      */
-    fn parse_socket_url(url: &Url) -> Result<SshUri, VirshleError> {
-        let mut uri = SshUri::default();
-        if let Some(host) = url.host_str() {
-            uri.host = host.to_owned();
-        }
-        if !url.username().is_empty() {
-            uri.user = Some(url.username().to_owned());
-        }
+    fn parse_local_url(url: &Url) -> Result<LocalUri, VirshleError> {
+        let mut uri = LocalUri::default();
         // An empty path is parsed as "/" by the Url lib.
         if url.path() != "/" {
             uri.path = url.path().to_owned();
@@ -154,7 +166,7 @@ mod tests {
     async fn try_parse_ssh_uri() -> Result<()> {
         let uri = "ssh://anon@server/path/to/socket";
         let url = Uri::SshUri(SshUri {
-            user: Some("anon".to_owned()),
+            user: "anon".to_owned(),
             host: "server".to_owned(),
             path: "/path/to/socket".to_owned(),
             port: 22,
