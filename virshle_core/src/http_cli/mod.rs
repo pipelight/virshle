@@ -52,7 +52,7 @@ pub trait Connection {
     /*
      * Close connection
      */
-    // fn close(&self) -> Result<(), VirshleError>;
+    fn close(&self) -> impl Future<Output = Result<(), VirshleError>> + Send;
 }
 
 pub type VmConnection = UnixConnection;
@@ -77,6 +77,15 @@ impl Connection for NodeConnection {
             }
         };
         Ok(self)
+    }
+    async fn close(&self) -> Result<(), VirshleError> {
+        match self {
+            NodeConnection::SshConnection(ssh_connection) => {
+                let _ = ssh_connection.close().await?;
+            }
+            _ => {}
+        };
+        Ok(())
     }
     async fn send(
         &mut self,

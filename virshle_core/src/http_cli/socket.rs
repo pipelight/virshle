@@ -88,6 +88,12 @@ impl Connection for UnixConnection {
         };
         Ok(self)
     }
+    /*
+     * No need to close a stream as it is dropped once variable gets out of scope.
+     */
+    async fn close(&self) -> Result<(), VirshleError> {
+        Ok(())
+    }
 
     async fn send(
         &mut self,
@@ -112,65 +118,5 @@ impl Connection for UnixConnection {
             let err = LibError::new("Connection has no handler.", "open connection first.");
             return Err(err.into());
         }
-    }
-    // async fn close(socket: &str) -> Result<(), VirshleError> {
-    //     Ok(())
-    // }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::path::PathBuf;
-    use tokio::fs;
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-    use tokio::net::UnixListener;
-    use tokio::time::{sleep, Duration};
-
-    /*
-     * Create a socket and listens to incoming connections
-     */
-    async fn create_socket(socket: &str) -> Result<()> {
-        let path = PathBuf::from(socket);
-        let _ = tokio::fs::remove_file(&path).await;
-        tokio::fs::create_dir_all(path.parent().unwrap())
-            .await
-            .unwrap();
-
-        let listener = UnixListener::bind(socket).into_diagnostic()?;
-        match listener.accept().await {
-            Ok((mut socket, addr)) => {
-                println!("Got a client: {:?} - {:?}", socket, addr);
-                socket.write_all(b"hello world").await.into_diagnostic()?;
-                let mut response = String::new();
-                socket
-                    .read_to_string(&mut response)
-                    .await
-                    .into_diagnostic()?;
-                println!("{}", response);
-            }
-            Err(e) => println!("accept function failed: {:?}", e),
-        }
-        Ok(())
-    }
-
-    /*
-     * Delete socket at specified path.
-     * To be used after create_socket.
-     */
-    async fn remove_socket(socket: &str) -> Result<()> {
-        fs::remove_file(socket).await.into_diagnostic()?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn try_send_local_request() -> Result<()> {
-        let node = Node::default();
-        let mut node_connection = NodeConnection::from(&node);
-
-        let conn = node_connection.open().await?;
-        conn.get("/vm/list").await?;
-
-        Ok(())
     }
 }

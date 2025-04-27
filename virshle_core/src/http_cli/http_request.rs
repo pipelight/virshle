@@ -15,6 +15,9 @@ use serde_json::{from_slice, Value};
 use tokio::spawn;
 use tokio::task::JoinHandle;
 
+// Serde
+use serde::de::DeserializeOwned;
+
 // Error Handling
 use log::info;
 use miette::{Error, IntoDiagnostic, Result};
@@ -141,6 +144,10 @@ impl Response {
         let status: StatusCode = self.inner.status();
         let data: Bytes = self.into_bytes().await?;
         let value: String = String::from_utf8(data.to_vec())?;
+        Ok(value)
+    }
+    pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
+        let value: T = serde_json::from_str(&self.to_string().await?)?;
         Ok(value)
     }
 }

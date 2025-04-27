@@ -4,7 +4,7 @@ pub use types::*;
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::VirshleConfig,
-    Server,
+    Client, Server,
 };
 use clap::Parser;
 use std::fs;
@@ -106,7 +106,7 @@ impl Cli {
                     }
                 }
                 Crud::Ls => {
-                    Vm::display(Vm::get_all().await?).await?;
+                    Client::display_all_vms().await?;
                 }
                 Crud::Rm(args) => {
                     if let Some(name) = args.name {

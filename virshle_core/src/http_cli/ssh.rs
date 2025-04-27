@@ -63,6 +63,7 @@ impl Handler for Client {
 
 /// This struct is a convenience wrapper
 /// around a russh client
+#[derive(Default)]
 pub struct SshConnection {
     pub uri: SshUri,
     pub handle: Option<StreamHandle>,
@@ -74,6 +75,18 @@ impl Connection for SshConnection {
         self.open_with_agent().await?;
         self.connect_to_socket().await?;
         Ok(self)
+    }
+    async fn close(&self) -> Result<(), VirshleError> {
+        if let Some(ssh_handle) = &self.ssh_handle {
+            ssh_handle
+                .disconnect(
+                    Disconnect::ByApplication,
+                    "Disconnectied by virshle cli.",
+                    "English",
+                )
+                .await?;
+        }
+        Ok(())
     }
     async fn send(
         &mut self,
@@ -102,10 +115,20 @@ impl Connection for SshConnection {
 }
 
 impl SshConnection {
+    pub fn new(url: &str) -> Result<Self, VirshleError> {
+        let ssh_uri = SshUri::new(url)?;
+        Ok(Self {
+            uri: ssh_uri,
+            ..Default::default()
+        })
+    }
+}
+
+impl SshConnection {
     /*
      * Open ssh connection to uri with keys from agent.
      */
-    pub async fn open_with_agent(&mut self) -> Result<Self, VirshleError> {
+    pub async fn open_with_agent(&mut self) -> Result<&mut Self, VirshleError> {
         let uri = &self.uri;
         // Ssh connection vars
         let addrs = format!("{}:{}", uri.host, uri.port);
@@ -119,18 +142,21 @@ impl SshConnection {
         let config = Arc::new(config);
 
         for key in agent_keys {
-            // Fix: Initiate a new session for each agent keys
-            // to circumvent server max_auth_tries.
+            // Initiate a new session for each agent keys
+            // to circumvent server max_auth_tries per tcp.
             let sh = Client {};
             let mut handle = connect(config.clone(), addrs.clone(), sh).await?;
 
             let auth_res = handle
                 .authenticate_publickey_with(user.clone(), key, None, &mut agent)
                 .await?;
+
             if auth_res.success() {
                 self.ssh_handle = Some(handle);
+                return Ok(self);
             }
         }
+        // If neither of the keys did work.
         let message = "Couldn't establish connection with host.";
         let help = "Add keys to ssh-agent";
         Err(LibError::new(message, help).into())
@@ -140,10 +166,9 @@ impl SshConnection {
      * After ssh connection is open.
      * Connect to socket at path: self.uri.path.
      */
-    pub async fn connect_to_socket(&mut self) -> Result<(), VirshleError> {
+    pub async fn connect_to_socket(&mut self) -> Result<&mut Self, VirshleError> {
         if let Some(ssh_handle) = &self.ssh_handle {
             let socket = &self.uri.path;
-            println!("{}", socket);
             let channel = ssh_handle.channel_open_direct_streamlocal(socket).await;
             match channel {
                 Ok(channel) => {
@@ -179,19 +204,8 @@ impl SshConnection {
                 }
             };
         }
-        Ok(())
+        Ok(self)
     }
-
-    // pub async fn close(&self) -> Result<(), VirshleError> {
-    //     self.handle
-    //         .disconnect(
-    //             Disconnect::ByApplication,
-    //             "Disconnectied by virshle cli.",
-    //             "English",
-    //         )
-    //         .await?;
-    //     Ok(())
-    // }
 }
 
 pub fn request_to_string<T>(req: &Request<T>) -> Result<String, VirshleError>
@@ -230,35 +244,13 @@ mod tests {
 
     #[tokio::test]
     async fn connect_to_localhost_ssh_server_and_socket() -> Result<()> {
-        let uri = "ssh://deku";
-        // let session = SshConnection::open_with_agent(uri).await?;
-        // session.connect_to_socket().await?;
-        // session.close().await?;
-        Ok(())
-    }
-
-    // #[tokio::test]
-    async fn send_request_to_socket() -> Result<()> {
-        let request = Request::builder()
-            .uri("/vm/list")
-            .method("GET")
-            .header("Host", "localhost")
-            .body(())
-            .into_diagnostic()?;
-
-        let req = request_to_string(&request).into_diagnostic()?;
-        println!("\n{}", req);
-
         let node = Node {
-            name: "default".to_owned(),
-            url: "ssh://deku".to_owned(),
+            name: "test".to_owned(),
+            url: "ssh://anon@deku".to_owned(),
         };
-
-        // let node_connection = NodeConnection::from(&node);
-        // let mut session = node_connection.open().await?;
-
-        // session.put(&req).await?;
-
+        let mut conn = NodeConnection::from(&node);
+        conn.open().await?;
+        conn.close().await?;
         Ok(())
     }
 }

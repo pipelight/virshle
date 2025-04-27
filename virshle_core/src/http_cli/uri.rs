@@ -85,17 +85,21 @@ impl Uri {
     pub fn new(string: &str) -> Result<Self, VirshleError> {
         let url = Url::parse(string)?;
         match url.scheme() {
-            "ssh" => Ok(Self::SshUri(Self::parse_ssh_url(&url)?)),
-            "unix" => Ok(Self::LocalUri(Self::parse_local_url(&url)?)),
+            "ssh" => Ok(Self::SshUri(SshUri::new(string)?)),
+            "unix" => Ok(Self::LocalUri(LocalUri::new(string)?)),
             _ => Err(
                 LibError::new("Couldn't determine the uri scheme", "Try ssh:// or file://").into(),
             ),
         }
     }
+}
+impl SshUri {
     /*
      * Helper to easily parse a url with lacking segments into a virshle ssh uri.
      */
-    fn parse_ssh_url(url: &Url) -> Result<SshUri, VirshleError> {
+    pub fn new(url: &str) -> Result<SshUri, VirshleError> {
+        let url = Url::parse(url)?;
+
         let mut uri = SshUri::default();
         // Set host if some or fallback to default localhost.
         if let Some(host) = url.host_str() {
@@ -116,10 +120,13 @@ impl Uri {
         }
         Ok(uri)
     }
+}
+impl LocalUri {
     /*
      * Helper to easily parse a url with lacking segments into a virshle socket uri.
      */
-    fn parse_local_url(url: &Url) -> Result<LocalUri, VirshleError> {
+    pub fn new(url: &str) -> Result<LocalUri, VirshleError> {
+        let url = Url::parse(url)?;
         let mut uri = LocalUri::default();
         // An empty path is parsed as "/" by the Url lib.
         if url.path() != "/" {
