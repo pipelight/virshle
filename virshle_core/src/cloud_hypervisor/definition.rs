@@ -77,7 +77,6 @@ impl Definition {
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Template {
     pub vm: Option<Vec<VmTemplate>>,
-    // pub net: Option<Vec<NetTemplate>>,
 }
 #[bon]
 impl Template {

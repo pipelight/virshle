@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 // Http
+use crate::cli::LsArgs;
 use crate::http_cli::{Connection, HttpRequest, NodeConnection};
-use crate::{config::Node, Vm};
+use crate::{Node, Vm, VmState, VmTemplate};
+use std::str::FromStr;
 
 // Error handling
 use log::info;
@@ -29,29 +31,72 @@ impl Client {
         }
         Ok(())
     }
+    pub async fn get_all_templates() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
+        let config = VirshleConfig::get()?;
+        let nodes = config.get_nodes()?;
 
-    /*
-     * Display vms by node.
-     */
-    pub async fn display_all_vms() -> Result<(), VirshleError> {
-        let e = Self::get_all_vms().await?;
-        Vm::display_by_nodes(e).await?;
-        Ok(())
+        let mut templates: HashMap<Node, Vec<VmTemplate>> = HashMap::new();
+        for node in nodes {
+            let mut conn = node.open().await?;
+            let node_templates: Vec<VmTemplate> =
+                conn.get("/template/list").await?.to_value().await?;
+            conn.close();
+            templates.insert(node, node_templates);
+        }
+        Ok(templates)
     }
 
-    /*
-     * Get vms by node.
-     */
-    pub async fn get_all_vms() -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
+    pub async fn get_all_vm() -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
         let config = VirshleConfig::get()?;
+        let nodes = config.get_nodes()?;
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
-        for node in config.get_nodes()? {
+        for node in nodes {
             let mut conn = node.open().await?;
             let node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
             conn.close();
             vms.insert(node, node_vms);
         }
+        Ok(vms)
+    }
+    /*
+     * Get vms by node.
+     */
+    pub async fn get_all_vm_w_args(args: LsArgs) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
+        let config = VirshleConfig::get()?;
+
+        // Parse args
+        let nodes: Vec<Node>;
+        if let Some(node_name) = &args.node {
+            nodes = config
+                .get_nodes()?
+                .iter()
+                .filter(|e| &e.name == node_name)
+                .map(|e| e.to_owned())
+                .collect();
+        } else {
+            nodes = config.get_nodes()?;
+        }
+
+        let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
+        for node in nodes {
+            let mut conn = node.open().await?;
+            let mut node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
+            conn.close();
+
+            if let Some(state) = &args.state {
+                let state = VmState::from_str(state).unwrap();
+                let mut filtered_vms: Vec<Vm> = vec![];
+                for vm in node_vms {
+                    if vm.get_state().await? == state {
+                        filtered_vms.push(vm);
+                    }
+                }
+                node_vms = filtered_vms;
+            }
+            vms.insert(node, node_vms);
+        }
+
         Ok(vms)
     }
 }
@@ -61,8 +106,8 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_get_all_vms() -> Result<()> {
-        Client::get_all_vms().await?;
+    async fn test_get_all_vm() -> Result<()> {
+        Client::get_all_vm().await?;
         Ok(())
     }
 }

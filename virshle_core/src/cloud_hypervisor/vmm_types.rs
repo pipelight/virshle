@@ -11,6 +11,12 @@
 use super::{Disk, Vm};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::str::FromStr;
+
+// Error handling
+use log::info;
+use miette::{Error, IntoDiagnostic, Result};
+use virshle_error::{LibError, VirshleError, WrapError};
 
 // Cpu
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -88,6 +94,7 @@ pub struct NetConfig {
     #[serde(flatten)]
     other: serde_json::Value,
 }
+
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum VhostMode {
     #[default]
@@ -111,6 +118,23 @@ pub enum VmState {
     Paused,
     BreakPoint,
 }
+
+impl FromStr for VmState {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Error> {
+        let res = match s {
+            "not_created" => VmState::NotCreated,
+            "created" => VmState::Created,
+            "running" => VmState::Running,
+            "shutdown" => VmState::Shutdown,
+            "paused" => VmState::Paused,
+            "breakpoing" => VmState::BreakPoint,
+            _ => VmState::Running,
+        };
+        Ok(res)
+    }
+}
+
 #[derive(Default, Clone, Deserialize, Serialize)]
 pub struct VmInfoResponse {
     pub config: VmConfig,

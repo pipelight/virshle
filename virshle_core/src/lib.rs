@@ -9,13 +9,14 @@ pub use http_api::{Client, Server};
 
 // Toml configuration structs.
 pub mod config;
+pub use config::Node;
 
 // Virshle command line
 pub mod cli;
 
 // Interact with cloud hypervisor processes and API.
 pub mod cloud_hypervisor;
-pub use cloud_hypervisor::{Vm, VmState};
+pub use cloud_hypervisor::{Vm, VmState, VmTemplate};
 
 // Methods to do http easily on unix sockets.
 // Used to interact with cloud hypervisor

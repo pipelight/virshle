@@ -64,3 +64,4 @@ macaddr = { version = "1.0.1", features = ["serde"] }
 sys-mount = { version = "3.0.1", features = ["loop"] }
 futures = "0.3.31"
 users = "0.11.0"
+tower-http = { version = "0.6.2", features = ["trace"] }

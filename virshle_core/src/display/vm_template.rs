@@ -1,8 +1,11 @@
 use super::utils::{display_disks, display_ips, display_vram};
 use crate::cloud_hypervisor::{DiskTemplate, VmTemplate};
+use crate::config::Node;
+use crate::http_cli::Uri;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt;
 use tabled::{
     settings::{object::Columns, Style},
@@ -37,6 +40,13 @@ impl VmTemplateTable {
 }
 
 impl VmTemplateTable {
+    pub fn display_w_header(items: Vec<Self>, header: &str) -> Result<(), VirshleError> {
+        println!("\n{}", header);
+        let mut res = Table::new(&items);
+        res.with(Style::modern_rounded());
+        println!("{}", res);
+        Ok(())
+    }
     pub async fn display(items: Vec<Self>) -> Result<()> {
         let mut res = Table::new(&items);
         res.with(Style::modern_rounded());
@@ -45,6 +55,34 @@ impl VmTemplateTable {
     }
 }
 impl VmTemplate {
+    pub async fn display_by_nodes(items: HashMap<Node, Vec<Self>>) -> Result<(), VirshleError> {
+        // Convert vm to pretty printable type
+        let mut tables: HashMap<Node, Vec<VmTemplateTable>> = HashMap::new();
+        for (node, vms) in items {
+            let mut vms_table: Vec<VmTemplateTable> = vec![];
+            for vm in vms {
+                let e = VmTemplateTable::from(&vm).await?;
+                vms_table.push(e);
+            }
+            tables.insert(node, vms_table);
+        }
+
+        // Display vm by nodes with table header
+        for (node, table) in tables {
+            let name = node.name.bright_purple().bold().to_string();
+            let header: String = match Uri::new(&node.url)? {
+                Uri::SshUri(e) => format!(
+                    "{name} on {}@{}",
+                    e.user.yellow().bold(),
+                    e.host.green().bold()
+                ),
+                Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
+            };
+            VmTemplateTable::display_w_header(table, &header);
+        }
+
+        Ok(())
+    }
     pub async fn display(items: Vec<Self>) -> Result<()> {
         let mut table: Vec<VmTemplateTable> = vec![];
         for e in items {

@@ -7,6 +7,9 @@ use axum::{
     routing::{get, put},
     Json, Router,
 };
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer;
+
 use uuid::Uuid;
 
 use std::collections::HashMap;
@@ -18,11 +21,10 @@ use std::path::PathBuf;
 use crate::config::MANAGED_DIR;
 
 // Hypervisor
-use crate::cloud_hypervisor::Vm;
+use crate::cloud_hypervisor::{Vm, VmTemplate};
 use crate::config::VirshleConfig;
 
 // Error handling
-use log::info;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -36,9 +38,18 @@ impl Server {
         let path = format!("{MANAGED_DIR}/virshle.sock");
         Ok(path)
     }
-    async fn get_all_vms() -> Result<String, VirshleError> {
+    async fn get_all_vm() -> Result<String, VirshleError> {
         let vms = serde_json::to_string(&Vm::get_all().await?)?;
         Ok(vms)
+    }
+    async fn get_all_template() -> Result<String, VirshleError> {
+        let config = VirshleConfig::get()?;
+        if let Some(template) = config.template {
+            let templates = serde_json::to_string(&template.vm)?;
+            Ok(templates)
+        } else {
+            return Err(LibError::new("No template on node.", "").into());
+        }
     }
     async fn create_vm(Path(template_name): Path<String>) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
@@ -95,7 +106,11 @@ impl Server {
     pub async fn run() -> Result<(), VirshleError> {
         // build our application with a single route
         let app = Router::new()
-            .route("/vm/list", get(Self::get_all_vms().await.unwrap()))
+            .route(
+                "/template/list",
+                get(Self::get_all_template().await.unwrap()),
+            )
+            .route("/vm/list", get(Self::get_all_vm().await.unwrap()))
             .route(
                 "/vm/create/{template_name}",
                 put(async move |path| {
@@ -119,7 +134,8 @@ impl Server {
                 put(async move |params| {
                     Self::start_vm(params).await.unwrap();
                 }),
-            );
+            )
+            .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
         let socket = Self::get_socket()?;
         let path = PathBuf::from(socket);

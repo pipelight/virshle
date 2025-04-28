@@ -34,18 +34,6 @@ impl Cli {
 
         match cli.commands {
             /*
-             * Static infra generation from file
-             * (like vagrant or terraform)
-             */
-            Commands::Up(args) => {}
-            Commands::Down(args) => {}
-            /*
-             * Remove unused managed files
-             * resources::clean()?;
-             */
-            Commands::Prune => {}
-
-            /*
              * Run the background daemon and wait for http requests.
              */
             Commands::Daemon => {
@@ -80,14 +68,14 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-                    if let Some(name) = args.name {
+                    if let Some(name) = args.resource.name {
                         let mut vm = Vm::get_by_name(&name).await?;
                         if args.attach {
                             vm.attach()?.start().await?;
                         } else {
                             vm.start().await?;
                         }
-                    } else if let Some(id) = args.id {
+                    } else if let Some(id) = args.resource.id {
                         let mut vm = Vm::get_by_id(&id).await?;
                         if args.attach {
                             vm.attach()?.start().await?;
@@ -105,8 +93,9 @@ impl Cli {
                         vm.shutdown().await?;
                     }
                 }
-                Crud::Ls => {
-                    Client::display_all_vms().await?;
+                Crud::Ls(args) => {
+                    let e = Client::get_all_vm_w_args(args).await?;
+                    Vm::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {
                     if let Some(name) = args.name {
@@ -121,9 +110,8 @@ impl Cli {
             },
             Commands::Template(args) => match args {
                 Display::Ls => {
-                    let templates: Vec<VmTemplate> =
-                        config.get_vm_templates()?.into_values().collect();
-                    VmTemplate::display(templates).await?;
+                    let e = Client::get_all_templates().await?;
+                    VmTemplate::display_by_nodes(e).await?;
                 }
             },
             Commands::Init => {

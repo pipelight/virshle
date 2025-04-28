@@ -1,5 +1,7 @@
+use crate::cloud_hypervisor::VmState;
 use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
+use uuid::Uuid;
 
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
@@ -9,23 +11,13 @@ pub struct Cli {
     #[command(flatten)]
     pub verbose: Verbosity,
 }
+
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
-    Prune,
     Daemon,
 
     /// Init/Ensure system global configuration (openvswitches, directories, database).
     Init,
-
-    // TODO: Declarative docker compose style
-    #[command(hide = true)]
-    Up(File),
-    #[command(hide = true)]
-    Down(File),
-
-    /// Operations on networks
-    #[command(subcommand, hide = true)]
-    Net(Crud),
 
     /// Operations on templates
     #[command(subcommand)]
@@ -41,12 +33,12 @@ pub enum Crud {
     /// Creates a virtual machine.
     #[command(arg_required_else_help = true)]
     Create(File),
-    /// Removes(destroy) a virtual machine.
-    #[command(arg_required_else_help = true)]
-    Rm(Resource),
     /// Starts/Restart a virtual machine.
     #[command(arg_required_else_help = true)]
     Start(StartArgs),
+    /// Removes(destroy) a virtual machine.
+    #[command(arg_required_else_help = true)]
+    Rm(Resource),
     /// Stops a virtual machine.
     #[command(arg_required_else_help = true)]
     Stop(Resource),
@@ -58,10 +50,18 @@ pub enum Crud {
     Info(Resource),
 
     /// List existing vms.
-    Ls,
+    Ls(LsArgs),
 
     #[command(hide = true)]
     Update(File),
+}
+
+#[derive(Debug, Args, Clone, Eq, PartialEq)]
+pub struct LsArgs {
+    #[arg(long, value_name = "VM_STATE")]
+    pub state: Option<String>,
+    #[arg(short, long, value_name = "NODE_NAME")]
+    pub node: Option<String>,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
@@ -76,18 +76,18 @@ pub struct File {
 
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct Resource {
-    #[arg(long, conflicts_with = "id")]
+    #[arg(long, conflicts_with = "id", conflicts_with = "uuid")]
     pub name: Option<String>,
-    #[arg(long, conflicts_with = "name")]
+    #[arg(long, conflicts_with = "name", conflicts_with = "uuid")]
     pub id: Option<u64>,
+    #[arg(long, conflicts_with = "name", conflicts_with = "id")]
+    pub uuid: Option<Uuid>,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct StartArgs {
-    #[arg(long, conflicts_with = "id")]
-    pub name: Option<String>,
-    #[arg(long, conflicts_with = "name")]
-    pub id: Option<u64>,
+    #[command(flatten)]
+    pub resource: Resource,
     #[arg(
         long,
         num_args(0..=1),
@@ -100,8 +100,4 @@ pub struct StartArgs {
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Display {
     Ls,
-}
-#[derive(Debug, Args, Clone, Eq, PartialEq)]
-pub struct ResourceUuid {
-    uuid: String,
 }
