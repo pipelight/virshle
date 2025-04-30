@@ -10,7 +10,7 @@ use macaddr::MacAddr8;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 // Error handling
-use log::info;
+use log::{error, info};
 use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
@@ -169,6 +169,13 @@ impl Ovs {
         // Will do the job for now.
         Self::_set_vm_bridge()?;
         Self::_clean_vm_bridge().await?;
+
+        match Self::_patch_vm_bridge() {
+            Err(e) => {
+                error!("{}", e);
+            }
+            Ok(()) => {}
+        }
         Ok(())
     }
 
@@ -218,6 +225,7 @@ impl Ovs {
     }
     pub fn get_vm_bridge() -> Result<OvsBridge, VirshleError> {
         let bridges = Self::get_bridges()?;
+
         let bridge = bridges.iter().find(|e| {
             e.ports
                 .iter()
@@ -243,6 +251,39 @@ impl Ovs {
      * to plug vms network main port in.
      */
     pub fn _set_vm_bridge() -> Result<(), VirshleError> {
+        info!("Create a virtual switch for virtual machines.");
+        let vm_bridge_name = "br0";
+
+        #[cfg(debug_assertions)]
+        let cmd = format!(
+            "sudo ovs-vsctl \
+            -- --may-exist add-br {vm_bridge_name} \
+            -- set bridge {vm_bridge_name} datapath_type=netdev"
+        );
+        #[cfg(not(debug_assertions))]
+        let cmd = format!(
+            "ovs-vsctl \
+            -- --may-exist add-br {vm_bridge_name} \
+            -- set bridge {vm_bridge_name} datapath_type=netdev"
+        );
+
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        if let Some(stderr) = res.io.stderr {
+            let message = "Ovs command failed, couldn't create a vm switch.";
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+
+            return Err(LibError::new(message, &help).into());
+        }
+
+        Ok(())
+    }
+
+    /*
+     * Link the vm switch to a main switch (if any) for internet connectivity.
+     */
+    pub fn _patch_vm_bridge() -> Result<(), VirshleError> {
         let vm_bridge_name = "br0";
         let main_bridge_name = Self::get_main_bridge()?.name;
 
@@ -274,7 +315,7 @@ impl Ovs {
         let res = proc.stdin(&cmd).run()?;
 
         if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed";
+            let message = "Ovs command failed, couldn't add internet connectivity to vm switch.";
             let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
 
             return Err(LibError::new(message, &help).into());
@@ -294,7 +335,11 @@ impl Ovs {
             .collect();
         let vm_bridge = Ovs::get_vm_bridge()?;
 
+        #[cfg(debug_assertions)]
         let mut cmd = format!("sudo ovs-vsctl");
+        #[cfg(not(debug_assertions))]
+        let mut cmd = format!("ovs-vsctl");
+
         for port in vm_bridge.ports {
             if !vms_name.contains(&port.name) {
                 if let Some(_type) = &port.interface._type {
@@ -429,7 +474,7 @@ mod test {
     #[test]
     fn test_ovs_get_bridges() -> Result<()> {
         let res = Ovs::get_bridges()?;
-        // println!("{:#?}", res);
+        println!("{:#?}", res);
         Ok(())
     }
     #[test]

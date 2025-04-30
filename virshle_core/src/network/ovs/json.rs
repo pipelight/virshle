@@ -23,7 +23,7 @@ impl Ovs {
     pub fn to_json(response: &str) -> Result<Value, VirshleError> {
         let ovs_reponse: OvsResponse = serde_json::from_str(&response)?;
 
-        // Iterate response elements
+        // Iterate over ovs response elements
         let mut items: Vec<Value> = vec![];
         for item in ovs_reponse.data {
             let mut kv = Map::new();
@@ -33,8 +33,31 @@ impl Ovs {
             }
             items.push(Value::Object(kv.clone()));
         }
-        let value = Value::Array(items.clone());
+        let mut value = Value::Array(items.clone());
+        Self::unflatten(&mut value)?;
+
         Ok(value)
+    }
+
+    /*
+     * Strenghten return types.
+     * Force returning a Vec<String> instead of a String
+     * fo arrays containing a single value (unflatten).
+     */
+    pub fn unflatten(value: &mut Value) -> Result<(), VirshleError> {
+        if let Some(array) = value.as_array_mut() {
+            for e in array {
+                if let Some(object) = e.as_object_mut() {
+                    for (key, value) in object {
+                        // Cast string into vec of string
+                        if key == "ports" && value.is_string() {
+                            *value = Value::Array(vec![value.to_owned()]);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     /*

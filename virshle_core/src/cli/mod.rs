@@ -26,7 +26,9 @@ impl Cli {
     pub async fn switch(cli: Cli) -> Result<()> {
         // Set verbosity
         let verbosity = cli.verbose.log_level_filter();
-        std::env::set_var("VIRSHLE_LOG", verbosity.to_string().to_lowercase());
+        // Disable sql logs
+        let value = format!("{},{}", verbosity.to_string().to_lowercase(), "sqlx=error");
+        std::env::set_var("VIRSHLE_LOG", value);
         Builder::from_env("VIRSHLE_LOG").init();
 
         // Get config
@@ -34,11 +36,28 @@ impl Cli {
 
         match cli.commands {
             /*
+             * Create the required virshle working directories.
+             * Add network ovs entries.
+             * Activate network interfaces.
+             */
+            Commands::Init => {
+                VirshleConfig::init().await?;
+            }
+            /*
              * Run the background daemon and wait for http requests.
              */
             Commands::Daemon => {
                 Server::run().await?;
             }
+            /*
+             * Operations on virtual machine templates
+             */
+            Commands::Template(args) => match args {
+                Display::Ls => {
+                    let e = Client::get_all_templates().await?;
+                    VmTemplate::display_by_nodes(e).await?;
+                }
+            },
             /*
              * Operations on virtual machines
              */
@@ -108,15 +127,6 @@ impl Cli {
                 }
                 _ => {}
             },
-            Commands::Template(args) => match args {
-                Display::Ls => {
-                    let e = Client::get_all_templates().await?;
-                    VmTemplate::display_by_nodes(e).await?;
-                }
-            },
-            Commands::Init => {
-                VirshleConfig::init().await?;
-            }
             _ => {}
         };
 
