@@ -8,7 +8,7 @@ use users::{get_current_uid, get_user_by_uid};
 
 // Error Handling
 use log::info;
-use miette::{IntoDiagnostic, Result};
+use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Hash, PartialEq, Eq)]
@@ -29,7 +29,21 @@ impl Default for Node {
 impl Node {
     pub async fn open(&self) -> Result<NodeConnection, VirshleError> {
         let mut conn = NodeConnection::from(self);
-        conn.open().await?;
-        Ok(conn)
+        match conn.open().await {
+            Ok(v) => return Ok(conn),
+            Err(e) => {
+                let message = format!(
+                    "Couldn't connect to virshle daemon on node {:?}.",
+                    self.name
+                );
+                let help = format!("Is virshle daemon running at url: {:?} ?", self.url);
+                let err = WrapError::builder()
+                    .msg(&message)
+                    .help(&help)
+                    .origin(Error::from_err(e))
+                    .build();
+                return Err(err.into());
+            }
+        };
     }
 }

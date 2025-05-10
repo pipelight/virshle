@@ -31,9 +31,6 @@ impl Cli {
         std::env::set_var("VIRSHLE_LOG", value);
         Builder::from_env("VIRSHLE_LOG").init();
 
-        // Get config
-        let config = VirshleConfig::get()?;
-
         match cli.commands {
             /*
              * Create the required virshle working directories.
@@ -49,6 +46,15 @@ impl Cli {
             Commands::Daemon => {
                 Server::run().await?;
             }
+            /*
+             * Operations on virtual machine templates
+             */
+            Commands::Node(args) => match args {
+                Display::Ls => {
+                    let e = Node::get_all_().await?;
+                    Node::display(e).await?;
+                }
+            },
             /*
              * Operations on virtual machine templates
              */
@@ -70,7 +76,7 @@ impl Cli {
                     }
                     // Create a vm from template.
                     if let Some(name) = args.template {
-                        let template = config.get_template(&name)?;
+                        let template = VirshleConfig::get()?.get_template(&name)?;
                         let mut vm = Vm::from(&template);
                         vm.create().await?;
                     }

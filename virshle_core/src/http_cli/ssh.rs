@@ -157,7 +157,7 @@ impl SshConnection {
             }
         }
         // If neither of the keys did work.
-        let message = "Couldn't establish connection with host.";
+        let message = "Ssh authentication to host failed.";
         let help = "Add keys to ssh-agent";
         Err(LibError::new(message, help).into())
     }

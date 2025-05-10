@@ -1,0 +1,70 @@
+#########################
+# Instance (This host credentials)
+
+name = "bakugo"
+uuid = "1502cd02-3703-43d9-9c45-7e8b1042b3ba"
+
+#########################
+# Nodes
+
+# [[node]]
+# name = "rpi4b"
+# url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
+
+[[node]]
+name = "self"
+url = "ssh://anon@bakugo:22/var/lib/virshle/virshle.sock"
+
+
+#########################
+# Templates: 
+# vm standard sizes with decents presets.
+[[template.vm]]
+name = "xs"
+vcpu = 1
+vram = 2
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "50G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.vhost]
+
+[[template.vm]]
+name = "s"
+vcpu = 2
+vram = 4
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "80G"
+
+[[template.vm]]
+name = "m"
+vcpu = 4
+vram = 8
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "100G"
+
+# Big vms (for beta release)
+
+# [[template.vm]]
+# name = "l"
+# vcpu = 6
+# vram = 10
+# [[template.vm.disk]]
+# name = "os"
+# path = "~/Iso/nixos.efi.img"
+# size = "150G"
+#
+# [[template.vm]]
+# name = "xl"
+# vcpu = 8
+# vram = 16
+# [[template.vm.disk]]
+# name = "os"
+# path = "~/Iso/nixos.efi.img"
+# size = "180G"

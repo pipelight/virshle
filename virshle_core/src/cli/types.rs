@@ -21,6 +21,10 @@ pub enum Commands {
 
     /// Operations on templates
     #[command(subcommand)]
+    Node(Display),
+
+    /// Operations on templates
+    #[command(subcommand)]
     Template(Display),
 
     /// Operations on virtual machines

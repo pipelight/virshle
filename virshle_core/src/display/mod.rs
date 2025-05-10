@@ -1,3 +1,4 @@
+mod node;
 mod utils;
 mod vm_template;
 // mod secret;
