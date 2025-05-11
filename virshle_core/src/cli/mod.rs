@@ -3,7 +3,7 @@ pub use types::*;
 
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
-    config::VirshleConfig,
+    config::{Node, VirshleConfig},
     Client, Server,
 };
 use clap::Parser;
@@ -27,7 +27,11 @@ impl Cli {
         // Set verbosity
         let verbosity = cli.verbose.log_level_filter();
         // Disable sql logs
-        let value = format!("{},{}", verbosity.to_string().to_lowercase(), "sqlx=error");
+        let value = format!(
+            "{},{}",
+            verbosity.to_string().to_lowercase(),
+            "sqlx=error,russh=error"
+        );
         std::env::set_var("VIRSHLE_LOG", value);
         Builder::from_env("VIRSHLE_LOG").init();
 
@@ -51,7 +55,7 @@ impl Cli {
              */
             Commands::Node(args) => match args {
                 Display::Ls => {
-                    let e = Node::get_all_().await?;
+                    let e = VirshleConfig::get()?.get_nodes()?;
                     Node::display(e).await?;
                 }
             },
@@ -133,7 +137,7 @@ impl Cli {
                 }
                 _ => {}
             },
-            _ => {}
+            // _ => {}
         };
 
         Ok(())

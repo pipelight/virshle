@@ -1,8 +1,9 @@
 pub mod cache;
+pub mod getters;
 pub mod load;
 pub mod node;
 
-pub use node::Node;
+pub use node::{Node, NodeState};
 
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
@@ -40,17 +41,6 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
-    /*
-     * Returns nodes defined in configuration,
-     * plus the default local node.
-     */
-    pub fn get_nodes(&self) -> Result<Vec<Node>, VirshleError> {
-        let mut nodes: Vec<Node> = vec![Node::default()];
-        if let Some(node) = &self.node {
-            nodes.extend(node.to_owned());
-        }
-        Ok(nodes)
-    }
     pub async fn _clean_filetree() -> Result<(), VirshleError> {
         let vms = Vm::get_all().await?;
         let uuids: Vec<String> = vms.iter().map(|e| e.uuid.to_string()).collect();

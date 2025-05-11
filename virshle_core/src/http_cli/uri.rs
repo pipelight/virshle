@@ -92,6 +92,13 @@ impl Uri {
             ),
         }
     }
+    pub fn get_host(&self) -> Result<String, VirshleError> {
+        let host = match self {
+            Uri::SshUri(e) => e.host.to_owned(),
+            Uri::LocalUri(e) => "localhost".to_owned(),
+        };
+        Ok(host)
+    }
 }
 impl SshUri {
     /*

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 // Http
 use crate::cli::LsArgs;
+use crate::http_api::Host;
 use crate::http_cli::{Connection, HttpRequest, NodeConnection};
 use crate::{Node, Vm, VmState, VmTemplate};
 use std::str::FromStr;
@@ -45,7 +46,19 @@ impl Client {
         }
         Ok(templates)
     }
+    pub async fn get_node_info() -> Result<HashMap<Node, Host>, VirshleError> {
+        let config = VirshleConfig::get()?;
+        let nodes = config.get_nodes()?;
 
+        let mut node_info: HashMap<Node, Host> = HashMap::new();
+        for node in nodes {
+            let mut conn = node.open().await?;
+            let info: Host = conn.get("/node/info").await?.to_value().await?;
+            conn.close();
+            node_info.insert(node, info);
+        }
+        Ok(node_info)
+    }
     pub async fn get_all_vm() -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;

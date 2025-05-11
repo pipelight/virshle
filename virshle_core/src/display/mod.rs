@@ -4,6 +4,9 @@ mod vm_template;
 // mod secret;
 pub mod vm;
 
+// Reexport
+pub use utils::display_vram;
+
 // use crate::resources::Vm;
 
 // Error Handling

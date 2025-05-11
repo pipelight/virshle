@@ -89,7 +89,7 @@ impl VmTemplate {
             table.push(VmTemplateTable::from(&e).await?);
         }
 
-        // Default sort templates by ram usage
+        // Default sort templates by vram size
         table.sort_by(|a, b| a.vram.cmp(&b.vram));
 
         VmTemplateTable::display(table).await?;

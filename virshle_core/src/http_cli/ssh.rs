@@ -45,7 +45,7 @@ use tokio::spawn;
 use tokio::task::JoinHandle;
 
 // Error Handling
-use log::{debug, info};
+use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -99,7 +99,7 @@ impl Connection for SshConnection {
 
             let status: StatusCode = response.status();
             let response: Response = Response::new(endpoint, response);
-            debug!("{:#?}", response);
+            trace!("{:#?}", response);
 
             // if !status.is_success() {
             //     let message = format!("Status failed: {}", status);
@@ -141,12 +141,14 @@ impl SshConnection {
         let config = Config::default();
         let config = Arc::new(config);
 
-        for key in agent_keys {
-            // Initiate a new session for each agent keys
-            // to circumvent server max_auth_tries per tcp.
-            let sh = Client {};
-            let mut handle = connect(config.clone(), addrs.clone(), sh).await?;
+        // Put this block code in the "for" loop to:
+        // Initiate a new session for each agent keys
+        // to circumvent server max_auth_tries per tcp.
+        // Or increase ssh server max_auth_tries
+        let sh = Client {};
+        let mut handle = connect(config.clone(), addrs.clone(), sh).await?;
 
+        for key in agent_keys {
             let auth_res = handle
                 .authenticate_publickey_with(user.clone(), key, None, &mut agent)
                 .await?;
@@ -171,8 +173,17 @@ impl SshConnection {
             let socket = &self.uri.path;
             let channel = ssh_handle.channel_open_direct_streamlocal(socket).await;
             match channel {
+                Err(e) => {
+                    let message = format!("Couldn't connect to socket: {}", socket);
+                    let help = format!("Does the socket exist?");
+                    let err = WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e))
+                        .build();
+                    return Err(err.into());
+                }
                 Ok(channel) => {
-                    info!("Connected to socket at {:?}", self.uri);
                     let stream: TokioIo<ChannelStream<Msg>> = TokioIo::new(channel.into_stream());
 
                     match handshake(stream).await {
@@ -187,20 +198,13 @@ impl SshConnection {
                             return Err(err.into());
                         }
                         Ok((sender, connection)) => {
+                            info!("Connected to socket at {}", self.uri);
                             self.handle = Some(StreamHandle {
                                 sender,
                                 connection: spawn(async move { connection.await }),
                             });
                         }
                     };
-                }
-                Err(e) => {
-                    let message = format!("Couldn't connect to virshle socket at:\n{:?}", socket);
-                    let help = format!("Is virshle running on host {:?} ?", socket);
-                    WrapError::builder()
-                        .msg(&message)
-                        .help(&help)
-                        .origin(Error::from_err(e));
                 }
             };
         }

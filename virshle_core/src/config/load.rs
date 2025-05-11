@@ -34,6 +34,9 @@ impl VirshleConfig {
         path.push("/etc/virshle/config.toml");
         return path;
     }
+    /*
+     * Return configuration from default file path.
+     */
     pub fn get() -> Result<Self, VirshleError> {
         info!("Search config file.");
 
@@ -47,33 +50,6 @@ impl VirshleConfig {
         let config = Self::from_file(&path)?;
 
         Ok(config)
-    }
-    pub fn get_vm_templates(&self) -> Result<HashMap<String, VmTemplate>, VirshleError> {
-        let mut hashmap = HashMap::new();
-        if let Some(template) = &self.template {
-            if let Some(vm) = &template.vm {
-                hashmap = vm.iter().map(|e| (e.name.clone(), e.to_owned())).collect();
-            }
-        }
-        Ok(hashmap)
-    }
-    pub fn get_template(&self, name: &str) -> Result<VmTemplate, VirshleError> {
-        let templates = self.get_vm_templates()?;
-        let res = templates.get(name);
-        match res {
-            Some(res) => Ok(res.to_owned()),
-            None => {
-                let message = format!("Couldn't find template {:#?}", name);
-                let templates_name = templates
-                    .iter()
-                    .map(|e| e.0.to_owned())
-                    .collect::<Vec<String>>()
-                    .join(",");
-                let help = format!("Available templates are:\n[{templates_name}]");
-                let err = LibError::new(&message, &help);
-                Err(err.into())
-            }
-        }
     }
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(path)?;

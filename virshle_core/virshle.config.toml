@@ -12,7 +12,7 @@ uuid = "0a87a428-8753-40bb-93a1-aabd19e6c1c4"
 # url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
 
 [[node]]
-name = "self"
+name = "local-ssh"
 url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 
 

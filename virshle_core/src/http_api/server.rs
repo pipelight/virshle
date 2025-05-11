@@ -15,7 +15,10 @@ use uuid::Uuid;
 use std::collections::HashMap;
 use tokio::net::{UnixListener, UnixStream};
 
+use super::Host;
+
 use std::path::PathBuf;
+use sysinfo::System;
 
 // Globals
 use crate::config::MANAGED_DIR;
@@ -38,6 +41,9 @@ impl Server {
         let path = format!("{MANAGED_DIR}/virshle.sock");
         Ok(path)
     }
+    pub fn get_host() -> Result<(), VirshleError> {
+        Ok(())
+    }
     async fn get_all_vm() -> Result<String, VirshleError> {
         let vms = serde_json::to_string(&Vm::get_all().await?)?;
         Ok(vms)
@@ -51,6 +57,15 @@ impl Server {
             return Err(LibError::new("No template on node.", "").into());
         }
     }
+    /*
+     * Get node info (cpu, ram...)
+     */
+    fn get_node_info() -> Result<String, VirshleError> {
+        let host = Host::get_info()?;
+        let info = serde_json::to_string(&host)?;
+        Ok(info)
+    }
+
     async fn create_vm(Path(template_name): Path<String>) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
         let template = config.get_template(&template_name)?;
@@ -106,10 +121,12 @@ impl Server {
     pub async fn run() -> Result<(), VirshleError> {
         // build our application with a single route
         let app = Router::new()
+            // Template
             .route(
                 "/template/list",
                 get(Self::get_all_template().await.unwrap()),
             )
+            // Vm
             .route("/vm/list", get(Self::get_all_vm().await.unwrap()))
             .route(
                 "/vm/create/{template_name}",
@@ -135,6 +152,8 @@ impl Server {
                     Self::start_vm(params).await.unwrap();
                 }),
             )
+            // Node
+            .route("/node/info", get(Self::get_node_info().unwrap()))
             .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
         let socket = Self::get_socket()?;

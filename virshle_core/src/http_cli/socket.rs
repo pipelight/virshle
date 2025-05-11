@@ -26,7 +26,7 @@ use std::path::Path;
 use tokio::net::UnixStream;
 
 // Error Handling
-use log::{debug, info};
+use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -57,9 +57,10 @@ impl Connection for UnixConnection {
         let socket = &self.uri.path;
         let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(&socket)).await {
             Err(e) => {
-                let help = format!("Does the following socket exist?\n{socket}");
+                let message = format!("Couldn't connect to socket: {}", socket);
+                let help = format!("Does the socket exist?");
                 let err = WrapError::builder()
-                    .msg("Couldn't connect to socket")
+                    .msg(&message)
                     .help(&help)
                     .origin(Error::from_err(e))
                     .build();
@@ -80,6 +81,7 @@ impl Connection for UnixConnection {
                 return Err(err.into());
             }
             Ok((sender, connection)) => {
+                info!("Connected to socket at {}", self.uri);
                 self.handle = Some(StreamHandle {
                     sender,
                     connection: spawn(async move { connection.await }),
@@ -106,7 +108,7 @@ impl Connection for UnixConnection {
 
             let status: StatusCode = response.status();
             let response: Response = Response::new(endpoint, response);
-            debug!("{:#?}", response);
+            trace!("{:#?}", response);
 
             // if !status.is_success() {
             //     let message = format!("Status failed: {}", status);
