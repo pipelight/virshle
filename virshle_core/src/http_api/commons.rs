@@ -12,8 +12,20 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub struct Host {
     pub name: String,
     // Stored as Bytes.
-    pub ram: u64,
-    pub cpu: u64,
+    pub ram: HostRam,
+    pub cpu: HostCpu,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct HostRam {
+    pub total: u64,
+    pub free: u64,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct HostCpu {
+    pub number: u64,
+    pub usage: u64,
 }
 
 impl Host {
@@ -22,8 +34,26 @@ impl Host {
         s.refresh_memory();
         s.refresh_cpu_all();
 
-        let ram = s.total_memory();
-        let cpu = s.cpus().len() as u64;
+        // Ram
+        let ram = HostRam {
+            total: s.total_memory(),
+            free: s.free_memory(),
+        };
+
+        // Cpu
+        let average_usage = s
+            .cpus()
+            .iter()
+            .map(|e| e.cpu_usage())
+            .reduce(|acc, x| acc + x)
+            .unwrap()
+            / (s.cpus().len() as f32);
+
+        let cpu = HostCpu {
+            number: s.cpus().len() as u64,
+            usage: average_usage as u64,
+        };
+
         let name = System::host_name().unwrap_or("unknown".to_owned());
 
         let host = Host { name, ram, cpu };

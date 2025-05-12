@@ -51,8 +51,8 @@ impl NodeTable {
                 let nvm = e.get_num_vm().await?;
                 table = NodeTable {
                     name: e.name.to_owned(),
-                    cpu: Some(info.cpu),
-                    ram: Some(info.ram),
+                    cpu: Some(info.cpu.number),
+                    ram: Some(info.ram.total),
                     vm: nvm,
                     state,
                 };

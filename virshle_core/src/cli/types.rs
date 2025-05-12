@@ -86,6 +86,7 @@ pub struct Resource {
     pub id: Option<u64>,
     #[arg(long, conflicts_with = "name", conflicts_with = "id")]
     pub uuid: Option<Uuid>,
+    pub node: Option<String>,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq)]

@@ -2,7 +2,6 @@ use super::Vm;
 use crate::cloud_hypervisor::{Disk, InitDisk};
 
 use std::path::Path;
-use sys_mount::{Mount, MountFlags, SupportedFilesystems, Unmount, UnmountFlags};
 
 // Global
 use crate::config::MANAGED_DIR;

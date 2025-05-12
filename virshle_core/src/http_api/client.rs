@@ -8,7 +8,7 @@ use crate::{Node, Vm, VmState, VmTemplate};
 use std::str::FromStr;
 
 // Error handling
-use log::info;
+use log::warn;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -38,11 +38,17 @@ impl Client {
 
         let mut templates: HashMap<Node, Vec<VmTemplate>> = HashMap::new();
         for node in nodes {
-            let mut conn = node.open().await?;
-            let node_templates: Vec<VmTemplate> =
-                conn.get("/template/list").await?.to_value().await?;
-            conn.close();
-            templates.insert(node, node_templates);
+            match node.open().await {
+                Err(e) => {
+                    warn!("{}", e);
+                }
+                Ok(mut conn) => {
+                    let node_templates: Vec<VmTemplate> =
+                        conn.get("/template/list").await?.to_value().await?;
+                    conn.close();
+                    templates.insert(node, node_templates);
+                }
+            }
         }
         Ok(templates)
     }
@@ -72,6 +78,15 @@ impl Client {
         }
         Ok(vms)
     }
+    /* */
+    pub async fn start_vm() -> Result<(), VirshleError> {
+        let config = VirshleConfig::get()?;
+        let nodes = config.get_nodes()?;
+
+        let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
+        for node in nodes {}
+        Ok(())
+    }
     /*
      * Get vms by node.
      */
@@ -93,21 +108,27 @@ impl Client {
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
         for node in nodes {
-            let mut conn = node.open().await?;
-            let mut node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
-            conn.close();
-
-            if let Some(state) = &args.state {
-                let state = VmState::from_str(state).unwrap();
-                let mut filtered_vms: Vec<Vm> = vec![];
-                for vm in node_vms {
-                    if vm.get_state().await? == state {
-                        filtered_vms.push(vm);
-                    }
+            match node.open().await {
+                Err(e) => {
+                    warn!("{}", e);
                 }
-                node_vms = filtered_vms;
+                Ok(mut conn) => {
+                    let mut node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
+                    conn.close();
+
+                    if let Some(state) = &args.state {
+                        let state = VmState::from_str(state).unwrap();
+                        let mut filtered_vms: Vec<Vm> = vec![];
+                        for vm in node_vms {
+                            if vm.get_state().await? == state {
+                                filtered_vms.push(vm);
+                            }
+                        }
+                        node_vms = filtered_vms;
+                    }
+                    vms.insert(node, node_vms);
+                }
             }
-            vms.insert(node, node_vms);
         }
 
         Ok(vms)
