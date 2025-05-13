@@ -1,4 +1,4 @@
-use bon::{bon, Builder};
+use bon::bon;
 use miette::{Diagnostic, Report};
 pub use pipelight_error::{CastError, PipelightError, TomlError};
 
@@ -53,10 +53,6 @@ pub enum VirshleError {
     #[error(transparent)]
     #[diagnostic(code(virshle::io::error))]
     UuidError(#[from] uuid::Error),
-
-    #[error(transparent)]
-    #[diagnostic(code(parse::error))]
-    TeraError(#[from] tera::Error),
 
     ////////////////////////////////
     // Process execution
