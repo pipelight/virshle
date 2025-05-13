@@ -8,9 +8,6 @@
   systemd.tmpfiles.rules = [
     "d '/var/lib/virshle' 774 root users - -"
   ];
-  imports = with pkgs; [
-    inputs.virshle.packages.${system}.default
-  ];
   boot = with lib; {
     kernelModules = ["openvswitch"];
     kernelParams = mkDefault ["nr_hugepages=1024"];
@@ -24,6 +21,7 @@
   };
   environment.systemPackages = with pkgs; [
     # Network manager
+    inputs.virshle.packages.${system}.default
     openvswitch-dpdk
   ];
 }
