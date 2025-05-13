@@ -21,7 +21,7 @@
       flake = {
         nixosModules = rec {
           default = virshle;
-          virshle = ./module.nix;
+          virshle = ./modules/default.nix;
         };
       };
       systems =
