@@ -1,7 +1,7 @@
 use super::utils::{display_id, display_ips, display_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
 use crate::config::Node;
-use crate::http_cli::Uri;
+use crate::connection::Uri;
 
 use human_bytes::human_bytes;
 use owo_colors::OwoColorize;

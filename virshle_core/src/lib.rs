@@ -9,7 +9,7 @@ pub use http_api::{Client, Server};
 
 // Toml configuration structs.
 pub mod config;
-pub use config::Node;
+pub use config::{Node, NodeInfo, NodeState};
 
 // Virshle command line
 pub mod cli;
@@ -20,7 +20,8 @@ pub use cloud_hypervisor::{Vm, VmState, VmTemplate};
 
 // Methods to do http easily on unix sockets.
 // Used to interact with cloud hypervisor
-pub mod http_cli;
+pub mod connection;
+pub mod http_request;
 
 // Host network manipulation.
 pub mod network;

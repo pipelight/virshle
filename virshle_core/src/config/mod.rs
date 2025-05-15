@@ -3,10 +3,12 @@ pub mod getters;
 pub mod load;
 pub mod node;
 
-pub use node::{Node, NodeState};
+// Reexport
+pub use node::{Node, NodeInfo, NodeState};
 
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
+use crate::http_api::Server;
 use crate::network::Ovs;
 
 // Global vars
@@ -27,6 +29,9 @@ use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 pub const MANAGED_DIR: &'static str = "/var/lib/virshle";
 pub const CONFIG_DIR: &'static str = "/etc/virshle";
 
+/*
+* The main virshle cli and daemon configuration struct.
+*/
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct VirshleConfig {
     node: Option<Vec<Node>>,
@@ -41,6 +46,9 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
+    /*
+     * Clean orphan vm files if vm not in database.
+     */
     pub async fn _clean_filetree() -> Result<(), VirshleError> {
         let vms = Vm::get_all().await?;
         let uuids: Vec<String> = vms.iter().map(|e| e.uuid.to_string()).collect();
@@ -58,6 +66,9 @@ impl VirshleConfig {
         }
         Ok(())
     }
+    /*
+     * Ensure virshle working directories.
+     */
     pub fn ensure_filetree() -> Result<(), VirshleError> {
         // Create storage/config directories
         let directories = [
@@ -74,23 +85,19 @@ impl VirshleConfig {
         Ok(())
     }
     /*
-     * Ensure virshle directories and configuration exists.
+     * Ensure virshle resources:
+     *   - a clean working directory and database.
+     *   - an initial configuration.
+     *   - a dedicated network virtual switch.
      */
     pub async fn init() -> Result<(), VirshleError> {
         Self::ensure_filetree();
-
         // Ensure vm database
         database::connect_db().await?;
-
         // Remove vm files that do not match any db entry
         Self::_clean_filetree().await?;
-
         // Ensure host and vm switches configuration
         Ovs::ensure_switches().await?;
-
-        // TODO():
-        // Create virshle daemon socket (for API calls)
-
         Ok(())
     }
 }

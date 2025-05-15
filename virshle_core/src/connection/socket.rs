@@ -2,8 +2,7 @@
 * This module is to connect to a virshle instance through local socket.
 */
 
-use super::Response;
-use super::{Connection, HttpRequest, NodeConnection};
+use super::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
 use super::{LocalUri, Uri};
 use crate::cloud_hypervisor::Vm;
 use crate::config::Node;
@@ -28,13 +27,15 @@ use tokio::net::UnixStream;
 // Error Handling
 use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
-use virshle_error::{LibError, VirshleError, WrapError};
+use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 
 /// This struct is a convenience wrapper
 /// around a unixsocket
+#[derive(Default)]
 pub struct UnixConnection {
     pub uri: LocalUri,
     pub handle: Option<StreamHandle>,
+    pub state: ConnectionState,
 }
 impl UnixConnection {
     pub fn new(path: &str) -> Self {
@@ -42,7 +43,7 @@ impl UnixConnection {
             uri: LocalUri {
                 path: path.to_owned(),
             },
-            handle: None,
+            ..Default::default()
         }
     }
 }
@@ -52,18 +53,14 @@ pub struct StreamHandle {
     pub connection: JoinHandle<Result<(), hyper::Error>>,
 }
 
-impl Connection for UnixConnection {
+impl ConnectionHandle for UnixConnection {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         let socket = &self.uri.path;
         let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(&socket)).await {
             Err(e) => {
                 let message = format!("Couldn't connect to socket: {}", socket);
                 let help = format!("Does the socket exist?");
-                let err = WrapError::builder()
-                    .msg(&message)
-                    .help(&help)
-                    .origin(Error::from_err(e))
-                    .build();
+                let err = ConnectionError::SocketNotFound;
                 return Err(err.into());
             }
             Ok(v) => TokioIo::new(v),
@@ -95,30 +92,5 @@ impl Connection for UnixConnection {
      */
     async fn close(&self) -> Result<(), VirshleError> {
         Ok(())
-    }
-
-    async fn send(
-        &mut self,
-        endpoint: &str,
-        request: &Request<Full<Bytes>>,
-    ) -> Result<Response, VirshleError> {
-        if let Some(handle) = &mut self.handle {
-            let response: HyperResponse<Incoming> =
-                handle.sender.send_request(request.to_owned()).await?;
-
-            let status: StatusCode = response.status();
-            let response: Response = Response::new(endpoint, response);
-            trace!("{:#?}", response);
-
-            // if !status.is_success() {
-            //     let message = format!("Status failed: {}", status);
-            //     return Err(LibError::new(&message, "").into());
-            // }
-
-            Ok(response)
-        } else {
-            let err = LibError::new("Connection has no handler.", "open connection first.");
-            return Err(err.into());
-        }
     }
 }

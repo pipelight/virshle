@@ -11,7 +11,8 @@ use hyper::{Request, StatusCode};
 use std::fs;
 
 // Http
-use crate::http_cli::{Connection, HttpRequest, NodeConnection, VmConnection};
+use crate::connection::{Connection, ConnectionHandle, UnixConnection, VmConnection};
+use crate::http_request::HttpRequest;
 
 //Database
 use crate::database;
@@ -183,8 +184,7 @@ impl Vm {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
-        let mut conn = NodeConnection::UnixConnection(VmConnection::new(socket));
-
+        let mut conn = VmConnection(Connection::UnixConnection(UnixConnection::new(socket)));
         let response = conn.open().await?.get(endpoint).await?;
         let data = &response.to_string().await?;
         println!("{}", data);
@@ -213,7 +213,7 @@ impl Vm {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
-        let mut conn = NodeConnection::VmConnection(VmConnection::new(socket));
+        let mut conn = VmConnection(Connection::UnixConnection(UnixConnection::new(socket)));
         let state = match conn.open().await {
             Ok(v) => {
                 let response = v.get(endpoint).await?;

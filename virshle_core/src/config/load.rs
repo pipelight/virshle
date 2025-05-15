@@ -38,8 +38,6 @@ impl VirshleConfig {
      * Return configuration from default file path.
      */
     pub fn get() -> Result<Self, VirshleError> {
-        info!("Search config file.");
-
         #[cfg(debug_assertions)]
         let path = Self::debug_path();
 
@@ -49,6 +47,7 @@ impl VirshleConfig {
         let path = path.display().to_string();
         let config = Self::from_file(&path)?;
 
+        info!("Found config file.");
         Ok(config)
     }
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {
@@ -65,21 +64,6 @@ impl VirshleConfig {
             }
         };
         Ok(item)
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Node {
-    pub name: String,
-    pub url: String,
-}
-impl Default for Node {
-    fn default() -> Self {
-        let url = "file://".to_owned() + MANAGED_DIR + "/virshle.sock";
-        Self {
-            name: "default".to_owned(),
-            url,
-        }
     }
 }
 

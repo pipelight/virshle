@@ -42,30 +42,22 @@ pub enum Crud {
     Start(StartArgs),
     /// Removes(destroy) a virtual machine.
     #[command(arg_required_else_help = true)]
-    Rm(Resource),
+    Rm(VmArgs),
     /// Stops a virtual machine.
     #[command(arg_required_else_help = true)]
-    Stop(Resource),
+    Stop(VmArgs),
     /// Parse a virtual machine toml configuration.
     #[command(arg_required_else_help = true)]
-    Config(Resource),
+    Config(VmArgs),
     /// Inspect a created virtual machine configuration (cloud-hypervisor api).
     #[command(arg_required_else_help = true)]
-    Info(Resource),
+    Info(VmArgs),
 
     /// List existing vms.
-    Ls(LsArgs),
+    Ls(VmArgs),
 
     #[command(hide = true)]
     Update(File),
-}
-
-#[derive(Debug, Args, Clone, Eq, PartialEq)]
-pub struct LsArgs {
-    #[arg(long, value_name = "VM_STATE")]
-    pub state: Option<String>,
-    #[arg(short, long, value_name = "NODE_NAME")]
-    pub node: Option<String>,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
@@ -78,21 +70,39 @@ pub struct File {
     pub template: Option<String>,
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq)]
-pub struct Resource {
-    #[arg(long, conflicts_with = "id", conflicts_with = "uuid")]
+#[derive(Debug, Args, Clone, Eq, PartialEq, Default)]
+pub struct VmArgs {
+    #[arg(
+        long,
+        conflicts_with = "id",
+        conflicts_with = "uuid",
+        value_name = "VM_NAME"
+    )]
     pub name: Option<String>,
-    #[arg(long, conflicts_with = "name", conflicts_with = "uuid")]
+    #[arg(
+        long,
+        conflicts_with = "name",
+        conflicts_with = "uuid",
+        value_name = "VM_ID"
+    )]
     pub id: Option<u64>,
-    #[arg(long, conflicts_with = "name", conflicts_with = "id")]
+    #[arg(
+        long,
+        conflicts_with = "name",
+        conflicts_with = "id",
+        value_name = "VM_UUID"
+    )]
     pub uuid: Option<Uuid>,
+    #[arg(short, long, value_name = "NODE_NAME")]
     pub node: Option<String>,
+    #[arg(long, value_name = "VM_STATE")]
+    pub state: Option<String>,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq)]
 pub struct StartArgs {
     #[command(flatten)]
-    pub resource: Resource,
+    pub vm_args: VmArgs,
     #[arg(
         long,
         num_args(0..=1),

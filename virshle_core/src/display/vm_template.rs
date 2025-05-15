@@ -1,7 +1,7 @@
 use super::utils::{display_disks, display_ips, display_vram};
 use crate::cloud_hypervisor::{DiskTemplate, VmTemplate};
 use crate::config::Node;
-use crate::http_cli::Uri;
+use crate::connection::Uri;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};

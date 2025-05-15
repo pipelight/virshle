@@ -55,8 +55,8 @@ impl Cli {
              */
             Commands::Node(args) => match args {
                 Display::Ls => {
-                    let e = VirshleConfig::get()?.get_nodes()?;
-                    Node::display(e).await?;
+                    let res = Client::get_nodes_info().await?;
+                    Node::display(res).await?;
                 }
             },
             /*
@@ -64,8 +64,8 @@ impl Cli {
              */
             Commands::Template(args) => match args {
                 Display::Ls => {
-                    let e = Client::get_all_templates().await?;
-                    VmTemplate::display_by_nodes(e).await?;
+                    let res = Client::get_all_templates().await?;
+                    VmTemplate::display_by_nodes(res).await?;
                 }
             },
             /*
@@ -97,21 +97,24 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-                    if let Some(name) = args.resource.name {
-                        let mut vm = Vm::get_by_name(&name).await?;
-                        if args.attach {
-                            vm.attach()?.start().await?;
-                        } else {
-                            vm.start().await?;
-                        }
-                    } else if let Some(id) = args.resource.id {
-                        let mut vm = Vm::get_by_id(&id).await?;
-                        if args.attach {
-                            vm.attach()?.start().await?;
-                        } else {
-                            vm.start().await?;
-                        }
-                    }
+
+                    // let e = Client::start_vm(args).await?;
+
+                    // if let Some(name) = args.resource.name {
+                    //     let mut vm = Vm::get_by_name(&name).await?;
+                    //     if args.attach {
+                    //         vm.attach()?.start().await?;
+                    //     } else {
+                    //         vm.start().await?;
+                    //     }
+                    // } else if let Some(id) = args.resource.id {
+                    //     let mut vm = Vm::get_by_id(&id).await?;
+                    //     if args.attach {
+                    //         vm.attach()?.start().await?;
+                    //     } else {
+                    //         vm.start().await?;
+                    //     }
+                    // }
                 }
                 Crud::Stop(args) => {
                     if let Some(name) = args.name {
@@ -123,7 +126,8 @@ impl Cli {
                     }
                 }
                 Crud::Ls(args) => {
-                    let e = Client::get_all_vm_w_args(args).await?;
+                    let mut e = Client::get_all_vm().await?;
+                    e = Client::filter(e, args).await?;
                     Vm::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {

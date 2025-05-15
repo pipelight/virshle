@@ -22,7 +22,8 @@ use super::rand::random_name;
 use uuid::Uuid;
 
 // Http
-use crate::http_cli::{Connection, HttpRequest, NodeConnection, VmConnection};
+use crate::connection::{Connection, ConnectionHandle, UnixConnection, VmConnection};
+use crate::http_request::HttpRequest;
 
 //Database
 use crate::database::entity::{prelude::*, *};
@@ -119,9 +120,9 @@ impl Default for Vm {
 }
 
 impl Vm {
-    async fn connection(&self) -> Result<NodeConnection, VirshleError> {
+    async fn connection(&self) -> Result<VmConnection, VirshleError> {
         let socket = &self.get_socket()?;
-        let mut conn = NodeConnection::UnixConnection(VmConnection::new(socket));
+        let mut conn = VmConnection(Connection::UnixConnection(UnixConnection::new(socket)));
         conn.open().await?;
         Ok(conn)
     }

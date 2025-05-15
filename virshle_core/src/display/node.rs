@@ -1,6 +1,5 @@
-use crate::config::{Node, NodeState};
-use crate::http_api::Host;
-use crate::http_cli::Uri;
+use crate::config::{Node, NodeInfo, NodeState};
+use crate::connection::Uri;
 
 use super::utils::{display_id, display_ips, display_some_num, display_some_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
@@ -26,7 +25,7 @@ pub struct NodeTable {
     pub name: String,
     #[tabled(display = "display_state")]
     pub state: NodeState,
-    pub vm: u64,
+    pub vm: i64,
     #[tabled(display = "display_some_num")]
     pub cpu: Option<u64>,
     #[tabled(display = "display_some_vram")]
@@ -34,30 +33,14 @@ pub struct NodeTable {
 }
 
 impl NodeTable {
-    async fn from(e: &Node) -> Result<Self, VirshleError> {
-        let table: NodeTable;
-        match e.open().await {
-            // Node is unreachable
-            Err(_) => {
-                table = NodeTable {
-                    name: e.name.to_owned(),
-                    ..Default::default()
-                };
-            }
-            // Node is reachable
-            Ok(conn) => {
-                let state = e.get_state().await?;
-                let info = e.get_info().await?;
-                let nvm = e.get_num_vm().await?;
-                table = NodeTable {
-                    name: e.name.to_owned(),
-                    cpu: Some(info.cpu.number),
-                    ram: Some(info.ram.total),
-                    vm: nvm,
-                    state,
-                };
-            }
-        }
+    async fn from(e: &NodeInfo) -> Result<Self, VirshleError> {
+        let table = NodeTable {
+            name: e.host_info.name.to_owned(),
+            cpu: Some(e.host_info.cpu.number),
+            ram: Some(e.host_info.ram.total),
+            vm: e.virshle_info.num_vm,
+            state: NodeState::Running,
+        };
         Ok(table)
     }
 }
@@ -82,10 +65,16 @@ impl NodeTable {
 }
 
 impl Node {
-    pub async fn display(items: Vec<Self>) -> Result<(), VirshleError> {
+    pub async fn display(items: HashMap<Node, Option<NodeInfo>>) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
-        for e in items {
-            let e = NodeTable::from(&e).await?;
+        for (node, node_info) in items {
+            let mut e;
+            if let Some(node_info) = node_info {
+                e = NodeTable::from(&node_info).await?;
+            } else {
+                e = NodeTable::from(&NodeInfo::default()).await?;
+                e.state = NodeState::Unreachable;
+            }
             table.push(e);
         }
         NodeTable::display(table)?;

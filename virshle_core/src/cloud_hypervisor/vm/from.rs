@@ -99,8 +99,7 @@ pub fn create_disks(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleErr
             fs::copy(&source, &target)?;
 
             // Set permissions
-            let metadata = file.metadata()?;
-            let mut perms = metadata.permissions();
+            let mut perms = fs::metadata(&target)?.permissions();
             perms.set_mode(0o766);
             fs::set_permissions(&target, perms)?;
 

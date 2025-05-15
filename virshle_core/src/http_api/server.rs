@@ -15,8 +15,10 @@ use uuid::Uuid;
 use std::collections::HashMap;
 use tokio::net::{UnixListener, UnixStream};
 
-use super::Host;
+use crate::config::NodeInfo;
 
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use sysinfo::System;
 
@@ -60,8 +62,8 @@ impl Server {
     /*
      * Get node info (cpu, ram...)
      */
-    fn get_node_info() -> Result<String, VirshleError> {
-        let host = Host::get_info()?;
+    async fn get_node_info() -> Result<String, VirshleError> {
+        let host = NodeInfo::get().await?;
         let info = serde_json::to_string(&host)?;
         Ok(info)
     }
@@ -153,7 +155,7 @@ impl Server {
                 }),
             )
             // Node
-            .route("/node/info", get(Self::get_node_info().unwrap()))
+            .route("/node/info", get(Self::get_node_info().await.unwrap()))
             .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
 
         let socket = Self::get_socket()?;
@@ -166,7 +168,13 @@ impl Server {
             .unwrap();
 
         // Create new socket.
-        let listener = UnixListener::bind(path)?;
+        let listener = UnixListener::bind(&path)?;
+
+        // Set permissions
+        let mut perms = fs::metadata(&path)?.permissions();
+        perms.set_mode(0o774);
+        fs::set_permissions(&path, perms)?;
+
         axum::serve(listener, app).await?;
 
         Ok(())

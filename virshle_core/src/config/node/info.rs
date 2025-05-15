@@ -1,5 +1,4 @@
-use crate::display::display_vram;
-use human_bytes::human_bytes;
+use crate::Vm;
 use sysinfo::System;
 
 use serde::{Deserialize, Serialize};
@@ -8,8 +7,37 @@ use serde::{Deserialize, Serialize};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct NodeInfo {
+    pub host_info: HostInfo,
+    pub virshle_info: VirshleInfo,
+}
+impl NodeInfo {
+    pub async fn get() -> Result<Self, VirshleError> {
+        let host_info = HostInfo::get()?;
+        let virshle_info = VirshleInfo::get().await?;
+
+        Ok(NodeInfo {
+            host_info,
+            virshle_info,
+        })
+    }
+}
+
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct Host {
+pub struct VirshleInfo {
+    // Number of vm on node.
+    pub num_vm: i64,
+}
+impl VirshleInfo {
+    pub async fn get() -> Result<Self, VirshleError> {
+        let num_vm = Vm::get_all().await?.len() as i64;
+        Ok(VirshleInfo { num_vm })
+    }
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct HostInfo {
     pub name: String,
     // Stored as Bytes.
     pub ram: HostRam,
@@ -28,18 +56,18 @@ pub struct HostCpu {
     pub usage: u64,
 }
 
-impl Host {
-    pub fn get_info() -> Result<Self, VirshleError> {
+impl HostInfo {
+    pub fn get() -> Result<Self, VirshleError> {
         let mut s = System::new_all();
         s.refresh_memory();
         s.refresh_cpu_all();
 
+        let name = System::host_name().unwrap_or("unknown".to_owned());
         // Ram
         let ram = HostRam {
             total: s.total_memory(),
             free: s.free_memory(),
         };
-
         // Cpu
         let average_usage = s
             .cpus()
@@ -48,17 +76,12 @@ impl Host {
             .reduce(|acc, x| acc + x)
             .unwrap()
             / (s.cpus().len() as f32);
-
         let cpu = HostCpu {
             number: s.cpus().len() as u64,
             usage: average_usage as u64,
         };
 
-        let name = System::host_name().unwrap_or("unknown".to_owned());
-
-        let host = Host { name, ram, cpu };
-
-        Ok(host)
+        Ok(HostInfo { name, ram, cpu })
     }
 }
 
@@ -68,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_get_info() -> Result<()> {
-        let host = Host::get_info()?;
+        let host = HostInfo::get()?;
         println!("{:?}", host);
         Ok(())
     }

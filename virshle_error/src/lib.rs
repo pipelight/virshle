@@ -16,6 +16,10 @@ pub enum VirshleError {
     #[diagnostic(transparent)]
     LibError(#[from] LibError),
 
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    ConnectionError(#[from] ConnectionError),
+
     ////////////////////////////////
     // Type convertion
     #[error(transparent)]
@@ -160,4 +164,14 @@ impl LibError {
             help: help.to_owned(),
         }
     }
+}
+
+#[derive(Debug, Error, Diagnostic, Clone)]
+pub enum ConnectionError {
+    #[error("socket not found")]
+    SocketNotFound,
+    #[error("ssh auth error")]
+    SshAuthError,
+    #[error("daemon is down")]
+    DaemonDown,
 }

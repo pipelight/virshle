@@ -1,5 +1,9 @@
-use super::{Connection, NodeConnection};
-use std::future::Future;
+mod node;
+mod socket;
+mod ssh;
+mod vm;
+
+use crate::connection::{Connection, ConnectionHandle, NodeConnection};
 
 // Http
 use http_body_util::{BodyExt, Full};
@@ -18,10 +22,23 @@ use tokio::task::JoinHandle;
 // Serde
 use serde::de::DeserializeOwned;
 
+use std::future::Future;
 // Error Handling
 use log::info;
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
+
+pub trait HttpSender {
+    /*
+     * Send the http request.
+     * Internally used by get(), post() and put() methods.
+     */
+    fn send(
+        &mut self,
+        endpoint: &str,
+        request: &Request<Full<Bytes>>,
+    ) -> impl Future<Output = Result<Response, VirshleError>> + Send;
+}
 
 pub trait HttpRequest {
     /*
@@ -57,7 +74,62 @@ pub trait HttpRequest {
         T: Serialize + Send;
 }
 
-impl HttpRequest for NodeConnection {
+#[derive(Debug)]
+pub struct Response {
+    pub url: String,
+    pub inner: HyperResponse<Incoming>,
+}
+impl Response {
+    pub fn new(url: &str, response: HyperResponse<Incoming>) -> Self {
+        Self {
+            url: url.to_owned(),
+            inner: response,
+        }
+    }
+    pub fn status(&self) -> StatusCode {
+        self.inner.status()
+    }
+    pub async fn into_bytes(self) -> Result<Bytes, VirshleError> {
+        let data = self.inner.into_body().collect().await?;
+        let data = data.to_bytes();
+        Ok(data)
+    }
+    pub async fn to_string(self) -> Result<String, VirshleError> {
+        let status: StatusCode = self.inner.status();
+        let data: Bytes = self.into_bytes().await?;
+        let value: String = String::from_utf8(data.to_vec())?;
+        Ok(value)
+    }
+    pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
+        let value: T = serde_json::from_str(&self.to_string().await?)?;
+        Ok(value)
+    }
+}
+
+impl HttpSender for Connection {
+    async fn send(
+        &mut self,
+        endpoint: &str,
+        request: &Request<Full<Bytes>>,
+    ) -> Result<Response, VirshleError> {
+        match self {
+            Connection::SshConnection(ssh_connection) => {
+                let response = ssh_connection.open().await?.send(endpoint, request).await?;
+                return Ok(response);
+            }
+            Connection::UnixConnection(unix_connection) => {
+                let response = unix_connection
+                    .open()
+                    .await?
+                    .send(endpoint, request)
+                    .await?;
+                return Ok(response);
+            }
+        };
+    }
+}
+
+impl HttpRequest for Connection {
     async fn get(&mut self, endpoint: &str) -> Result<Response, VirshleError> {
         let request = Request::builder()
             .uri(endpoint)
@@ -66,14 +138,11 @@ impl HttpRequest for NodeConnection {
             .body(Full::new(Bytes::new()))?;
 
         match self {
-            NodeConnection::SshConnection(ssh_connection) => {
+            Connection::SshConnection(ssh_connection) => {
                 ssh_connection.send(endpoint, &request).await
             }
-            NodeConnection::UnixConnection(unix_connection) => {
+            Connection::UnixConnection(unix_connection) => {
                 unix_connection.send(endpoint, &request).await
-            }
-            NodeConnection::VmConnection(vm_connection) => {
-                vm_connection.send(endpoint, &request).await
             }
         }
     }
@@ -116,38 +185,5 @@ impl HttpRequest for NodeConnection {
         };
 
         self.send(endpoint, &request?).await
-    }
-}
-
-#[derive(Debug)]
-pub struct Response {
-    pub url: String,
-    pub inner: HyperResponse<Incoming>,
-}
-
-impl Response {
-    pub fn new(url: &str, response: HyperResponse<Incoming>) -> Self {
-        Self {
-            url: url.to_owned(),
-            inner: response,
-        }
-    }
-    pub fn status(&self) -> StatusCode {
-        self.inner.status()
-    }
-    pub async fn into_bytes(self) -> Result<Bytes, VirshleError> {
-        let data = self.inner.into_body().collect().await?;
-        let data = data.to_bytes();
-        Ok(data)
-    }
-    pub async fn to_string(self) -> Result<String, VirshleError> {
-        let status: StatusCode = self.inner.status();
-        let data: Bytes = self.into_bytes().await?;
-        let value: String = String::from_utf8(data.to_vec())?;
-        Ok(value)
-    }
-    pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
-        let value: T = serde_json::from_str(&self.to_string().await?)?;
-        Ok(value)
     }
 }

@@ -1,4 +1,4 @@
-use super::{Node, VirshleConfig, VmTemplate};
+use super::{Node, VirshleConfig, Vm, VmTemplate};
 
 // Config
 use serde::{Deserialize, Serialize};
@@ -44,12 +44,10 @@ impl VirshleConfig {
      * plus the default local node.
      */
     pub fn get_nodes(&self) -> Result<Vec<Node>, VirshleError> {
-        // Add a default local node in case it doesn't exists.
         let mut nodes: Vec<Node> = vec![Node::default()];
         if let Some(node) = &self.node {
             nodes.extend(node.to_owned());
         }
-
         Ok(nodes)
     }
 }

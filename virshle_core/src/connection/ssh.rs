@@ -2,11 +2,11 @@
 * This module is to connect to a virshle instance through ssh.
 */
 
-use super::Response;
-use super::{Connection, NodeConnection};
-use super::{SshUri, Uri};
 use crate::config::Node;
 use crate::http_api::Server;
+
+use super::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
+use super::{SshUri, Uri};
 
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
@@ -68,9 +68,10 @@ pub struct SshConnection {
     pub uri: SshUri,
     pub handle: Option<StreamHandle>,
     pub ssh_handle: Option<SshHandle<Client>>,
+    pub state: ConnectionState,
 }
 
-impl Connection for SshConnection {
+impl ConnectionHandle for SshConnection {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         self.open_with_agent().await?;
         self.connect_to_socket().await?;
@@ -87,30 +88,6 @@ impl Connection for SshConnection {
                 .await?;
         }
         Ok(())
-    }
-    async fn send(
-        &mut self,
-        endpoint: &str,
-        request: &Request<Full<Bytes>>,
-    ) -> Result<Response, VirshleError> {
-        if let Some(handle) = &mut self.handle {
-            let response: HyperResponse<Incoming> =
-                handle.sender.send_request(request.to_owned()).await?;
-
-            let status: StatusCode = response.status();
-            let response: Response = Response::new(endpoint, response);
-            trace!("{:#?}", response);
-
-            // if !status.is_success() {
-            //     let message = format!("Status failed: {}", status);
-            //     return Err(LibError::new(&message, "").into());
-            // }
-
-            Ok(response)
-        } else {
-            let err = LibError::new("Connection has no handler.", "open connection first.");
-            return Err(err.into());
-        }
     }
 }
 

@@ -1,20 +1,22 @@
 use std::collections::HashMap;
 
-// Http
-use crate::cli::LsArgs;
-use crate::http_api::Host;
-use crate::http_cli::{Connection, HttpRequest, NodeConnection};
-use crate::{Node, Vm, VmState, VmTemplate};
+// Connections and Http
+use crate::connection::{Connection, ConnectionHandle, NodeConnection};
+use crate::http_request::{HttpRequest, HttpSender};
+
+use crate::cli::VmArgs;
+use crate::{Node, NodeInfo, Vm, VmState, VmTemplate};
 use std::str::FromStr;
 
 // Error handling
-use log::warn;
+use log::{error, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 // Hypervisor
 use crate::config::VirshleConfig;
 
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct Client;
 
 impl Client {
@@ -52,86 +54,84 @@ impl Client {
         }
         Ok(templates)
     }
-    pub async fn get_node_info() -> Result<HashMap<Node, Host>, VirshleError> {
+
+    pub async fn get_nodes_info() -> Result<HashMap<Node, Option<NodeInfo>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
-        let mut node_info: HashMap<Node, Host> = HashMap::new();
+        let mut node_info: HashMap<Node, Option<NodeInfo>> = HashMap::new();
         for node in nodes {
-            let mut conn = node.open().await?;
-            let info: Host = conn.get("/node/info").await?.to_value().await?;
-            conn.close();
-            node_info.insert(node, info);
+            match node.open().await {
+                Err(e) => {
+                    error!("{}", e);
+                    node_info.insert(node, None);
+                }
+                Ok(mut conn) => {
+                    let res: NodeInfo = conn.get("/node/info").await?.to_value().await?;
+                    conn.close();
+                    node_info.insert(node, Some(res));
+                }
+            }
         }
         Ok(node_info)
     }
+    /*
+     * Get a hashmap/dict of all vms per (reachable) node.
+     */
     pub async fn get_all_vm() -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
         for node in nodes {
-            let mut conn = node.open().await?;
-            let node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
-            conn.close();
-            vms.insert(node, node_vms);
+            match node.open().await {
+                Err(e) => {
+                    error!("{}", e);
+                }
+                Ok(mut conn) => {
+                    let node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
+                    conn.close();
+                    vms.insert(node, node_vms);
+                }
+            }
         }
         Ok(vms)
     }
+    /*
+     * Filter vms based on args.
+     */
+    pub async fn filter(
+        mut nodes: HashMap<Node, Vec<Vm>>,
+        args: VmArgs,
+    ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
+        let config = VirshleConfig::get()?;
+
+        // Filter Nodes by name
+        if let Some(node_name) = &args.node {
+            nodes.iter_mut().filter(|(k, _)| &k.name == node_name);
+        }
+
+        // Filter Vms by State
+        if let Some(state) = &args.state {
+            for (node, vms) in &mut nodes {
+                let state = VmState::from_str(state).unwrap();
+                for (i, vm) in vms.clone().iter().enumerate() {
+                    if vm.get_state().await? != state {
+                        vms.remove(i);
+                    }
+                }
+            }
+        }
+        Ok(nodes)
+    }
     /* */
-    pub async fn start_vm() -> Result<(), VirshleError> {
+    pub async fn start_vm(args: VmArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
         for node in nodes {}
         Ok(())
-    }
-    /*
-     * Get vms by node.
-     */
-    pub async fn get_all_vm_w_args(args: LsArgs) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
-        let config = VirshleConfig::get()?;
-
-        // Parse args
-        let nodes: Vec<Node>;
-        if let Some(node_name) = &args.node {
-            nodes = config
-                .get_nodes()?
-                .iter()
-                .filter(|e| &e.name == node_name)
-                .map(|e| e.to_owned())
-                .collect();
-        } else {
-            nodes = config.get_nodes()?;
-        }
-
-        let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
-        for node in nodes {
-            match node.open().await {
-                Err(e) => {
-                    warn!("{}", e);
-                }
-                Ok(mut conn) => {
-                    let mut node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
-                    conn.close();
-
-                    if let Some(state) = &args.state {
-                        let state = VmState::from_str(state).unwrap();
-                        let mut filtered_vms: Vec<Vm> = vec![];
-                        for vm in node_vms {
-                            if vm.get_state().await? == state {
-                                filtered_vms.push(vm);
-                            }
-                        }
-                        node_vms = filtered_vms;
-                    }
-                    vms.insert(node, node_vms);
-                }
-            }
-        }
-
-        Ok(vms)
     }
 }
 
@@ -142,6 +142,15 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_vm() -> Result<()> {
         Client::get_all_vm().await?;
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_get_all_vm_w_filter() -> Result<()> {
+        let args = VmArgs {
+            node: Some("default".to_owned()),
+            ..Default::default()
+        };
+        // Client::get_all_vm_and_filter(args).await?;
         Ok(())
     }
 }

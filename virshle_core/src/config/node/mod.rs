@@ -1,9 +1,12 @@
-use crate::http_api::{Host, Server};
+mod info;
+pub use info::NodeInfo;
 
-use crate::http_cli::{Connection, HttpRequest, NodeConnection, Uri};
+use crate::connection::{Connection, ConnectionHandle, NodeConnection, Uri};
+use crate::http_api::Server;
+use crate::http_request::HttpRequest;
 use crate::Vm;
-// Http
 
+// Http
 use std::fmt;
 use url::Url;
 
@@ -17,7 +20,11 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 use super::VirshleConfig;
 
-#[derive(Debug, Clone, Deserialize, Serialize, Hash, PartialEq, Eq)]
+/*
+* A declaration of a remote/local virshle daemon virshle nodes (name and address)
+* to be queried by the cli.
+*/
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Node {
     pub name: String,
     pub url: String,
@@ -31,40 +38,12 @@ impl Default for Node {
         }
     }
 }
-#[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub enum NodeState {
-    Running,
-    #[default]
-    Unreachable,
-}
 
 impl Node {
-    pub async fn get_info(&self) -> Result<Host, VirshleError> {
+    pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
         let mut conn = self.open().await?;
-        let info: Host = conn.get("/node/info").await?.to_value().await?;
+        let info: NodeInfo = conn.get("/node/info").await?.to_value().await?;
         Ok(info)
-    }
-    pub async fn get_num_vm(&self) -> Result<u64, VirshleError> {
-        let mut conn = self.open().await?;
-        let vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
-        let n = vms.len() as u64;
-        Ok(n)
-    }
-    /*
-     * Get node state.
-     */
-    pub async fn get_state(&self) -> Result<NodeState, VirshleError> {
-        let state = match self.open().await {
-            Err(e) => {
-                warn!("{}", e);
-                NodeState::Unreachable
-            }
-            Ok(conn) => {
-                conn.close().await?;
-                NodeState::Running
-            }
-        };
-        Ok(state)
     }
     /*
      * Return connection handler.
