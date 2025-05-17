@@ -80,7 +80,7 @@ impl Vm {
         } else {
             let message = format!("Couldn't find a vm with the name: {}", name);
             let help = "Are you sure this vm exist?";
-            return Err(LibError::new(&message, help).into());
+            return Err(LibError::builder().msg(&message).help(help).build().into());
         }
     }
     /*
@@ -105,7 +105,7 @@ impl Vm {
             let message = format!("Couldn't find a vm with the uuid: {}", uuid);
 
             let help = "Are you sure this vm exist?";
-            return Err(LibError::new(&message, help).into());
+            return Err(LibError::builder().msg(&message).help(help).build().into());
         }
     }
     /*
@@ -125,7 +125,7 @@ impl Vm {
         } else {
             let message = format!("Couldn't find a vm with the id: {}", id);
             let help = "Are you sure this vm exist?";
-            return Err(LibError::new(&message, help).into());
+            return Err(LibError::builder().msg(&message).help(help).build().into());
         }
     }
 }

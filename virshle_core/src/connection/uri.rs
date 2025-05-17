@@ -87,9 +87,11 @@ impl Uri {
         match url.scheme() {
             "ssh" => Ok(Self::SshUri(SshUri::new(string)?)),
             "unix" => Ok(Self::LocalUri(LocalUri::new(string)?)),
-            _ => Err(
-                LibError::new("Couldn't determine the uri scheme", "Try ssh:// or file://").into(),
-            ),
+            _ => Err(LibError::builder()
+                .msg("Couldn't determine the uri scheme")
+                .help("Try ssh:// or file://")
+                .build()
+                .into()),
         }
     }
     pub fn get_host(&self) -> Result<String, VirshleError> {

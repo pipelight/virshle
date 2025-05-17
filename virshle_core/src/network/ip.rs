@@ -50,7 +50,7 @@ impl Ip {
             None => {
                 let message = "Couldn't find main ethernet interface.";
                 let help = "Do you have eno1 or ens3..?";
-                return Err(LibError::new(message, help).into());
+                return Err(LibError::builder().msg(message).help(help).build().into());
             }
             Some(v) => return Ok(v.to_owned()),
         };

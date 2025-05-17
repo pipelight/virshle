@@ -12,8 +12,10 @@ in
   mkIf cfg.enable {
     ## Module
     systemd.tmpfiles.rules = [
+      "Z '/var/lib/virshle' 774 root users - -"
       "d '/var/lib/virshle' 774 root users - -"
       # Loosen permissions on openvswitch.
+      "Z '/var/run/openvswitch' 774 root users - -"
       "d '/var/run/openvswitch' 774 root users - -"
     ];
 

@@ -205,7 +205,7 @@ impl InitDisk<'_> {
                 Some(Status::Failed) => {
                     let message = format!("Couldn't create an init disk.");
                     let help = res.io.stderr.unwrap_or_default();
-                    return Err(LibError::new(&message, &help).into());
+                    return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
                     info!("{:#?}", res.io.stdout);
@@ -248,7 +248,7 @@ impl InitDisk<'_> {
                 Some(Status::Failed) => {
                     let message = format!("Couldn't mount init disk.");
                     let help = res.io.stderr.unwrap_or_default();
-                    return Err(LibError::new(&message, &help).into());
+                    return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
                     info!("{:#?}", res.io.stdout);
@@ -280,7 +280,7 @@ impl InitDisk<'_> {
                 Some(Status::Failed) => {
                     let message = format!("Couldn't unmount init disk.");
                     let help = res.io.stderr.unwrap_or_default();
-                    return Err(LibError::new(&message, &help).into());
+                    return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
                     info!("{:#?}", res.io.stdout);

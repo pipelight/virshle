@@ -1,6 +1,7 @@
 use crate::cloud_hypervisor::VmState;
 use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Parser)]
@@ -70,7 +71,7 @@ pub struct File {
     pub template: Option<String>,
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq, Default)]
+#[derive(Debug, Args, Clone, Eq, PartialEq, Default, Serialize, Deserialize)]
 pub struct VmArgs {
     #[arg(
         long,
@@ -99,7 +100,7 @@ pub struct VmArgs {
     pub state: Option<String>,
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq)]
+#[derive(Debug, Args, Clone, Eq, PartialEq, Serialize)]
 pub struct StartArgs {
     #[command(flatten)]
     pub vm_args: VmArgs,

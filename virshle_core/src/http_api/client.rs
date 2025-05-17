@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use crate::connection::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
 use crate::http_request::{HttpRequest, HttpSender};
 
-use crate::cli::VmArgs;
+use crate::cli::{StartArgs, VmArgs};
 use crate::{Node, NodeInfo, Vm, VmState, VmTemplate};
 use std::str::FromStr;
 
 // Error handling
-use log::{error, warn};
+use log::{error, info, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -20,20 +20,6 @@ use crate::config::VirshleConfig;
 pub struct Client;
 
 impl Client {
-    // Get node url and connect
-    async fn connection(&self) -> Result<(), VirshleError> {
-        let config = VirshleConfig::get()?;
-
-        let mut vms: Vec<Vm> = vec![];
-        for node in config.get_nodes()? {
-            let node_vms: Vec<Vm> = node.open().await?.get("/vm/list").await?.to_value().await?;
-            vms.extend(node_vms);
-            // node.connect();
-            // let socket = self.get_socket()?;
-            // Connection::open(&socket).await
-        }
-        Ok(())
-    }
     pub async fn get_all_templates() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
@@ -127,12 +113,51 @@ impl Client {
         Ok(nodes)
     }
     /* */
-    pub async fn start_vm(args: VmArgs) -> Result<(), VirshleError> {
+    pub async fn start_vm(args: StartArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
-        let nodes = config.get_nodes()?;
+        let attach = args.attach;
 
-        let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
-        for node in nodes {}
+        // Set node to be queried
+        let node: Node;
+        if let Some(node_name) = &args.vm_args.node {
+            node = config.get_node_by_name(&node_name)?;
+        } else {
+            node = Node::default();
+        }
+
+        if args.vm_args.uuid.is_some() || args.vm_args.id.is_some() || args.vm_args.name.is_some() {
+            match node.open().await {
+                Err(e) => {
+                    error!("{}", e);
+                }
+                Ok(mut conn) => {
+                    let vm: Vec<Vm> = conn
+                        .put("/vm/start", Some(args.vm_args.clone()))
+                        .await?
+                        .to_value()
+                        .await?;
+                    conn.close();
+
+                    let res = format!("started vm: on node");
+                    info!("{}", res);
+                }
+            };
+        }
+        // if let Some(name) = args.resource.name {
+        //     let mut vm = Vm::get_by_name(&name).await?;
+        //     if args.attach {
+        //         vm.attach()?.start().await?;
+        //     } else {
+        //         vm.start().await?;
+        //     }
+        // } else if let Some(id) = args.resource.id {
+        //     let mut vm = Vm::get_by_id(&id).await?;
+        //     if args.attach {
+        //         vm.attach()?.start().await?;
+        //     } else {
+        //         vm.start().await?;
+        //     }
+        // }
         Ok(())
     }
 }

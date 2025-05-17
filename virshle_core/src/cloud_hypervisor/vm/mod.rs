@@ -202,7 +202,11 @@ impl Vm {
 
         if !response.status().is_success() {
             let message = "Couldn't create vm.";
-            return Err(LibError::new(&message, &response.to_string().await?).into());
+            return Err(LibError::builder()
+                .msg(&message)
+                .help(&response.to_string().await?)
+                .build()
+                .into());
         }
 
         Ok(())

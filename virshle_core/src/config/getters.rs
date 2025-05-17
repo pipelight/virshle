@@ -34,7 +34,7 @@ impl VirshleConfig {
                     .collect::<Vec<String>>()
                     .join(",");
                 let help = format!("Available templates are:\n[{templates_name}]");
-                let err = LibError::new(&message, &help);
+                let err = LibError::builder().msg(&message).help(&help).build();
                 Err(err.into())
             }
         }
@@ -49,5 +49,30 @@ impl VirshleConfig {
             nodes.extend(node.to_owned());
         }
         Ok(nodes)
+    }
+    /*
+     * Returns node with name.
+     */
+    pub fn get_node_by_name(&self, name: &str) -> Result<Node, VirshleError> {
+        let nodes: Vec<Node> = self.get_nodes()?;
+        let filtered_nodes: Vec<Node> = self
+            .get_nodes()?
+            .iter()
+            .filter(|e| e.name == name)
+            .map(|e| e.to_owned())
+            .collect();
+
+        let node = filtered_nodes.first();
+        match node {
+            Some(node) => Ok(node.to_owned()),
+            None => {
+                let node_names: Vec<String> = nodes.iter().map(|e| e.name.to_owned()).collect();
+                let node_names: String = node_names.join("\t\n");
+                let message = format!("couldn't find node with name: {:#?}", name);
+                let help = format!("Available nodes are: \n");
+                let err = LibError::builder().msg(&message).help(&help).build();
+                return Err(err.into());
+            }
+        }
     }
 }

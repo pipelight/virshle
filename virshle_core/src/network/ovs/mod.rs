@@ -124,7 +124,7 @@ impl Ovs {
         if let Some(stderr) = res.io.stderr {
             let message = "Ovs command failed.";
             let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            return Err(LibError::new(message, &help).into());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
         }
         Ok(())
     }
@@ -153,7 +153,7 @@ impl Ovs {
         if let Some(stderr) = res.io.stderr {
             let message = "Ovs command failed";
             let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            return Err(LibError::new(message, &help).into());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
         }
         Ok(())
     }
@@ -202,7 +202,7 @@ impl Ovs {
             None => {
                 let message = "Couldn't find any bridges";
                 let help = "Do you have access right to ovs database?";
-                return Err(LibError::new(message, help).into());
+                return Err(LibError::builder().msg(message).help(help).build().into());
             }
         }
     }
@@ -219,7 +219,7 @@ impl Ovs {
             None => {
                 let message = "Couldn't identify the main bridge";
                 let help = "Did you set up a main virtual switch correctly?";
-                return Err(LibError::new(message, help).into());
+                return Err(LibError::builder().msg(message).help(help).build().into());
             }
         }
     }
@@ -242,7 +242,7 @@ impl Ovs {
             None => {
                 let message = "Couldn't identify the vm dedicated bridge";
                 let help = "Did you set up a vm virtual switch correctly?";
-                return Err(LibError::new(message, help).into());
+                return Err(LibError::builder().msg(message).help(help).build().into());
             }
         }
     }
@@ -274,7 +274,7 @@ impl Ovs {
             let message = "Ovs command failed, couldn't create a vm switch.";
             let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
 
-            return Err(LibError::new(message, &help).into());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
         }
 
         Ok(())
@@ -318,7 +318,7 @@ impl Ovs {
             let message = "Ovs command failed, couldn't add internet connectivity to vm switch.";
             let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
 
-            return Err(LibError::new(message, &help).into());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
         }
 
         Ok(())
@@ -379,7 +379,7 @@ impl Ovs {
             None => {
                 let message = "Couldn't find any ports";
                 let help = "Do you have access right to ovs database?";
-                return Err(LibError::new(message, help).into());
+                return Err(LibError::builder().msg(message).help(help).build().into());
             }
         }
     }
@@ -403,13 +403,13 @@ impl Ovs {
                 None => {
                     let message = format!("Couldn't find a port with uuid: {uuid}");
                     let help = "Are you sure this port exists?";
-                    return Err(LibError::new(&message, help).into());
+                    return Err(LibError::builder().msg(&message).help(help).build().into());
                 }
             },
             None => {
                 let message = format!("Couldn't find a port with uuid: {uuid}");
                 let help = "Do you have access right to ovs database?";
-                return Err(LibError::new(&message, help).into());
+                return Err(LibError::builder().msg(&message).help(help).build().into());
             }
         }
     }
@@ -454,13 +454,13 @@ impl Ovs {
                 None => {
                     let message = format!("Couldn't find an interface with uuid: {uuid}");
                     let help = "Are you sure this interface exists?";
-                    return Err(LibError::new(&message, help).into());
+                    return Err(LibError::builder().msg(&message).help(help).build().into());
                 }
             },
             None => {
                 let message = format!("Couldn't find an interface with uuid: {uuid}");
                 let help = "Do you have access right to ovs database?";
-                return Err(LibError::new(&message, help).into());
+                return Err(LibError::builder().msg(&message).help(help).build().into());
             }
         }
     }

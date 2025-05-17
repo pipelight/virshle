@@ -33,7 +33,10 @@ impl HttpSender for UnixConnection {
 
             Ok(response)
         } else {
-            let err = LibError::new("Connection has no handler.", "open connection first.");
+            let err = LibError::builder()
+                .msg("Connection has no handler.")
+                .help("open connection first.")
+                .build();
             return Err(err.into());
         }
     }

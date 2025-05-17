@@ -26,3 +26,5 @@ hyper = { version = "1.4.1", features = ["full"] }
 url = "2.5.2"
 sea-orm = { version = "1.0.1" }
 russh = "0.52.0"
+axum = "0.8.4"
+http-body-util = "0.1.3"

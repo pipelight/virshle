@@ -24,7 +24,7 @@ use serde::de::DeserializeOwned;
 
 use std::future::Future;
 // Error Handling
-use log::info;
+use log::{debug, info};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -95,14 +95,20 @@ impl Response {
         Ok(data)
     }
     pub async fn to_string(self) -> Result<String, VirshleError> {
-        let status: StatusCode = self.inner.status();
         let data: Bytes = self.into_bytes().await?;
         let value: String = String::from_utf8(data.to_vec())?;
         Ok(value)
     }
     pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
-        let value: T = serde_json::from_str(&self.to_string().await?)?;
-        Ok(value)
+        let status: StatusCode = self.inner.status();
+        if status.is_success() {
+            let value: T = serde_json::from_str(&self.to_string().await?)?;
+            Ok(value)
+        } else {
+            let message = "Http response error";
+            let help = format!("{}", status);
+            Err(LibError::builder().msg(message).help(&help).build().into())
+        }
     }
 }
 
@@ -112,6 +118,7 @@ impl HttpSender for Connection {
         endpoint: &str,
         request: &Request<Full<Bytes>>,
     ) -> Result<Response, VirshleError> {
+        debug!("{:#?}", request);
         match self {
             Connection::SshConnection(ssh_connection) => {
                 let response = ssh_connection.open().await?.send(endpoint, request).await?;
@@ -163,7 +170,6 @@ impl HttpRequest for Connection {
                 serde_json::to_value(value).unwrap().to_string(),
             ))),
         };
-
         self.send(endpoint, &request?).await
     }
 
@@ -183,7 +189,6 @@ impl HttpRequest for Connection {
                 serde_json::to_value(value).unwrap().to_string(),
             ))),
         };
-
         self.send(endpoint, &request?).await
     }
 }

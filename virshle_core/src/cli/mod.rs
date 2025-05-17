@@ -48,6 +48,7 @@ impl Cli {
              * Run the background daemon and wait for http requests.
              */
             Commands::Daemon => {
+                VirshleConfig::init().await?;
                 Server::run().await?;
             }
             /*
@@ -97,24 +98,7 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-
-                    // let e = Client::start_vm(args).await?;
-
-                    // if let Some(name) = args.resource.name {
-                    //     let mut vm = Vm::get_by_name(&name).await?;
-                    //     if args.attach {
-                    //         vm.attach()?.start().await?;
-                    //     } else {
-                    //         vm.start().await?;
-                    //     }
-                    // } else if let Some(id) = args.resource.id {
-                    //     let mut vm = Vm::get_by_id(&id).await?;
-                    //     if args.attach {
-                    //         vm.attach()?.start().await?;
-                    //     } else {
-                    //         vm.start().await?;
-                    //     }
-                    // }
+                    let e = Client::start_vm(args).await?;
                 }
                 Crud::Stop(args) => {
                     if let Some(name) = args.name {

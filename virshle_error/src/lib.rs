@@ -2,6 +2,15 @@ use bon::bon;
 use miette::{Diagnostic, Report};
 pub use pipelight_error::{CastError, PipelightError, TomlError};
 
+// Http
+use axum::{
+    body::Body,
+    response::{IntoResponse, Response},
+};
+use http_body_util::{BodyExt, Full};
+use hyper::{body::Bytes, StatusCode};
+use serde::Serialize;
+
 use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
@@ -122,10 +131,12 @@ pub struct LibError {
     #[help]
     pub help: String,
 }
+#[bon]
 impl LibError {
-    pub fn new(message: &str, help: &str) -> Self {
+    #[builder]
+    pub fn new(msg: &str, help: &str) -> Self {
         Self {
-            message: message.to_owned(),
+            message: msg.to_owned(),
             help: help.to_owned(),
         }
     }
@@ -153,4 +164,24 @@ pub enum ConnectionError {
     #[error(transparent)]
     #[diagnostic(code(ssh::error))]
     SshAgentError(#[from] russh::AgentAuthError),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VirshleErrorReponse {
+    help: String,
+}
+
+impl IntoResponse for VirshleError {
+    fn into_response(self) -> Response<Body> {
+        let origin = self.diagnostic_source().unwrap();
+        let error_response = VirshleErrorReponse {
+            help: origin.to_string(),
+        };
+        let body = Body::from(serde_json::to_value(error_response).unwrap().to_string());
+        let res = Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(body)
+            .unwrap();
+        return res;
+    }
 }
