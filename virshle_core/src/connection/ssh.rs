@@ -47,7 +47,7 @@ use tokio::task::JoinHandle;
 // Error Handling
 use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
-use virshle_error::{LibError, VirshleError, WrapError};
+use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 
 pub struct Client;
 impl Handler for Client {
@@ -85,9 +85,13 @@ impl ConnectionHandle for SshConnection {
                     "Disconnectied by virshle cli.",
                     "English",
                 )
-                .await?;
+                .await
+                .map_err(|e| ConnectionError::from(e))?;
         }
         Ok(())
+    }
+    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
+        Ok(self.state.to_owned())
     }
 }
 
@@ -105,7 +109,7 @@ impl SshConnection {
     /*
      * Open ssh connection to uri with keys from agent.
      */
-    pub async fn open_with_agent(&mut self) -> Result<&mut Self, VirshleError> {
+    pub async fn open_with_agent(&mut self) -> Result<&mut Self, ConnectionError> {
         let uri = &self.uri;
         // Ssh connection vars
         let addrs = format!("{}:{}", uri.host, uri.port);
@@ -138,7 +142,15 @@ impl SshConnection {
         // If neither of the keys did work.
         let message = "Ssh authentication to host failed.";
         let help = "Add keys to ssh-agent";
-        Err(LibError::new(message, help).into())
+        Err(ConnectionError::SshAuthError)
+
+        // let err = ConnectionError::SshAuthError;
+        // Err(WrapError::builder()
+        //     .msg(message)
+        //     .help(help)
+        //     .origin(err.into())
+        //     .build()
+        //     .into())
     }
 
     /*

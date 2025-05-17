@@ -1,5 +1,5 @@
-use crate::config::{Node, NodeInfo, NodeState};
-use crate::connection::Uri;
+use crate::config::{Node, NodeInfo};
+use crate::connection::{ConnectionState, Uri};
 
 use super::utils::{display_id, display_ips, display_some_num, display_some_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
@@ -24,8 +24,9 @@ use virshle_error::VirshleError;
 pub struct NodeTable {
     pub name: String,
     #[tabled(display = "display_state")]
-    pub state: NodeState,
-    pub vm: i64,
+    pub state: ConnectionState,
+    #[tabled(display = "display_some_num")]
+    pub vm: Option<u64>,
     #[tabled(display = "display_some_num")]
     pub cpu: Option<u64>,
     #[tabled(display = "display_some_vram")]
@@ -33,14 +34,26 @@ pub struct NodeTable {
 }
 
 impl NodeTable {
-    async fn from(e: &NodeInfo) -> Result<Self, VirshleError> {
-        let table = NodeTable {
-            name: e.host_info.name.to_owned(),
-            cpu: Some(e.host_info.cpu.number),
-            ram: Some(e.host_info.ram.total),
-            vm: e.virshle_info.num_vm,
-            state: NodeState::Running,
-        };
+    async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
+        let (node, (state, node_info)) = e;
+        let table;
+        if let Some(node_info) = node_info {
+            table = NodeTable {
+                name: node.name.to_owned(),
+                cpu: Some(node_info.host_info.cpu.number),
+                ram: Some(node_info.host_info.ram.total),
+                vm: Some(node_info.virshle_info.num_vm),
+                state: state.to_owned(),
+            };
+        } else {
+            table = NodeTable {
+                name: node.name.to_owned(),
+                cpu: None,
+                ram: None,
+                vm: None,
+                state: state.to_owned(),
+            };
+        }
         Ok(table)
     }
 }
@@ -65,16 +78,12 @@ impl NodeTable {
 }
 
 impl Node {
-    pub async fn display(items: HashMap<Node, Option<NodeInfo>>) -> Result<(), VirshleError> {
+    pub async fn display(
+        items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
+    ) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
-        for (node, node_info) in items {
-            let mut e;
-            if let Some(node_info) = node_info {
-                e = NodeTable::from(&node_info).await?;
-            } else {
-                e = NodeTable::from(&NodeInfo::default()).await?;
-                e.state = NodeState::Unreachable;
-            }
+        for item in items {
+            let e = NodeTable::from(&item).await?;
             table.push(e);
         }
         NodeTable::display(table)?;
@@ -82,11 +91,23 @@ impl Node {
     }
 }
 
-pub fn display_state(state: &NodeState) -> String {
+pub fn display_state(state: &ConnectionState) -> String {
     let icon = "●";
     let res = match state {
-        NodeState::Running => format!("{} Running", icon).green().to_string(),
-        NodeState::Unreachable => format!("{} Unreachable", icon).white().to_string(),
+        // Success
+        ConnectionState::DaemonUp => format!("{} Running", icon).green().to_string(),
+
+        // Uninitialized
+        ConnectionState::Down => format!("{} Down", icon).white().to_string(),
+
+        // Warning: small error
+        ConnectionState::SshAuthError => format!("{} SshAuthError", icon).yellow().to_string(),
+
+        // Error
+        ConnectionState::SocketNotFound => format!("{} SocketNotFound", icon).red().to_string(),
+        ConnectionState::DaemonDown => format!("{} DaemonDown", icon).red().to_string(),
+        // Unknown network reason.
+        ConnectionState::Unreachable => format!("{} Unreachable", icon).red().to_string(),
     };
     format!("{}", res)
 }
@@ -101,17 +122,17 @@ mod test {
         let nodes = vec![
             NodeTable {
                 name: "node_1".to_owned(),
-                cpu: Some(4),
-                ram: Some(4 * u64::pow(1024, 4)),
-                state: NodeState::Running,
-                vm: 2,
+                cpu: None,
+                ram: None,
+                state: ConnectionState::Down,
+                vm: None,
             },
             NodeTable {
                 name: "node_2".to_owned(),
                 cpu: Some(16),
                 ram: Some(30 * u64::pow(1024, 4)),
-                state: NodeState::Unreachable,
-                vm: 0,
+                state: ConnectionState::DaemonUp,
+                vm: Some(2),
             },
         ];
 

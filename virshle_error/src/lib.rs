@@ -78,45 +78,10 @@ pub enum VirshleError {
     #[diagnostic(code(hyper::error))]
     HyprHttpError(#[from] hyper::http::Error),
 
-    ////////////////////////////////
-    // Ssh
+    // Env var error
+    // Mainly use to get ssh_auth_agent socket.
     #[error(transparent)]
-    #[diagnostic(code(russh::error))]
-    RushError(#[from] russh::Error),
-
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    SshKeyError(#[from] russh::keys::Error),
-
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    SshAgentError(#[from] russh::AgentAuthError),
-
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    EnvError(#[from] std::env::VarError),
-    // #[error(transparent)]
-    // #[diagnostic(transparent)]
-    // RusshError(#[from] RusshError),
-}
-
-#[derive(Debug, Error, Diagnostic)]
-pub enum RusshError {
-    // Ssh
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    SshError(#[from] russh::Error),
-
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    SshKeyError(#[from] russh::keys::Error),
-
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
-    SshAgentError(#[from] russh::AgentAuthError),
-
-    #[error(transparent)]
-    #[diagnostic(code(ssh::error))]
+    #[diagnostic(code(env::error))]
     EnvError(#[from] std::env::VarError),
 }
 
@@ -166,12 +131,26 @@ impl LibError {
     }
 }
 
-#[derive(Debug, Error, Diagnostic, Clone)]
+#[derive(Debug, Error, Diagnostic)]
 pub enum ConnectionError {
     #[error("socket not found")]
     SocketNotFound,
-    #[error("ssh auth error")]
-    SshAuthError,
     #[error("daemon is down")]
     DaemonDown,
+
+    // Ssh
+    #[error("failed ssh authentication")]
+    SshAuthError,
+
+    #[error(transparent)]
+    #[diagnostic(code(ssh::error))]
+    RusshError(#[from] russh::Error),
+
+    #[error(transparent)]
+    #[diagnostic(code(ssh::error))]
+    SshKeyError(#[from] russh::keys::Error),
+
+    #[error(transparent)]
+    #[diagnostic(code(ssh::error))]
+    SshAgentError(#[from] russh::AgentAuthError),
 }

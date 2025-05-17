@@ -4,7 +4,7 @@ pub mod load;
 pub mod node;
 
 // Reexport
-pub use node::{Node, NodeInfo, NodeState};
+pub use node::{Node, NodeInfo};
 
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;

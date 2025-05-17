@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 // Connections and Http
-use crate::connection::{Connection, ConnectionHandle, NodeConnection};
+use crate::connection::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
 use crate::http_request::{HttpRequest, HttpSender};
 
 use crate::cli::VmArgs;
@@ -55,21 +55,23 @@ impl Client {
         Ok(templates)
     }
 
-    pub async fn get_nodes_info() -> Result<HashMap<Node, Option<NodeInfo>>, VirshleError> {
+    pub async fn get_nodes_info(
+    ) -> Result<HashMap<Node, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
-        let mut node_info: HashMap<Node, Option<NodeInfo>> = HashMap::new();
+        let mut node_info: HashMap<Node, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
         for node in nodes {
-            match node.open().await {
+            let mut conn = node.get_connection()?;
+            match conn.open().await {
                 Err(e) => {
                     error!("{}", e);
-                    node_info.insert(node, None);
+                    node_info.insert(node, (conn.get_state()?, None));
                 }
-                Ok(mut conn) => {
+                Ok(_) => {
                     let res: NodeInfo = conn.get("/node/info").await?.to_value().await?;
                     conn.close();
-                    node_info.insert(node, Some(res));
+                    node_info.insert(node, (conn.get_state()?, Some(res)));
                 }
             }
         }

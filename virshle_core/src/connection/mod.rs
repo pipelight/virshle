@@ -19,7 +19,6 @@
 
 mod node;
 
-mod error;
 mod socket;
 mod ssh;
 mod uri;
@@ -51,19 +50,27 @@ pub trait ConnectionHandle {
      * Close connection
      */
     fn close(&self) -> impl Future<Output = Result<(), VirshleError>> + Send;
+    /*
+     * Get connection state
+     */
+    fn get_state(&self) -> Result<ConnectionState, VirshleError>;
 }
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum ConnectionState {
-    /// Connection not established.
-    #[default]
-    Down,
-    /// Connection established and daemon is up!
+    /// Success: Connection established and daemon is up!
     DaemonUp,
 
+    /// Uninitialized: Connection not established.
+    #[default]
+    Down,
+
+    // Warning: Small error
+    SshAuthError,
+
+    // Error
     DaemonDown,
     SocketNotFound,
-    SshAuthError,
     /// Unknown network reason.
     Unreachable,
 }
@@ -78,58 +85,72 @@ impl ConnectionHandle for Connection {
             Connection::SshConnection(connection) => {
                 let res = connection.open().await;
                 match res {
-                    Err(err) => match err {
-                        VirshleError::ConnectionError(err) => match err {
-                            ConnectionError::DaemonDown => {
-                                connection.state = ConnectionState::DaemonDown;
-                            }
-                            ConnectionError::SocketNotFound => {
-                                connection.state = ConnectionState::SocketNotFound;
-                            }
+                    Err(err) => {
+                        match &err {
+                            VirshleError::ConnectionError(err) => match err {
+                                ConnectionError::DaemonDown => {
+                                    connection.state = ConnectionState::DaemonDown;
+                                }
+                                ConnectionError::SocketNotFound => {
+                                    connection.state = ConnectionState::SocketNotFound;
+                                }
+                                ConnectionError::SshAuthError
+                                | ConnectionError::RusshError(_)
+                                | ConnectionError::SshKeyError(_)
+                                | ConnectionError::SshAgentError(_) => {
+                                    connection.state = ConnectionState::SshAuthError;
+                                }
+                            },
                             _ => {
-                                connection.state = ConnectionState::SocketNotFound;
+                                connection.state = ConnectionState::Unreachable;
                             }
-                        },
-                        _ => {
-                            connection.state = ConnectionState::SocketNotFound;
-                        }
-                    },
-                    Ok(_) => {}
-                };
+                        };
+                        return Err(err);
+                    }
+                    Ok(conn) => {
+                        conn.state = ConnectionState::DaemonUp;
+                        Ok(self)
+                    }
+                }
             }
             Connection::UnixConnection(connection) => {
                 let res = connection.open().await;
                 match res {
-                    Err(err) => match err {
-                        VirshleError::ConnectionError(err) => match err {
-                            ConnectionError::DaemonDown => {
-                                connection.state = ConnectionState::DaemonDown;
-                            }
-                            ConnectionError::SocketNotFound => {
-                                connection.state = ConnectionState::SocketNotFound;
-                            }
+                    Err(err) => {
+                        match &err {
+                            VirshleError::ConnectionError(err) => match err {
+                                ConnectionError::DaemonDown => {
+                                    connection.state = ConnectionState::DaemonDown;
+                                }
+                                ConnectionError::SocketNotFound => {
+                                    connection.state = ConnectionState::SocketNotFound;
+                                }
+                                _ => {
+                                    connection.state = ConnectionState::Unreachable;
+                                }
+                            },
                             _ => {
-                                connection.state = ConnectionState::SocketNotFound;
-                            }
-                        },
-                        _ => {
-                            connection.state = ConnectionState::SocketNotFound;
+                                connection.state = ConnectionState::Unreachable;
 
-                            let help = "Do you have the right credentials";
-                            let message = format!("Connection refused for");
-                            let err = WrapError::builder()
-                                .msg(&message)
-                                .help(&help)
-                                .origin(Error::from_err(err))
-                                .build();
-                            return Err(err.into());
+                                let help = "Do you have the right credentials";
+                                let message = format!("Connection refused for");
+                                let err = WrapError::builder()
+                                    .msg(&message)
+                                    .help(&help)
+                                    .origin(Error::from_err(err))
+                                    .build();
+                                return Err(err.into());
+                            }
                         }
-                    },
-                    Ok(_) => {}
-                };
+                        return Err(err);
+                    }
+                    Ok(conn) => {
+                        conn.state = ConnectionState::DaemonUp;
+                        Ok(self)
+                    }
+                }
             }
-        };
-        Ok(self)
+        }
     }
     async fn close(&self) -> Result<(), VirshleError> {
         match self {
@@ -139,6 +160,12 @@ impl ConnectionHandle for Connection {
             _ => {}
         };
         Ok(())
+    }
+    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
+        match self {
+            Connection::SshConnection(connection) => Ok(connection.state.to_owned()),
+            Connection::UnixConnection(connection) => Ok(connection.state.to_owned()),
+        }
     }
 }
 
@@ -152,6 +179,10 @@ impl ConnectionHandle for NodeConnection {
         self.0.open().await?;
         Ok(self)
     }
+    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
+        let state = self.0.get_state()?;
+        Ok(state)
+    }
 }
 
 pub struct VmConnection(pub Connection);
@@ -163,5 +194,9 @@ impl ConnectionHandle for VmConnection {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         self.0.open().await?;
         Ok(self)
+    }
+    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
+        let state = self.0.get_state()?;
+        Ok(state)
     }
 }

@@ -9,7 +9,7 @@ pub use http_api::{Client, Server};
 
 // Toml configuration structs.
 pub mod config;
-pub use config::{Node, NodeInfo, NodeState};
+pub use config::{Node, NodeInfo};
 
 // Virshle command line
 pub mod cli;

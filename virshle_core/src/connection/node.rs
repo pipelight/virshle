@@ -23,60 +23,13 @@ impl From<&Node> for NodeConnection {
         match uri {
             Uri::SshUri(ssh_uri) => NodeConnection(Connection::SshConnection(SshConnection {
                 uri: ssh_uri,
-                ssh_handle: None,
-                handle: None,
+                ..Default::default()
             })),
             Uri::LocalUri(unix_uri) => NodeConnection(Connection::UnixConnection(UnixConnection {
                 uri: unix_uri,
-                handle: None,
+                ..Default::default()
             })),
         }
-    }
-}
-
-#[derive(Default, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub enum NodeState {
-    #[default]
-    /// Network error.
-    Unreachable,
-    /// No socket was found.
-    // NoSocket,
-    /// Daemon not responding.
-    // Stopped,
-    /// Daemon reponding.
-    Running,
-}
-
-impl NodeConnection {
-    /*
-     * Get node state.
-     */
-    pub async fn get_state(self) -> Result<NodeState, VirshleError> {
-        let mut state = NodeState::Unreachable;
-        match self.0 {
-            Connection::SshConnection(mut ssh_conn) => {
-                match &ssh_conn.open_with_agent().await {
-                    Ok(conn) => {
-                        info!("remote server authentication succeeded");
-                        state = NodeState::Running;
-                    }
-                    Err(e) => {}
-                };
-            }
-            Connection::UnixConnection(mut con) => {}
-        };
-
-        // let state = match self.open().await {
-        //     Err(e) => {
-        //         warn!("{}", e);
-        //         NodeState::Unreachable
-        //     }
-        //     Ok(conn) => {
-        //         conn.close().await?;
-        //         NodeState::Running
-        //     }
-        // };
-        Ok(state)
     }
 }
 

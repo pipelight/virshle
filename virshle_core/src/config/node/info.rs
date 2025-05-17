@@ -1,13 +1,14 @@
 use crate::Vm;
 use sysinfo::System;
 
+use crate::connection::ConnectionState;
 use serde::{Deserialize, Serialize};
 
 // Error handling
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct NodeInfo {
     pub host_info: HostInfo,
     pub virshle_info: VirshleInfo,
@@ -27,11 +28,11 @@ impl NodeInfo {
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct VirshleInfo {
     // Number of vm on node.
-    pub num_vm: i64,
+    pub num_vm: u64,
 }
 impl VirshleInfo {
     pub async fn get() -> Result<Self, VirshleError> {
-        let num_vm = Vm::get_all().await?.len() as i64;
+        let num_vm = Vm::get_all().await?.len() as u64;
         Ok(VirshleInfo { num_vm })
     }
 }

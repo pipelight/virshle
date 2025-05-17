@@ -93,4 +93,7 @@ impl ConnectionHandle for UnixConnection {
     async fn close(&self) -> Result<(), VirshleError> {
         Ok(())
     }
+    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
+        Ok(self.state.to_owned())
+    }
 }
