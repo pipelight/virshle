@@ -1,20 +1,16 @@
 use axum::{
-    extract::{
-        connect_info::{self, ConnectInfo},
-        Extension, Path, Query,
-    },
+    extract::{Extension, Path, Query},
     http::Request,
     response::IntoResponse,
     routing::{get, post, put},
     Json, Router,
 };
+
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
-use std::str::FromStr;
 use uuid::Uuid;
 
-use std::collections::HashMap;
 use tokio::net::{UnixListener, UnixStream};
 
 use crate::config::NodeInfo;
@@ -24,22 +20,14 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use sysinfo::System;
 
-// Globals
-use crate::config::MANAGED_DIR;
-
-// Hypervisor
-use crate::cli::VmArgs;
-use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, Vm, VmTemplate};
-use crate::config::VirshleConfig;
-
 // Error handling
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub struct Server;
+use super::Server;
 
 impl Server {
-    pub async fn run() -> Result<(), VirshleError> {
+    pub async fn make_rest_router() -> Result<Router, VirshleError> {
         // build our application with a single route
         let app = Router::new()
             // Template
@@ -76,7 +64,23 @@ impl Server {
             // Node
             .route("/node/info", get(Self::get_node_info().await.unwrap()))
             .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()));
+        Ok(app)
+    }
 
+    /*
+     * Run REST api only.
+     */
+    pub async fn run_rest() -> Result<(), VirshleError> {
+        let app = Self::make_rest_router().await?;
+        let listener = Self::make_socket().await?;
+        axum::serve(listener, app).await?;
+        Ok(())
+    }
+
+    /*
+     * Create a unix socket with custom permissions.
+     */
+    pub async fn make_socket() -> Result<UnixListener, VirshleError> {
         let socket = Self::get_socket()?;
         let path = PathBuf::from(socket);
 
@@ -94,9 +98,7 @@ impl Server {
         perms.set_mode(0o774);
         fs::set_permissions(&path, perms)?;
 
-        axum::serve(listener, app).await?;
-
-        Ok(())
+        Ok(listener)
     }
 }
 
