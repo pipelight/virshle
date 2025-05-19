@@ -7,7 +7,7 @@ mod definition;
 mod disk;
 mod rand;
 mod vm;
-mod vmm_types;
+pub mod vmm_types;
 
 pub use definition::{Definition, Template};
 pub use disk::{Disk, DiskTemplate, InitDisk};

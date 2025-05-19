@@ -160,6 +160,36 @@ impl Client {
         // }
         Ok(())
     }
+    pub async fn get_vm_info(args: VmArgs) -> Result<(), VirshleError> {
+        let config = VirshleConfig::get()?;
+
+        // Set node to be queried
+        let node: Node;
+        if let Some(node_name) = &args.node {
+            node = config.get_node_by_name(&node_name)?;
+        } else {
+            node = Node::default();
+        }
+        if args.uuid.is_some() || args.id.is_some() || args.name.is_some() {
+            match node.open().await {
+                Err(e) => {
+                    error!("{}", e);
+                }
+                Ok(mut conn) => {
+                    let vm: Vec<Vm> = conn
+                        .post("/vm/info", Some(args.clone()))
+                        .await?
+                        .to_value()
+                        .await?;
+                    conn.close();
+
+                    let res = format!("get info for vm: on node:");
+                    info!("{}", res);
+                }
+            };
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]

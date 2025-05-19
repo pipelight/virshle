@@ -65,3 +65,8 @@ futures = "0.3.31"
 users = "0.11.0"
 tower-http = { version = "0.6.2", features = ["trace"] }
 sysinfo = { version = "0.35.0", features = ["serde"] }
+tonic = { version = "0.13.1", features = ["zstd"] }
+tarpc = { version = "0.36.0", features = ["tokio1"] }
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"

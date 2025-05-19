@@ -2,8 +2,8 @@
 * This module is to connect to a virshle instance through ssh.
 */
 
+use crate::api::Server;
 use crate::config::Node;
-use crate::http_api::Server;
 
 use super::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
 use super::{SshUri, Uri};

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use users::{get_current_uid, get_user_by_uid};
 
 // Global vars
-use crate::http_api::Server;
+use crate::api::Server;
 
 // Error Handling
 use log::info;

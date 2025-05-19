@@ -4,8 +4,8 @@
 #![allow(unused_must_use)]
 
 // Virshle daemon http Rest API
-pub mod http_api;
-pub use http_api::{Client, Server};
+pub mod api;
+pub use api::{Client, Server};
 
 // Toml configuration structs.
 pub mod config;

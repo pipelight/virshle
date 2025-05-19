@@ -224,19 +224,16 @@ impl Ovs {
         }
     }
     pub fn get_vm_bridge() -> Result<OvsBridge, VirshleError> {
+        let vm_bridge_name = "br0";
         let bridges = Self::get_bridges()?;
 
         let bridge = bridges.iter().find(|e| {
             e.ports
                 .iter()
-                .find(|e| {
-                    e.interface.name.starts_with("patch")
-                        && e.interface
-                            .name
-                            .ends_with(&Self::get_main_bridge().unwrap().name)
-                })
+                .find(|e| e.interface.name == vm_bridge_name)
                 .is_some()
         });
+
         match bridge {
             Some(v) => Ok(v.to_owned()),
             None => {

@@ -26,7 +26,12 @@ in
         "https://github.com/pipelight/virshle"
         "virshle --help"
       ];
-      after = ["network.target" "socket.target"];
+      after = [
+        "network.target"
+        "socket.target"
+        "ovs-vswitchd.service"
+        "ovsdb.service"
+      ];
       wantedBy = ["multi-user.target"];
 
       serviceConfig = with pkgs; let
@@ -36,6 +41,9 @@ in
         User = "root";
         Group = "users";
         Environment = "PATH=/run/current-system/sw/bin";
+        ExecStartPre = [
+          "-${package}/bin/virshle init -vvv"
+        ];
         ExecStart = ''
           ${package}/bin/virshle daemon -vvv
         '';

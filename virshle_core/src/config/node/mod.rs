@@ -1,8 +1,8 @@
 mod info;
 pub use info::NodeInfo;
 
+use crate::api::Server;
 use crate::connection::{Connection, ConnectionHandle, NodeConnection, Uri};
-use crate::http_api::Server;
 use crate::http_request::HttpRequest;
 use crate::Vm;
 

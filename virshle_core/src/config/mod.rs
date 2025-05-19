@@ -6,9 +6,9 @@ pub mod node;
 // Reexport
 pub use node::{Node, NodeInfo};
 
+use crate::api::Server;
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
-use crate::http_api::Server;
 use crate::network::Ovs;
 
 // Global vars

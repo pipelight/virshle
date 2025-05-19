@@ -48,7 +48,6 @@ impl Cli {
              * Run the background daemon and wait for http requests.
              */
             Commands::Daemon => {
-                VirshleConfig::init().await?;
                 Server::run().await?;
             }
             /*

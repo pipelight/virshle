@@ -180,7 +180,7 @@ impl Vm {
     /*
      * Return vm info
      */
-    pub async fn get_info(&self) -> Result<(), VirshleError> {
+    pub async fn get_info(&self) -> Result<VmInfoResponse, VirshleError> {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
@@ -190,7 +190,7 @@ impl Vm {
         println!("{}", data);
 
         let data: VmInfoResponse = serde_json::from_str(&data)?;
-        Ok(())
+        Ok(data)
     }
 
     pub fn is_attach(&self) -> Result<bool, VirshleError> {
