@@ -1,11 +1,12 @@
 mod types;
 pub use types::*;
 
+use crate::api::{NodeServer, RestClient};
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::{Node, VirshleConfig},
-    Client, Server,
 };
+
 use clap::Parser;
 use std::fs;
 use std::path::Path;
@@ -48,14 +49,14 @@ impl Cli {
              * Run the background daemon and wait for http requests.
              */
             Commands::Daemon => {
-                Server::run().await?;
+                NodeServer::run().await?;
             }
             /*
              * Operations on virtual machine templates
              */
             Commands::Node(args) => match args {
                 Display::Ls => {
-                    let res = Client::get_nodes_info().await?;
+                    let res = RestClient::get_nodes_info().await?;
                     Node::display(res).await?;
                 }
             },
@@ -64,7 +65,7 @@ impl Cli {
              */
             Commands::Template(args) => match args {
                 Display::Ls => {
-                    let res = Client::get_all_templates().await?;
+                    let res = RestClient::get_all_templates().await?;
                     VmTemplate::display_by_nodes(res).await?;
                 }
             },
@@ -97,7 +98,7 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-                    let e = Client::start_vm(args).await?;
+                    let e = RestClient::start_vm(args).await?;
                 }
                 Crud::Stop(args) => {
                     if let Some(name) = args.name {
@@ -109,8 +110,8 @@ impl Cli {
                     }
                 }
                 Crud::Ls(args) => {
-                    let mut e = Client::get_all_vm().await?;
-                    e = Client::filter(e, args).await?;
+                    let mut e = RestClient::get_all_vm().await?;
+                    e = RestClient::filter(e, args).await?;
                     Vm::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {

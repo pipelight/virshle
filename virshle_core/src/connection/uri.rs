@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use users::{get_current_uid, get_user_by_uid};
 
 // Global vars
-use crate::api::Server;
+use crate::api::NodeServer;
 
 // Error Handling
 use log::info;
@@ -53,7 +53,7 @@ impl Default for SshUri {
         Self {
             user: username,
             host: "localhost".to_owned(),
-            path: Server::get_socket().unwrap(),
+            path: NodeServer::get_socket().unwrap(),
             port: 22,
         }
     }
@@ -76,7 +76,7 @@ impl fmt::Display for LocalUri {
 impl Default for LocalUri {
     fn default() -> Self {
         Self {
-            path: Server::get_socket().unwrap(),
+            path: NodeServer::get_socket().unwrap(),
         }
     }
 }

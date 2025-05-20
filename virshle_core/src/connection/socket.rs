@@ -56,11 +56,16 @@ pub struct StreamHandle {
 impl ConnectionHandle for UnixConnection {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         let socket = &self.uri.path;
+        if !Path::new(socket).exists() {
+            let err = ConnectionError::SocketNotFound;
+            return Err(err.into());
+        }
+
         let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(&socket)).await {
             Err(e) => {
                 let message = format!("Couldn't connect to socket: {}", socket);
                 let help = format!("Does the socket exist?");
-                let err = ConnectionError::SocketNotFound;
+                let err = ConnectionError::DaemonDown;
                 return Err(err.into());
             }
             Ok(v) => TokioIo::new(v),

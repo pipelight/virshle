@@ -17,9 +17,9 @@ use virshle_error::{LibError, VirshleError, WrapError};
 use crate::config::VirshleConfig;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct Client;
+pub struct RestClient;
 
-impl Client {
+impl RestClient {
     pub async fn get_all_templates() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
@@ -198,7 +198,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_vm() -> Result<()> {
-        Client::get_all_vm().await?;
+        RestClient::get_all_vm().await?;
         Ok(())
     }
     #[tokio::test]

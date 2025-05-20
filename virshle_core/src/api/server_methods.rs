@@ -8,8 +8,6 @@ use axum::{
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use super::Server;
-
 // Node
 use crate::config::NodeInfo;
 
@@ -22,7 +20,8 @@ use crate::config::VirshleConfig;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-impl Server {
+pub struct NodeMethod;
+impl NodeMethod {
     pub async fn get_all_vm() -> Result<String, VirshleError> {
         let vms = serde_json::to_string(&Vm::get_all().await?)?;
         Ok(vms)

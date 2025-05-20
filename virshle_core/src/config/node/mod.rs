@@ -1,7 +1,7 @@
 mod info;
 pub use info::NodeInfo;
 
-use crate::api::Server;
+use crate::api::NodeServer;
 use crate::connection::{Connection, ConnectionHandle, NodeConnection, Uri};
 use crate::http_request::HttpRequest;
 use crate::Vm;
@@ -31,7 +31,7 @@ pub struct Node {
 }
 impl Default for Node {
     fn default() -> Self {
-        let url = "unix://".to_owned() + &Server::get_socket().unwrap();
+        let url = "unix://".to_owned() + &NodeServer::get_socket().unwrap();
         Self {
             name: "default".to_owned(),
             url,

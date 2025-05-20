@@ -5,7 +5,8 @@
 
 // Virshle daemon http Rest API
 pub mod api;
-pub use api::{Client, Server};
+pub use api::NodeServer;
+// pub use api::{GrpcClient, RestClient};
 
 // Toml configuration structs.
 pub mod config;

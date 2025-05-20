@@ -52,7 +52,7 @@ sea-orm = { version = "1.0.1", features = [
 migration = { path = "../migration" }
 russh = "0.52.0"
 url = "2.5.2"
-async-trait = "0.1.83"
+async-trait = "0.1.88"
 axum = { version = "0.8.3" }
 
 # Cli
@@ -66,10 +66,17 @@ users = "0.11.0"
 tower-http = { version = "0.6.2", features = ["trace"] }
 sysinfo = { version = "0.35.0", features = ["serde"] }
 tonic = { version = "0.13.1", features = ["zstd"] }
-# tonic = { version = "0.8.3" }
-tarpc = { version = "0.36.0", features = ["tokio1"] }
 axum_tonic = "0.3.0"
-tonic-rpc = { version = "0.2.1", features = ["bincode", "json"] }
+# tonic-rpc = { version = "0.2.1", features = ["bincode", "json"] }
+tonic-rpc = { git = "https://github.com/pipelight/tonic-rpc", branch = "main", features = [
+  "bincode",
+  "json",
+] }
+# tonic-rpc = { path = "/home/anon/.ghr/github.com/pipelight/tonic-rpc/tonic-rpc", features = [
+#   "bincode",
+#   "json",
+# ] }
+tokio-stream = "0.1.17"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
