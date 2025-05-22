@@ -15,7 +15,7 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
-    Daemon,
+    Daemon(Daemon),
 
     /// Init/Ensure system global configuration (openvswitches, directories, database).
     Init,
@@ -69,6 +69,24 @@ pub struct File {
     pub file: Option<String>,
     #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
     pub template: Option<String>,
+}
+
+#[derive(Debug, Args, Clone, Eq, PartialEq)]
+pub struct Daemon {
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub rest: bool,
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub grpc: bool,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq, Default, Serialize, Deserialize)]

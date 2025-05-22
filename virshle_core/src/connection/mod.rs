@@ -18,6 +18,7 @@
 // Main connection types.
 
 mod node;
+mod state;
 
 mod socket;
 mod ssh;
@@ -26,11 +27,18 @@ mod uri;
 // Reexport
 pub use socket::UnixConnection;
 pub use ssh::SshConnection;
+pub use state::ConnectionState;
 pub use uri::{LocalUri, SshUri, Uri};
 
+// Http
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
+use hyper::client::conn::http1; // {handshake, SendRequest};
+use hyper::client::conn::http2; // {handshake};
 use hyper::Request;
+
+// Async/Await
+use tokio::task::JoinHandle;
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -40,39 +48,12 @@ use miette::{Error, Result};
 use virshle_error::{ConnectionError, VirshleError, WrapError};
 
 pub trait ConnectionHandle {
-    /*
-     * Open connection to
-     * - unix socket
-     * - or ssh then unix socket
-     */
     fn open(&mut self) -> impl Future<Output = Result<&mut Self, VirshleError>> + Send;
-    /*
-     * Close connection
-     */
-    fn close(&self) -> impl Future<Output = Result<(), VirshleError>> + Send;
-    /*
-     * Get connection state
-     */
-    fn get_state(&self) -> Result<ConnectionState, VirshleError>;
-}
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub enum ConnectionState {
-    /// Success: Connection established and daemon is up!
-    DaemonUp,
-
-    /// Uninitialized: Connection not established.
-    #[default]
-    Down,
-
-    // Warning: Small error
-    SshAuthError,
-
-    // Error
-    DaemonDown,
-    SocketNotFound,
-    /// Unknown network reason.
-    Unreachable,
+    fn close(&mut self) -> impl Future<Output = Result<(), VirshleError>> + Send;
+    fn get_state(&mut self) -> impl Future<Output = Result<ConnectionState, VirshleError>> + Send;
+    fn get_stream<T>(&self) -> Result<T, VirshleError>
+    where
+        T: tokio::io::AsyncRead + tokio::io::AsyncWrite;
 }
 
 pub enum Connection {
@@ -82,121 +63,71 @@ pub enum Connection {
 impl ConnectionHandle for Connection {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         match self {
-            Connection::SshConnection(connection) => {
-                let res = connection.open().await;
-                match res {
-                    Err(err) => {
-                        match &err {
-                            VirshleError::ConnectionError(err) => match err {
-                                ConnectionError::DaemonDown => {
-                                    connection.state = ConnectionState::DaemonDown;
-                                }
-                                ConnectionError::SocketNotFound => {
-                                    connection.state = ConnectionState::SocketNotFound;
-                                }
-                                ConnectionError::SshAuthError
-                                | ConnectionError::RusshError(_)
-                                | ConnectionError::SshKeyError(_)
-                                | ConnectionError::SshAgentError(_) => {
-                                    connection.state = ConnectionState::SshAuthError;
-                                }
-                            },
-                            _ => {
-                                connection.state = ConnectionState::Unreachable;
-                            }
-                        };
-                        return Err(err);
-                    }
-                    Ok(conn) => {
-                        conn.state = ConnectionState::DaemonUp;
-                        Ok(self)
-                    }
-                }
+            Connection::SshConnection(e) => {
+                e.open().await?;
             }
-            Connection::UnixConnection(connection) => {
-                let res = connection.open().await;
-                match res {
-                    Err(err) => {
-                        match &err {
-                            VirshleError::ConnectionError(err) => match err {
-                                ConnectionError::DaemonDown => {
-                                    connection.state = ConnectionState::DaemonDown;
-                                }
-                                ConnectionError::SocketNotFound => {
-                                    connection.state = ConnectionState::SocketNotFound;
-                                }
-                                _ => {
-                                    connection.state = ConnectionState::Unreachable;
-                                }
-                            },
-                            _ => {
-                                connection.state = ConnectionState::Unreachable;
-
-                                let help = "Do you have the right credentials";
-                                let message = format!("Connection refused for");
-                                let err = WrapError::builder()
-                                    .msg(&message)
-                                    .help(&help)
-                                    .origin(Error::from_err(err))
-                                    .build();
-                                return Err(err.into());
-                            }
-                        }
-                        return Err(err);
-                    }
-                    Ok(conn) => {
-                        conn.state = ConnectionState::DaemonUp;
-                        Ok(self)
-                    }
-                }
+            Connection::UnixConnection(e) => {
+                e.open().await?;
             }
-        }
+        };
+        Ok(self)
     }
-    async fn close(&self) -> Result<(), VirshleError> {
+    async fn close(&mut self) -> Result<(), VirshleError> {
         match self {
-            Connection::SshConnection(ssh_connection) => {
-                let _ = ssh_connection.close().await?;
+            Connection::SshConnection(e) => {
+                e.close().await?;
             }
-            _ => {}
+            Connection::UnixConnection(e) => {
+                e.close().await?;
+            }
         };
         Ok(())
     }
-    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
+    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
         match self {
-            Connection::SshConnection(connection) => Ok(connection.state.to_owned()),
-            Connection::UnixConnection(connection) => Ok(connection.state.to_owned()),
+            Connection::SshConnection(e) => e.get_state().await,
+            Connection::UnixConnection(e) => e.get_state().await,
+        }
+    }
+    fn get_stream<T>(&self) -> Result<T, VirshleError> {
+        match self {
+            Connection::SshConnection(e) => e.get_stream(),
+            Connection::UnixConnection(e) => e.get_steam(),
         }
     }
 }
 
 pub struct NodeConnection(pub Connection);
 impl ConnectionHandle for NodeConnection {
-    async fn close(&self) -> Result<(), VirshleError> {
-        self.0.close().await?;
-        Ok(())
-    }
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         self.0.open().await?;
         Ok(self)
     }
-    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
-        let state = self.0.get_state()?;
-        Ok(state)
+    async fn close(&mut self) -> Result<(), VirshleError> {
+        self.0.close().await
+    }
+    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
+        self.0.get_state().await
+    }
+    fn get_stream(&self) -> Result<ConnectionState, VirshleError> {
+        self.0.get_stream()
     }
 }
 
 pub struct VmConnection(pub Connection);
 impl ConnectionHandle for VmConnection {
-    async fn close(&self) -> Result<(), VirshleError> {
-        self.0.close().await?;
-        Ok(())
-    }
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         self.0.open().await?;
         Ok(self)
     }
-    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
-        let state = self.0.get_state()?;
-        Ok(state)
+    async fn close(&mut self) -> Result<(), VirshleError> {
+        self.0.close().await?;
+        Ok(())
+    }
+    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
+        self.0.get_state().await
+    }
+    fn get_stream(&self) -> Result<ConnectionState, VirshleError> {
+        self.0.get_stream()
     }
 }

@@ -10,17 +10,16 @@ use super::{SshUri, Uri};
 use std::os::unix::process::ExitStatusExt;
 use std::process::ExitStatus;
 
-use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
-use serde_json::{from_slice, Value};
 
-// Ssh
+// Stream
 use async_trait::async_trait;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::ToSocketAddrs;
 use tokio::net::UnixStream;
 
-use russh::client::{connect, Config, Handle as SshHandle, Handler, Msg};
+// Ssh
+use russh::client::{connect, Config, Handle as SshHandle, Msg};
 use russh::keys::agent::client::AgentClient;
 use russh::{
     keys::load_secret_key,
@@ -31,10 +30,10 @@ use std::net::TcpStream;
 use std::sync::Arc;
 
 // Http
-use super::socket::StreamHandle;
 use http_body_util::{BodyExt, Full};
 use hyper::body::{Bytes, Incoming};
-use hyper::client::conn::http1::{handshake, SendRequest};
+use hyper::client::conn::http1; // {handshake};
+use hyper::client::conn::http2; // {handshake};
 use hyper::{Request, Response as HyperResponse, StatusCode};
 use hyper_util::rt::TokioIo;
 
@@ -48,8 +47,8 @@ use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 
-pub struct Client;
-impl Handler for Client {
+pub struct SshClient;
+impl russh::client::Handler for SshClient {
     type Error = russh::Error;
 
     async fn check_server_key(
@@ -62,21 +61,48 @@ impl Handler for Client {
 
 /// This struct is a convenience wrapper
 /// around a russh client
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SshConnection {
     pub uri: SshUri,
-    pub handle: Option<StreamHandle>,
-    pub ssh_handle: Option<SshHandle<Client>>,
-    pub state: ConnectionState,
+    pub ssh_handle: Option<SshHandle<SshClient>>,
+    pub stream: Option<ChannelStream<Msg>>,
 }
 
 impl ConnectionHandle for SshConnection {
+    // async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+    //     self.open_with_agent().await?;
+    //     self.connect_to_socket().await?;
+    //     Ok(self)
+    // }
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+        // Connect to ssh remote with agent
         self.open_with_agent().await?;
-        self.connect_to_socket().await?;
+
+        let socket = &self.uri.path;
+
+        if let Some(ssh_handle) = &self.ssh_handle {
+            let channel = ssh_handle.channel_open_direct_streamlocal(socket).await;
+            match channel {
+                Err(e) => {
+                    let message = format!("Couldn't connect to socket: {}", socket);
+                    let help = format!("Does the socket exist?");
+                    let err = WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e))
+                        .build();
+                    return Err(err.into());
+                }
+                Ok(channel) => {
+                    // let stream: TokioIoChannelStream<Msg>> = TokioIo::new(channel.into_stream());
+                    let stream: ChannelStream<Msg> = channel.into_stream();
+                    self.stream = Some(stream);
+                }
+            }
+        }
         Ok(self)
     }
-    async fn close(&self) -> Result<(), VirshleError> {
+    async fn close(&mut self) -> Result<(), VirshleError> {
         if let Some(ssh_handle) = &self.ssh_handle {
             ssh_handle
                 .disconnect(
@@ -89,8 +115,28 @@ impl ConnectionHandle for SshConnection {
         }
         Ok(())
     }
-    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
-        Ok(self.state.to_owned())
+    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
+        let res = self.open().await;
+        match res {
+            Err(err) => match &err {
+                VirshleError::ConnectionError(err) => match err {
+                    ConnectionError::DaemonDown => Ok(ConnectionState::DaemonDown),
+                    ConnectionError::SocketNotFound => Ok(ConnectionState::SocketNotFound),
+                    ConnectionError::SshAuthError
+                    | ConnectionError::RusshError(_)
+                    | ConnectionError::SshKeyError(_)
+                    | ConnectionError::SshAgentError(_) => Ok(ConnectionState::SshAuthError),
+                },
+                _ => Ok(ConnectionState::Unreachable),
+            },
+            Ok(conn) => Ok(ConnectionState::DaemonUp),
+        }
+    }
+    fn get_stream<T>(&self) -> Result<T, VirshleError>
+    where
+        T: tokio::io::AsyncRead + tokio::io::AsyncWrite,
+    {
+        Ok(self.stream)
     }
 }
 
@@ -125,7 +171,7 @@ impl SshConnection {
         // Initiate a new session for each agent keys
         // to circumvent server max_auth_tries per tcp.
         // Or increase ssh server max_auth_tries
-        let sh = Client {};
+        let sh = SshClient {};
         let mut handle = connect(config.clone(), addrs.clone(), sh).await?;
 
         for key in agent_keys {
@@ -173,61 +219,11 @@ impl SshConnection {
                 }
                 Ok(channel) => {
                     let stream: TokioIo<ChannelStream<Msg>> = TokioIo::new(channel.into_stream());
-
-                    match handshake(stream).await {
-                        Err(e) => {
-                            let help = "Do you have the right credentials";
-                            let message = format!("Connection refused for socket: {socket}");
-                            let err = WrapError::builder()
-                                .msg(&message)
-                                .help(&help)
-                                .origin(Error::from_err(e))
-                                .build();
-                            return Err(err.into());
-                        }
-                        Ok((sender, connection)) => {
-                            info!("Connected to socket at {}", self.uri);
-                            self.handle = Some(StreamHandle {
-                                sender,
-                                connection: spawn(async move { connection.await }),
-                            });
-                        }
-                    };
                 }
             };
         }
         Ok(self)
     }
-}
-
-pub fn request_to_string<T>(req: &Request<T>) -> Result<String, VirshleError>
-where
-    T: Serialize,
-{
-    let mut string = "".to_owned();
-
-    string.push_str(&format!(
-        "{} {} {:?}\n",
-        req.method(),
-        req.uri(),
-        req.version()
-    ));
-
-    for (key, value) in req.headers() {
-        let key = key.to_string().to_case(Case::Title);
-        let value = value.to_str().unwrap();
-        string.push_str(&format!("{key}: {value}\n",));
-    }
-
-    let body: Value = serde_json::to_value(req.body().to_owned())?;
-    match body {
-        Value::Null => {}
-        _ => {
-            let body: String = serde_json::to_string(req.body().to_owned())?;
-            string.push_str(&format!("\n{}\n", body));
-        }
-    };
-    Ok(string)
 }
 
 #[cfg(test)]

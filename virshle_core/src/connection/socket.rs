@@ -10,7 +10,8 @@ use crate::config::Node;
 // Http
 use http_body_util::{BodyExt, Full};
 use hyper::body::{Body, Bytes, Incoming};
-use hyper::client::conn::http1::{handshake, SendRequest};
+use hyper::client::conn::http1; // {handshake, SendRequest};
+use hyper::client::conn::http2; // {handshake};
 use hyper::{Request, Response as HyperResponse, StatusCode};
 use hyper_util::rt::TokioIo;
 
@@ -34,8 +35,7 @@ use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 #[derive(Default)]
 pub struct UnixConnection {
     pub uri: LocalUri,
-    pub handle: Option<StreamHandle>,
-    pub state: ConnectionState,
+    pub stream: Option<UnixStream>,
 }
 impl UnixConnection {
     pub fn new(path: &str) -> Self {
@@ -48,11 +48,6 @@ impl UnixConnection {
     }
 }
 
-pub struct StreamHandle {
-    pub sender: SendRequest<Full<Bytes>>,
-    pub connection: JoinHandle<Result<(), hyper::Error>>,
-}
-
 impl ConnectionHandle for UnixConnection {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         let socket = &self.uri.path;
@@ -61,44 +56,45 @@ impl ConnectionHandle for UnixConnection {
             return Err(err.into());
         }
 
-        let stream: TokioIo<UnixStream> = match UnixStream::connect(Path::new(&socket)).await {
+        let stream: UnixStream = match UnixStream::connect(Path::new(&socket)).await {
             Err(e) => {
                 let message = format!("Couldn't connect to socket: {}", socket);
                 let help = format!("Does the socket exist?");
                 let err = ConnectionError::DaemonDown;
                 return Err(err.into());
             }
-            Ok(v) => TokioIo::new(v),
+            // Ok(v) => TokioIo::new(v),
+            Ok(v) => v,
         };
+        self.stream = Some(stream);
 
-        match handshake(stream).await {
-            Err(e) => {
-                let help = "Do you have the right credentials";
-                let message = format!("Connection refused for socket: {socket}");
-                let err = WrapError::builder()
-                    .msg(&message)
-                    .help(&help)
-                    .origin(Error::from_err(e))
-                    .build();
-                return Err(err.into());
-            }
-            Ok((sender, connection)) => {
-                info!("Connected to socket at {}", self.uri);
-                self.handle = Some(StreamHandle {
-                    sender,
-                    connection: spawn(async move { connection.await }),
-                });
-            }
-        };
         Ok(self)
     }
     /*
      * No need to close a stream as it is dropped once variable gets out of scope.
      */
-    async fn close(&self) -> Result<(), VirshleError> {
+    async fn close(&mut self) -> Result<(), VirshleError> {
         Ok(())
     }
-    fn get_state(&self) -> Result<ConnectionState, VirshleError> {
-        Ok(self.state.to_owned())
+    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
+        let res = self.open().await;
+        match res {
+            Err(err) => match &err {
+                VirshleError::ConnectionError(err) => match err {
+                    ConnectionError::DaemonDown => Ok(ConnectionState::DaemonDown),
+                    ConnectionError::SocketNotFound => Ok(ConnectionState::SocketNotFound),
+                    _ => Ok(ConnectionState::Unreachable),
+                },
+                _ => Ok(ConnectionState::Unreachable),
+            },
+            Ok(conn) => Ok(ConnectionState::DaemonUp),
+        }
+    }
+
+    fn get_stream<T>(&self) -> Result<T, VirshleError>
+    where
+        T: tokio::io::AsyncRead + tokio::io::AsyncWrite,
+    {
+        Ok(self.stream)
     }
 }

@@ -1,19 +1,18 @@
-mod node;
+mod response;
 mod socket;
 mod ssh;
-mod vm;
 
 use crate::connection::{Connection, ConnectionHandle, NodeConnection};
+use response::Response;
 
 // Http
 use http_body_util::{BodyExt, Full};
 use hyper::body::{Bytes, Incoming};
-use hyper::client::conn::http1::{handshake, SendRequest};
+use hyper::client::conn::http1; // {handshake, SendRequest};
 use hyper::{Request, Response as HyperResponse, StatusCode};
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::TokioIo; // {handshake};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{from_slice, Value};
 
 // Socket
 use tokio::spawn;
@@ -24,11 +23,33 @@ use serde::de::DeserializeOwned;
 
 use std::future::Future;
 // Error Handling
-use log::{debug, info};
+use log::{debug, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub trait HttpSender {
+pub struct Client<'a> {
+    connection: &'a Connection,
+    handle: Option<StreamHandle>,
+}
+
+pub struct StreamHandle {
+    pub sender: http1::SendRequest<Full<Bytes>>,
+    pub connection: JoinHandle<Result<(), hyper::Error>>,
+}
+
+pub trait RestClient {
+    /*
+     * Open connection to:
+     * - a unix socket,
+     * - a unix socket through ssh on a remote
+     * And return a gRpc or REST or cli.
+     */
+    fn open(&mut self) -> impl Future<Output = Result<&mut Self, VirshleError>> + Send;
+    /*
+     * Close connection
+     */
+    fn close(&self) -> impl Future<Output = Result<(), VirshleError>> + Send;
+
     /*
      * Send the http request.
      * Internally used by get(), post() and put() methods.
@@ -38,9 +59,7 @@ pub trait HttpSender {
         endpoint: &str,
         request: &Request<Full<Bytes>>,
     ) -> impl Future<Output = Result<Response, VirshleError>> + Send;
-}
 
-pub trait HttpRequest {
     /*
      * Send an http GET request to socket.
      * Arguments:
@@ -74,69 +93,61 @@ pub trait HttpRequest {
         T: Serialize + Send;
 }
 
-#[derive(Debug)]
-pub struct Response {
-    pub url: String,
-    pub inner: HyperResponse<Incoming>,
-}
-impl Response {
-    pub fn new(url: &str, response: HyperResponse<Incoming>) -> Self {
-        Self {
-            url: url.to_owned(),
-            inner: response,
+impl RestClient for Client {
+    async fn open(&self) -> Result<(), VirshleError> {
+        if let Some(stream) = self.connection.open().await?.get_stream() {
+            match http1::handshake(stream).await {
+                Err(e) => {
+                    let message = "Counldn't reach rest api (http1 handshake error)";
+                    let help = "Is a rest api running on the socket?";
+                    let err = WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e))
+                        .build();
+                    return Err(err.into());
+                }
+                Ok((sender, connection)) => {
+                    info!("Connected to socket at {}", self.uri);
+                    self.handle = Some(StreamHandle {
+                        sender,
+                        connection: spawn(async move { connection.await }),
+                    });
+                }
+            };
         }
+        Ok(())
     }
-    pub fn status(&self) -> StatusCode {
-        self.inner.status()
-    }
-    pub async fn into_bytes(self) -> Result<Bytes, VirshleError> {
-        let data = self.inner.into_body().collect().await?;
-        let data = data.to_bytes();
-        Ok(data)
-    }
-    pub async fn to_string(self) -> Result<String, VirshleError> {
-        let data: Bytes = self.into_bytes().await?;
-        let value: String = String::from_utf8(data.to_vec())?;
-        Ok(value)
-    }
-    pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
-        let status: StatusCode = self.inner.status();
-        if status.is_success() {
-            let value: T = serde_json::from_str(&self.to_string().await?)?;
-            Ok(value)
-        } else {
-            let message = "Http response error";
-            let help = format!("{}", status);
-            Err(LibError::builder().msg(message).help(&help).build().into())
-        }
-    }
-}
-
-impl HttpSender for Connection {
     async fn send(
         &mut self,
         endpoint: &str,
         request: &Request<Full<Bytes>>,
     ) -> Result<Response, VirshleError> {
         debug!("{:#?}", request);
-        match self {
-            Connection::SshConnection(ssh_connection) => {
-                let response = ssh_connection.open().await?.send(endpoint, request).await?;
-                return Ok(response);
-            }
-            Connection::UnixConnection(unix_connection) => {
-                let response = unix_connection
-                    .open()
-                    .await?
-                    .send(endpoint, request)
-                    .await?;
-                return Ok(response);
-            }
-        };
-    }
-}
 
-impl HttpRequest for Connection {
+        if let Some(handle) = &mut self.handle {
+            let response: HyperResponse<Incoming> =
+                handle.sender.send_request(request.to_owned()).await?;
+
+            let status: StatusCode = response.status();
+            let response: Response = Response::new(endpoint, response);
+            trace!("{:#?}", response);
+
+            // if !status.is_success() {
+            //     let message = format!("Status failed: {}", status);
+            //     return Err(LibError::new(&message, "").into());
+            // }
+
+            Ok(response)
+        } else {
+            let err = LibError::builder()
+                .msg("Connection has no handler.")
+                .help("open connection first.")
+                .build();
+            return Err(err.into());
+        }
+    }
+
     async fn get(&mut self, endpoint: &str) -> Result<Response, VirshleError> {
         let request = Request::builder()
             .uri(endpoint)
@@ -144,14 +155,7 @@ impl HttpRequest for Connection {
             .header("Host", "localhost")
             .body(Full::new(Bytes::new()))?;
 
-        match self {
-            Connection::SshConnection(ssh_connection) => {
-                ssh_connection.send(endpoint, &request).await
-            }
-            Connection::UnixConnection(unix_connection) => {
-                unix_connection.send(endpoint, &request).await
-            }
-        }
+        self.send(endpoint, &request?).await
     }
 
     async fn post<T>(&mut self, endpoint: &str, body: Option<T>) -> Result<Response, VirshleError>
@@ -192,3 +196,44 @@ impl HttpRequest for Connection {
         self.send(endpoint, &request?).await
     }
 }
+
+// trait GRpcSender {
+//     /*
+//      * Send the http2 request.
+//      */
+//     fn grpc_req<T>(
+//         &mut self,
+//         endpoint: &str,
+//         request: &tonic::Request<T>,
+//     ) -> impl Future<Output = Result<tonic::Response<T>, VirshleError>> + Send
+//     where
+//         T: Serialize + Send;
+// }
+//
+// impl GRpcSender for Connection {
+//     async fn grpc_req<T>(
+//         &mut self,
+//         enpoint: &str,
+//         request: &tonic::Request<T>,
+//     ) -> Result<tonic::Response<T>, VirshleError>
+//     where
+//         T: Serialize + Send,
+//     {
+//         Ok(())
+//     }
+// }
+
+// impl Connection {
+//     async fn grpc_req<T>(
+//         &mut self,
+//         enpoint: &str,
+//         request: &tonic::Request<T>,
+//     ) -> Result<tonic::Response<T>, VirshleError>
+//     where
+//         T: Serialize + Send,
+//     {
+//         match self.open()
+//         Ok(())
+//     }
+// }
+//

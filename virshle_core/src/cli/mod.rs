@@ -1,7 +1,7 @@
 mod types;
 pub use types::*;
 
-use crate::api::{NodeServer, RestClient};
+use crate::api::{GrpcServer, NodeServer, RestClient, RestServer};
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::{Node, VirshleConfig},
@@ -48,8 +48,14 @@ impl Cli {
             /*
              * Run the background daemon and wait for http requests.
              */
-            Commands::Daemon => {
-                NodeServer::run().await?;
+            Commands::Daemon(args) => {
+                if args.grpc {
+                    GrpcServer::run().await?;
+                } else if args.rest {
+                    RestServer::run().await?;
+                } else {
+                    NodeServer::run().await?;
+                }
             }
             /*
              * Operations on virtual machine templates
