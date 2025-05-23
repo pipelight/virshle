@@ -4,7 +4,7 @@
 
 use crate::config::Node;
 
-use super::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
+use super::{Connection, ConnectionHandle, ConnectionState, Stream};
 use super::{SshUri, Uri};
 
 use std::os::unix::process::ExitStatusExt;
@@ -26,7 +26,6 @@ use russh::{
     keys::{ssh_key::Algorithm, PrivateKeyWithHashAlg, PublicKey},
     ChannelMsg, ChannelStream, CryptoVec, Disconnect,
 };
-use std::net::TcpStream;
 use std::sync::Arc;
 
 // Http
@@ -61,11 +60,10 @@ impl russh::client::Handler for SshClient {
 
 /// This struct is a convenience wrapper
 /// around a russh client
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct SshConnection {
     pub uri: SshUri,
     pub ssh_handle: Option<SshHandle<SshClient>>,
-    pub stream: Option<ChannelStream<Msg>>,
 }
 
 impl ConnectionHandle for SshConnection {
@@ -74,33 +72,14 @@ impl ConnectionHandle for SshConnection {
     //     self.connect_to_socket().await?;
     //     Ok(self)
     // }
-    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+    async fn open(&mut self) -> Result<Stream, VirshleError> {
         // Connect to ssh remote with agent
         self.open_with_agent().await?;
 
         let socket = &self.uri.path;
+        let stream = self.connect_to_socket().await?;
 
-        if let Some(ssh_handle) = &self.ssh_handle {
-            let channel = ssh_handle.channel_open_direct_streamlocal(socket).await;
-            match channel {
-                Err(e) => {
-                    let message = format!("Couldn't connect to socket: {}", socket);
-                    let help = format!("Does the socket exist?");
-                    let err = WrapError::builder()
-                        .msg(&message)
-                        .help(&help)
-                        .origin(Error::from_err(e))
-                        .build();
-                    return Err(err.into());
-                }
-                Ok(channel) => {
-                    // let stream: TokioIoChannelStream<Msg>> = TokioIo::new(channel.into_stream());
-                    let stream: ChannelStream<Msg> = channel.into_stream();
-                    self.stream = Some(stream);
-                }
-            }
-        }
-        Ok(self)
+        Ok(Stream::Ssh(stream))
     }
     async fn close(&mut self) -> Result<(), VirshleError> {
         if let Some(ssh_handle) = &self.ssh_handle {
@@ -131,12 +110,6 @@ impl ConnectionHandle for SshConnection {
             },
             Ok(conn) => Ok(ConnectionState::DaemonUp),
         }
-    }
-    fn get_stream<T>(&self) -> Result<T, VirshleError>
-    where
-        T: tokio::io::AsyncRead + tokio::io::AsyncWrite,
-    {
-        Ok(self.stream)
     }
 }
 
@@ -188,21 +161,13 @@ impl SshConnection {
         let message = "Ssh authentication to host failed.";
         let help = "Add keys to ssh-agent";
         Err(ConnectionError::SshAuthError)
-
-        // let err = ConnectionError::SshAuthError;
-        // Err(WrapError::builder()
-        //     .msg(message)
-        //     .help(help)
-        //     .origin(err.into())
-        //     .build()
-        //     .into())
     }
 
     /*
      * After ssh connection is open.
      * Connect to socket at path: self.uri.path.
      */
-    pub async fn connect_to_socket(&mut self) -> Result<&mut Self, VirshleError> {
+    pub async fn connect_to_socket(&self) -> Result<ChannelStream<Msg>, VirshleError> {
         if let Some(ssh_handle) = &self.ssh_handle {
             let socket = &self.uri.path;
             let channel = ssh_handle.channel_open_direct_streamlocal(socket).await;
@@ -218,11 +183,16 @@ impl SshConnection {
                     return Err(err.into());
                 }
                 Ok(channel) => {
-                    let stream: TokioIo<ChannelStream<Msg>> = TokioIo::new(channel.into_stream());
+                    let stream: ChannelStream<Msg> = channel.into_stream();
+                    Ok(stream)
                 }
-            };
+            }
+        } else {
+            let message = format!("Ssh connection not opened.");
+            let help = format!("First initiate the ssh connection.");
+            let err = LibError::builder().msg(&message).help(&help).build();
+            return Err(err.into());
         }
-        Ok(self)
     }
 }
 
@@ -232,11 +202,8 @@ mod tests {
 
     #[tokio::test]
     async fn connect_to_localhost_ssh_server_and_socket() -> Result<()> {
-        let node = Node {
-            name: "test".to_owned(),
-            url: "ssh://anon@deku".to_owned(),
-        };
-        let mut conn = NodeConnection::from(&node);
+        let node = Node::new("test", "ssh://anon@deku")?;
+        let mut conn = Connection::from(&node);
         conn.open().await?;
         conn.close().await?;
         Ok(())

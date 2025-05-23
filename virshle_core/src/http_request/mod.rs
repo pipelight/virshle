@@ -1,8 +1,7 @@
-mod response;
-mod socket;
-mod ssh;
+pub mod response;
 
-use crate::connection::{Connection, ConnectionHandle, NodeConnection};
+use crate::connection::{Connection, ConnectionHandle};
+use crate::connection::{Stream, Streamable};
 use response::Response;
 
 // Http
@@ -10,7 +9,7 @@ use http_body_util::{BodyExt, Full};
 use hyper::body::{Bytes, Incoming};
 use hyper::client::conn::http1; // {handshake, SendRequest};
 use hyper::{Request, Response as HyperResponse, StatusCode};
-use hyper_util::rt::TokioIo; // {handshake};
+use hyper_util::rt::TokioIo;
 
 use serde::{Deserialize, Serialize};
 
@@ -27,9 +26,9 @@ use log::{debug, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub struct Client<'a> {
-    connection: &'a Connection,
-    handle: Option<StreamHandle>,
+pub struct RestClient {
+    pub connection: Connection,
+    pub handle: Option<StreamHandle>,
 }
 
 pub struct StreamHandle {
@@ -37,18 +36,17 @@ pub struct StreamHandle {
     pub connection: JoinHandle<Result<(), hyper::Error>>,
 }
 
-pub trait RestClient {
+pub trait Rest {
     /*
      * Open connection to:
      * - a unix socket,
      * - a unix socket through ssh on a remote
+     *
+     * Do the http1 or http2 handshake.
+     *
      * And return a gRpc or REST or cli.
      */
     fn open(&mut self) -> impl Future<Output = Result<&mut Self, VirshleError>> + Send;
-    /*
-     * Close connection
-     */
-    fn close(&self) -> impl Future<Output = Result<(), VirshleError>> + Send;
 
     /*
      * Send the http request.
@@ -93,30 +91,16 @@ pub trait RestClient {
         T: Serialize + Send;
 }
 
-impl RestClient for Client {
-    async fn open(&self) -> Result<(), VirshleError> {
-        if let Some(stream) = self.connection.open().await?.get_stream() {
-            match http1::handshake(stream).await {
-                Err(e) => {
-                    let message = "Counldn't reach rest api (http1 handshake error)";
-                    let help = "Is a rest api running on the socket?";
-                    let err = WrapError::builder()
-                        .msg(&message)
-                        .help(&help)
-                        .origin(Error::from_err(e))
-                        .build();
-                    return Err(err.into());
-                }
-                Ok((sender, connection)) => {
-                    info!("Connected to socket at {}", self.uri);
-                    self.handle = Some(StreamHandle {
-                        sender,
-                        connection: spawn(async move { connection.await }),
-                    });
-                }
-            };
+impl Rest for RestClient {
+    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+        match self.connection.open().await {
+            Ok(stream) => {
+                let handle = handshake(stream).await?;
+                self.handle = Some(handle);
+            }
+            Err(e) => return Err(e),
         }
-        Ok(())
+        Ok(self)
     }
     async fn send(
         &mut self,
@@ -153,7 +137,7 @@ impl RestClient for Client {
             .uri(endpoint)
             .method("GET")
             .header("Host", "localhost")
-            .body(Full::new(Bytes::new()))?;
+            .body(Full::new(Bytes::new()));
 
         self.send(endpoint, &request?).await
     }
@@ -197,6 +181,56 @@ impl RestClient for Client {
     }
 }
 
+pub async fn handshake(stream: Stream) -> Result<StreamHandle, VirshleError> {
+    match stream {
+        Stream::Ssh(v) => {
+            let v = TokioIo::new(v);
+            match http1::handshake(v).await {
+                Ok((sender, connection)) => {
+                    debug!("http1 handshake succeed");
+                    let handle = StreamHandle {
+                        sender,
+                        connection: spawn(async move { connection.await }),
+                    };
+                    Ok(handle)
+                }
+                Err(e) => {
+                    let message = "Counldn't reach rest api (http1 handshake error)";
+                    let help = "Is a rest api running on the socket?";
+                    let err = WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e))
+                        .build();
+                    return Err(err.into());
+                }
+            }
+        }
+        Stream::Socket(v) => {
+            let v = TokioIo::new(v);
+            match http1::handshake(v).await {
+                Ok((sender, connection)) => {
+                    debug!("http1 handshake succeed");
+                    let handle = StreamHandle {
+                        sender,
+                        connection: spawn(async move { connection.await }),
+                    };
+                    Ok(handle)
+                }
+                Err(e) => {
+                    let message = "Counldn't reach rest api (http1 handshake error)";
+                    let help = "Is a rest api running on the socket?";
+                    let err = WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e))
+                        .build();
+                    return Err(err.into());
+                }
+            }
+        }
+    }
+}
 // trait GRpcSender {
 //     /*
 //      * Send the http2 request.

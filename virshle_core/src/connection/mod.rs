@@ -17,11 +17,9 @@
 
 // Main connection types.
 
-mod node;
-mod state;
-
 mod socket;
 mod ssh;
+mod state;
 mod uri;
 
 // Reexport
@@ -29,6 +27,8 @@ pub use socket::UnixConnection;
 pub use ssh::SshConnection;
 pub use state::ConnectionState;
 pub use uri::{LocalUri, SshUri, Uri};
+
+use crate::config::Node;
 
 // Http
 use http_body_util::{BodyExt, Full};
@@ -40,6 +40,10 @@ use hyper::Request;
 // Async/Await
 use tokio::task::JoinHandle;
 
+// Stream
+use russh::{client::Msg, ChannelStream};
+use tokio::net::UnixStream;
+
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 
@@ -47,30 +51,45 @@ use std::future::Future;
 use miette::{Error, Result};
 use virshle_error::{ConnectionError, VirshleError, WrapError};
 
+/*
+* An unused trait that should have enabled usage of multiple stream types (not working).
+* For now, usage of known types in enumeration is preffered.
+*/
+pub trait Streamable:
+    tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send
+{
+}
+// pub trait Streamable: hyper::rt::Read + hyper::rt::Write {}
+// pub trait Streamable: std::io::Read + std::io::Write {}
+
+/*
+* An enumeration of allowed stream types.
+*/
+pub enum Stream {
+    Ssh(ChannelStream<Msg>),
+    Socket(UnixStream),
+}
+impl Streamable for ChannelStream<Msg> {}
+impl Streamable for UnixStream {}
+
 pub trait ConnectionHandle {
-    fn open(&mut self) -> impl Future<Output = Result<&mut Self, VirshleError>> + Send;
+    // fn open(&mut self) -> impl Future<Output = Result<&mut Self, VirshleError>> + Send;
+    fn open(&mut self) -> impl Future<Output = Result<Stream, VirshleError>> + Send;
     fn close(&mut self) -> impl Future<Output = Result<(), VirshleError>> + Send;
     fn get_state(&mut self) -> impl Future<Output = Result<ConnectionState, VirshleError>> + Send;
-    fn get_stream<T>(&self) -> Result<T, VirshleError>
-    where
-        T: tokio::io::AsyncRead + tokio::io::AsyncWrite;
 }
 
 pub enum Connection {
     SshConnection(SshConnection),
     UnixConnection(UnixConnection),
 }
+
 impl ConnectionHandle for Connection {
-    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+    async fn open(&mut self) -> Result<Stream, VirshleError> {
         match self {
-            Connection::SshConnection(e) => {
-                e.open().await?;
-            }
-            Connection::UnixConnection(e) => {
-                e.open().await?;
-            }
-        };
-        Ok(self)
+            Connection::SshConnection(e) => e.open().await,
+            Connection::UnixConnection(e) => e.open().await,
+        }
     }
     async fn close(&mut self) -> Result<(), VirshleError> {
         match self {
@@ -89,45 +108,16 @@ impl ConnectionHandle for Connection {
             Connection::UnixConnection(e) => e.get_state().await,
         }
     }
-    fn get_stream<T>(&self) -> Result<T, VirshleError> {
-        match self {
-            Connection::SshConnection(e) => e.get_stream(),
-            Connection::UnixConnection(e) => e.get_steam(),
+}
+
+impl From<&Node> for Connection {
+    fn from(value: &Node) -> Self {
+        match Uri::new(&value.url).unwrap() {
+            Uri::SshUri(v) => Connection::SshConnection(SshConnection {
+                uri: v,
+                ssh_handle: None,
+            }),
+            Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
         }
-    }
-}
-
-pub struct NodeConnection(pub Connection);
-impl ConnectionHandle for NodeConnection {
-    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
-        self.0.open().await?;
-        Ok(self)
-    }
-    async fn close(&mut self) -> Result<(), VirshleError> {
-        self.0.close().await
-    }
-    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
-        self.0.get_state().await
-    }
-    fn get_stream(&self) -> Result<ConnectionState, VirshleError> {
-        self.0.get_stream()
-    }
-}
-
-pub struct VmConnection(pub Connection);
-impl ConnectionHandle for VmConnection {
-    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
-        self.0.open().await?;
-        Ok(self)
-    }
-    async fn close(&mut self) -> Result<(), VirshleError> {
-        self.0.close().await?;
-        Ok(())
-    }
-    async fn get_state(&mut self) -> Result<ConnectionState, VirshleError> {
-        self.0.get_state().await
-    }
-    fn get_stream(&self) -> Result<ConnectionState, VirshleError> {
-        self.0.get_stream()
     }
 }

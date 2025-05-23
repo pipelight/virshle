@@ -2,8 +2,8 @@ mod info;
 pub use info::NodeInfo;
 
 use crate::api::NodeServer;
-use crate::connection::{Connection, ConnectionHandle, NodeConnection, Uri};
-use crate::http_request::HttpRequest;
+use crate::connection::{Connection, ConnectionHandle, Uri};
+use crate::http_request::{Rest, RestClient};
 use crate::Vm;
 
 // Http
@@ -29,6 +29,7 @@ pub struct Node {
     pub name: String,
     pub url: String,
 }
+
 impl Default for Node {
     fn default() -> Self {
         let url = "unix://".to_owned() + &NodeServer::get_socket().unwrap();
@@ -38,25 +39,41 @@ impl Default for Node {
         }
     }
 }
+impl Node {
+    pub fn new(name: &str, url: &str) -> Result<Self, VirshleError> {
+        let e = Node {
+            name: name.to_owned(),
+            url: url.to_owned(),
+        };
+        Ok(e)
+    }
+    pub async fn rest(&self) -> Result<RestClient, VirshleError> {
+        let conn = Connection::from(self);
+        let mut cli = RestClient {
+            connection: conn,
+            handle: None,
+        };
+        cli.open().await?;
+        Ok(cli)
+    }
+}
 
 impl Node {
     pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
-        let mut conn = self.open().await?;
-        let info: NodeInfo = conn.get("/node/info").await?.to_value().await?;
+        let info: NodeInfo = self
+            .rest()
+            .await?
+            .get("/node/info")
+            .await?
+            .to_value()
+            .await?;
         Ok(info)
-    }
-    /*
-     * Return connection handler.
-     */
-    pub fn get_connection(&self) -> Result<NodeConnection, VirshleError> {
-        let conn = NodeConnection::from(self);
-        Ok(conn)
     }
     /*
      * Open connection to node and return handler.
      */
-    pub async fn open(&self) -> Result<NodeConnection, VirshleError> {
-        let mut conn = NodeConnection::from(self);
+    pub async fn open(&self) -> Result<Connection, VirshleError> {
+        let mut conn = Connection::from(self);
         match conn.open().await {
             Ok(v) => return Ok(conn),
             Err(e) => {

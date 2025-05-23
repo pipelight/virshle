@@ -2,6 +2,7 @@
 * This module is to connect to a virshle instance through local socket.
 */
 
+use super::Stream;
 use super::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
 use super::{LocalUri, Uri};
 use crate::cloud_hypervisor::Vm;
@@ -35,22 +36,12 @@ use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 #[derive(Default)]
 pub struct UnixConnection {
     pub uri: LocalUri,
-    pub stream: Option<UnixStream>,
-}
-impl UnixConnection {
-    pub fn new(path: &str) -> Self {
-        Self {
-            uri: LocalUri {
-                path: path.to_owned(),
-            },
-            ..Default::default()
-        }
-    }
 }
 
 impl ConnectionHandle for UnixConnection {
-    async fn open(&mut self) -> Result<&mut Self, VirshleError> {
+    async fn open(&mut self) -> Result<Stream, VirshleError> {
         let socket = &self.uri.path;
+
         if !Path::new(socket).exists() {
             let err = ConnectionError::SocketNotFound;
             return Err(err.into());
@@ -66,9 +57,7 @@ impl ConnectionHandle for UnixConnection {
             // Ok(v) => TokioIo::new(v),
             Ok(v) => v,
         };
-        self.stream = Some(stream);
-
-        Ok(self)
+        Ok(Stream::Socket(stream))
     }
     /*
      * No need to close a stream as it is dropped once variable gets out of scope.
@@ -89,12 +78,5 @@ impl ConnectionHandle for UnixConnection {
             },
             Ok(conn) => Ok(ConnectionState::DaemonUp),
         }
-    }
-
-    fn get_stream<T>(&self) -> Result<T, VirshleError>
-    where
-        T: tokio::io::AsyncRead + tokio::io::AsyncWrite,
-    {
-        Ok(self.stream)
     }
 }

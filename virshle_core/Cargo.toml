@@ -34,9 +34,6 @@ regex = "1.10.6"
 bon = "3.5.1"
 reqwest = "0.12.7"
 tokio = { version = "1.40.0", features = ["full"] }
-
-# http
-hyper-socket = "0.2.0"
 hyper = { version = "1.4.1", features = ["full"] }
 http-body-util = "0.1.2"
 hyper-util = "0.1.9"
