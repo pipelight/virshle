@@ -25,8 +25,8 @@ use sysinfo::System;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub struct RestServer;
-impl RestServer {
+pub struct NodeRestServer;
+impl NodeRestServer {
     pub async fn make_router() -> Result<Router, VirshleError> {
         // build our application with a single route
         let app = Router::new()
@@ -75,7 +75,7 @@ impl RestServer {
      * Run REST api only.
      */
     pub async fn run() -> Result<(), VirshleError> {
-        let app = RestServer::make_router().await?;
+        let app = NodeRestServer::make_router().await?;
 
         let listener = NodeServer::make_socket().await?;
         axum::serve(listener, app).await?;
@@ -89,7 +89,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_api_run() -> Result<()> {
-        RestServer::run().await?;
+        NodeRestServer::run().await?;
         Ok(())
     }
 }

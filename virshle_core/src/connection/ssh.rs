@@ -67,18 +67,12 @@ pub struct SshConnection {
 }
 
 impl ConnectionHandle for SshConnection {
-    // async fn open(&mut self) -> Result<&mut Self, VirshleError> {
-    //     self.open_with_agent().await?;
-    //     self.connect_to_socket().await?;
-    //     Ok(self)
-    // }
     async fn open(&mut self) -> Result<Stream, VirshleError> {
         // Connect to ssh remote with agent
-        self.open_with_agent().await?;
-
-        let socket = &self.uri.path;
+        if self.ssh_handle.is_none() {
+            self.open_with_agent().await?;
+        }
         let stream = self.connect_to_socket().await?;
-
         Ok(Stream::Ssh(stream))
     }
     async fn close(&mut self) -> Result<(), VirshleError> {

@@ -1,4 +1,5 @@
 mod client;
 mod server;
 
-pub use server::GrpcServer;
+pub use client::NodeGrpcClient;
+pub use server::NodeGrpcServer;

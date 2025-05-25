@@ -47,26 +47,13 @@ impl Node {
         };
         Ok(e)
     }
-    pub async fn rest(&self) -> Result<RestClient, VirshleError> {
-        let conn = Connection::from(self);
-        let mut cli = RestClient {
-            connection: conn,
-            handle: None,
-        };
-        cli.open().await?;
-        Ok(cli)
-    }
 }
 
 impl Node {
     pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
-        let info: NodeInfo = self
-            .rest()
-            .await?
-            .get("/node/info")
-            .await?
-            .to_value()
-            .await?;
+        let mut conn = Connection::from(self);
+        let mut rest = RestClient::from(&mut conn);
+        let info: NodeInfo = rest.get("/node/info").await?.to_value().await?;
         Ok(info)
     }
     /*

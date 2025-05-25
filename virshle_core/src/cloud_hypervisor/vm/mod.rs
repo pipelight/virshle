@@ -22,8 +22,8 @@ use super::rand::random_name;
 use uuid::Uuid;
 
 // Http
-use crate::connection::{Connection, ConnectionHandle, UnixConnection, VmConnection};
-use crate::http_request::HttpRequest;
+use crate::connection::{Connection, ConnectionHandle, UnixConnection};
+use crate::http_request::{Rest, RestClient};
 
 //Database
 use crate::database::entity::{prelude::*, *};
@@ -120,13 +120,6 @@ impl Default for Vm {
 }
 
 impl Vm {
-    async fn connection(&self) -> Result<VmConnection, VirshleError> {
-        let socket = &self.get_socket()?;
-        let mut conn = VmConnection(Connection::UnixConnection(UnixConnection::new(socket)));
-        conn.open().await?;
-        Ok(conn)
-    }
-
     /*
      * Start or Restart a Vm
      */
@@ -136,7 +129,8 @@ impl Vm {
 
         // If can't establish connection to socket,
         // Then start new process.
-        if self.connection().await.is_err() {
+        let mut conn = Connection::from(self);
+        if conn.open().await.is_err() {
             if let Some(config) = &self.config {
                 if config.attach {
                     let proc = Command::new("cloud-hypervisor")
@@ -164,9 +158,10 @@ impl Vm {
     pub async fn shutdown(&self) -> Result<(), VirshleError> {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.shutdown";
-        let mut conn = self.connection().await?;
+        let mut conn = Connection::from(self);
 
-        let response = conn.put::<()>(endpoint, None).await?;
+        let mut rest = RestClient::from(&mut conn);
+        let response = rest.put::<()>(endpoint, None).await?;
         Ok(())
     }
 
@@ -197,8 +192,11 @@ impl Vm {
 
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.boot";
-        let mut conn = self.connection().await?;
-        let response = conn.put::<()>(endpoint, None).await?;
+
+        let mut conn = Connection::from(self);
+        let mut rest = RestClient::from(&mut conn);
+
+        let response = rest.put::<()>(endpoint, None).await?;
 
         if !response.status().is_success() {
             let message = "Couldn't create vm.";
@@ -220,9 +218,11 @@ impl Vm {
 
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.create";
-        let mut conn = self.connection().await?;
 
-        let response = conn.put::<VmConfig>(endpoint, Some(config)).await?;
+        let mut conn = Connection::from(self);
+        let mut rest = RestClient::from(&mut conn);
+
+        let response = rest.put::<VmConfig>(endpoint, Some(config)).await?;
         Ok(())
     }
 }

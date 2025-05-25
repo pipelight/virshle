@@ -3,7 +3,7 @@
 */
 
 use super::Stream;
-use super::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
+use super::{Connection, ConnectionHandle, ConnectionState};
 use super::{LocalUri, Uri};
 use crate::cloud_hypervisor::Vm;
 use crate::config::Node;
@@ -78,5 +78,14 @@ impl ConnectionHandle for UnixConnection {
             },
             Ok(conn) => Ok(ConnectionState::DaemonUp),
         }
+    }
+}
+impl UnixConnection {
+    pub fn new(url: &str) -> Result<Self, VirshleError> {
+        let socket_uri = LocalUri::new(url)?;
+        Ok(Self {
+            uri: socket_uri,
+            ..Default::default()
+        })
     }
 }

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 // Connections and Http
-use crate::connection::{Connection, ConnectionHandle, ConnectionState, NodeConnection};
-use crate::http_request::{HttpRequest, HttpSender};
+use crate::connection::{Connection, ConnectionHandle, ConnectionState};
+use crate::http_request::{Rest, RestClient};
 
 use crate::cli::{StartArgs, VmArgs};
 use crate::{Node, NodeInfo, Vm, VmState, VmTemplate};
@@ -16,10 +16,9 @@ use virshle_error::{LibError, VirshleError, WrapError};
 // Hypervisor
 use crate::config::VirshleConfig;
 
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct RestClient;
+pub struct NodeRestClient;
 
-impl RestClient {
+impl NodeRestClient {
     pub async fn get_all_templates() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
@@ -31,9 +30,9 @@ impl RestClient {
                     warn!("{}", e);
                 }
                 Ok(mut conn) => {
+                    let mut rest = RestClient::from(&mut conn);
                     let node_templates: Vec<VmTemplate> =
-                        conn.get("/template/list").await?.to_value().await?;
-                    conn.close();
+                        rest.get("/template/list").await?.to_value().await?;
                     templates.insert(node, node_templates);
                 }
             }
@@ -48,16 +47,18 @@ impl RestClient {
 
         let mut node_info: HashMap<Node, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
         for node in nodes {
-            let mut conn = node.get_connection()?;
+            let mut conn = Connection::from(&node);
             match conn.open().await {
                 Err(e) => {
                     error!("{}", e);
-                    node_info.insert(node, (conn.get_state()?, None));
+                    node_info.insert(node, (conn.get_state().await?, None));
                 }
                 Ok(_) => {
-                    let res: NodeInfo = conn.get("/node/info").await?.to_value().await?;
-                    conn.close();
-                    node_info.insert(node, (conn.get_state()?, Some(res)));
+                    let state = conn.get_state().await?;
+                    let mut rest = RestClient::from(&mut conn);
+                    rest.open().await?;
+                    let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
+                    node_info.insert(node, (state, Some(res)));
                 }
             }
         }
@@ -77,8 +78,8 @@ impl RestClient {
                     error!("{}", e);
                 }
                 Ok(mut conn) => {
-                    let node_vms: Vec<Vm> = conn.get("/vm/list").await?.to_value().await?;
-                    conn.close();
+                    let mut rest = RestClient::from(&mut conn);
+                    let node_vms: Vec<Vm> = rest.get("/vm/list").await?.to_value().await?;
                     vms.insert(node, node_vms);
                 }
             }
@@ -126,38 +127,17 @@ impl RestClient {
         }
 
         if args.vm_args.uuid.is_some() || args.vm_args.id.is_some() || args.vm_args.name.is_some() {
-            match node.open().await {
-                Err(e) => {
-                    error!("{}", e);
-                }
-                Ok(mut conn) => {
-                    let vm: Vec<Vm> = conn
-                        .put("/vm/start", Some(args.vm_args.clone()))
-                        .await?
-                        .to_value()
-                        .await?;
-                    conn.close();
+            let mut conn = Connection::from(&node);
+            let mut rest = RestClient::from(&mut conn);
+            let vm: Vec<Vm> = rest
+                .put("/vm/start", Some(args.vm_args.clone()))
+                .await?
+                .to_value()
+                .await?;
 
-                    let res = format!("started vm: on node");
-                    info!("{}", res);
-                }
-            };
+            let res = format!("started vm: on node");
+            info!("{}", res);
         }
-        // if let Some(name) = args.resource.name {
-        //     let mut vm = Vm::get_by_name(&name).await?;
-        //     if args.attach {
-        //         vm.attach()?.start().await?;
-        //     } else {
-        //         vm.start().await?;
-        //     }
-        // } else if let Some(id) = args.resource.id {
-        //     let mut vm = Vm::get_by_id(&id).await?;
-        //     if args.attach {
-        //         vm.attach()?.start().await?;
-        //     } else {
-        //         vm.start().await?;
-        //     }
-        // }
         Ok(())
     }
     pub async fn get_vm_info(args: VmArgs) -> Result<(), VirshleError> {
@@ -176,7 +156,8 @@ impl RestClient {
                     error!("{}", e);
                 }
                 Ok(mut conn) => {
-                    let vm: Vec<Vm> = conn
+                    let mut rest = RestClient::from(&mut conn);
+                    let vm: Vec<Vm> = rest
                         .post("/vm/info", Some(args.clone()))
                         .await?
                         .to_value()
@@ -198,7 +179,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_vm() -> Result<()> {
-        RestClient::get_all_vm().await?;
+        NodeRestClient::get_all_vm().await?;
         Ok(())
     }
     #[tokio::test]

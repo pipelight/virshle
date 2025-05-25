@@ -36,8 +36,8 @@ impl get_info_server::GetInfo for NodeService {
     }
 }
 
-pub struct GrpcServer;
-impl GrpcServer {
+pub struct NodeGrpcServer;
+impl NodeGrpcServer {
     /*
      * Run grpc server on unix socket
      */
@@ -72,7 +72,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_api_run_grpc() -> Result<()> {
-        GrpcServer::run().await?;
+        NodeGrpcServer::run().await?;
         Ok(())
     }
 }

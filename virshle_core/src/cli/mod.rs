@@ -1,7 +1,7 @@
 mod types;
 pub use types::*;
 
-use crate::api::{GrpcServer, NodeServer, RestClient, RestServer};
+use crate::api::{NodeGrpcClient, NodeGrpcServer, NodeRestClient, NodeRestServer, NodeServer};
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::{Node, VirshleConfig},
@@ -50,9 +50,9 @@ impl Cli {
              */
             Commands::Daemon(args) => {
                 if args.grpc {
-                    GrpcServer::run().await?;
+                    NodeGrpcServer::run().await?;
                 } else if args.rest {
-                    RestServer::run().await?;
+                    NodeRestServer::run().await?;
                 } else {
                     NodeServer::run().await?;
                 }
@@ -62,7 +62,7 @@ impl Cli {
              */
             Commands::Node(args) => match args {
                 Display::Ls => {
-                    let res = RestClient::get_nodes_info().await?;
+                    let res = NodeRestClient::get_nodes_info().await?;
                     Node::display(res).await?;
                 }
             },
@@ -71,7 +71,7 @@ impl Cli {
              */
             Commands::Template(args) => match args {
                 Display::Ls => {
-                    let res = RestClient::get_all_templates().await?;
+                    let res = NodeRestClient::get_all_templates().await?;
                     VmTemplate::display_by_nodes(res).await?;
                 }
             },
@@ -104,7 +104,7 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-                    let e = RestClient::start_vm(args).await?;
+                    let e = NodeRestClient::start_vm(args).await?;
                 }
                 Crud::Stop(args) => {
                     if let Some(name) = args.name {
@@ -116,8 +116,8 @@ impl Cli {
                     }
                 }
                 Crud::Ls(args) => {
-                    let mut e = RestClient::get_all_vm().await?;
-                    e = RestClient::filter(e, args).await?;
+                    let mut e = NodeRestClient::get_all_vm().await?;
+                    e = NodeRestClient::filter(e, args).await?;
                     Vm::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {

@@ -28,6 +28,7 @@ pub use ssh::SshConnection;
 pub use state::ConnectionState;
 pub use uri::{LocalUri, SshUri, Uri};
 
+use crate::cloud_hypervisor::Vm;
 use crate::config::Node;
 
 // Http
@@ -113,6 +114,31 @@ impl ConnectionHandle for Connection {
 impl From<&Node> for Connection {
     fn from(value: &Node) -> Self {
         match Uri::new(&value.url).unwrap() {
+            Uri::SshUri(v) => Connection::SshConnection(SshConnection {
+                uri: v,
+                ssh_handle: None,
+            }),
+            Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
+        }
+    }
+}
+
+impl From<&Vm> for Connection {
+    fn from(value: &Vm) -> Self {
+        let uri = value.get_socket().unwrap();
+        match Uri::new(&uri).unwrap() {
+            Uri::SshUri(v) => Connection::SshConnection(SshConnection {
+                uri: v,
+                ssh_handle: None,
+            }),
+            Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
+        }
+    }
+}
+impl From<&mut Vm> for Connection {
+    fn from(value: &mut Vm) -> Self {
+        let uri = value.get_socket().unwrap();
+        match Uri::new(&uri).unwrap() {
             Uri::SshUri(v) => Connection::SshConnection(SshConnection {
                 uri: v,
                 ssh_handle: None,

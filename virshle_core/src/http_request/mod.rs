@@ -26,14 +26,14 @@ use log::{debug, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub struct RestClient {
-    pub connection: Connection,
-    pub handle: Option<StreamHandle>,
+pub struct RestClient<'a> {
+    pub connection: &'a mut Connection,
+    handle: Option<StreamHandle>,
 }
 
 pub struct StreamHandle {
-    pub sender: http1::SendRequest<Full<Bytes>>,
-    pub connection: JoinHandle<Result<(), hyper::Error>>,
+    sender: http1::SendRequest<Full<Bytes>>,
+    connection: JoinHandle<Result<(), hyper::Error>>,
 }
 
 pub trait Rest {
@@ -91,14 +91,16 @@ pub trait Rest {
         T: Serialize + Send;
 }
 
-impl Rest for RestClient {
+impl<'a> Rest for RestClient<'a> {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
-        match self.connection.open().await {
-            Ok(stream) => {
-                let handle = handshake(stream).await?;
-                self.handle = Some(handle);
+        if self.handle.is_none() {
+            match self.connection.open().await {
+                Ok(stream) => {
+                    let handle = handshake(stream).await?;
+                    self.handle = Some(handle);
+                }
+                Err(e) => return Err(e),
             }
-            Err(e) => return Err(e),
         }
         Ok(self)
     }
@@ -108,6 +110,9 @@ impl Rest for RestClient {
         request: &Request<Full<Bytes>>,
     ) -> Result<Response, VirshleError> {
         debug!("{:#?}", request);
+
+        // Ensure connection is open and has a stream handle.
+        self.open().await?;
 
         if let Some(handle) = &mut self.handle {
             let response: HyperResponse<Incoming> =
@@ -231,43 +236,23 @@ pub async fn handshake(stream: Stream) -> Result<StreamHandle, VirshleError> {
         }
     }
 }
-// trait GRpcSender {
-//     /*
-//      * Send the http2 request.
-//      */
-//     fn grpc_req<T>(
-//         &mut self,
-//         endpoint: &str,
-//         request: &tonic::Request<T>,
-//     ) -> impl Future<Output = Result<tonic::Response<T>, VirshleError>> + Send
-//     where
-//         T: Serialize + Send;
-// }
-//
-// impl GRpcSender for Connection {
-//     async fn grpc_req<T>(
-//         &mut self,
-//         enpoint: &str,
-//         request: &tonic::Request<T>,
-//     ) -> Result<tonic::Response<T>, VirshleError>
-//     where
-//         T: Serialize + Send,
-//     {
-//         Ok(())
-//     }
-// }
 
-// impl Connection {
-//     async fn grpc_req<T>(
-//         &mut self,
-//         enpoint: &str,
-//         request: &tonic::Request<T>,
-//     ) -> Result<tonic::Response<T>, VirshleError>
-//     where
-//         T: Serialize + Send,
-//     {
-//         match self.open()
-//         Ok(())
-//     }
-// }
-//
+impl<'a> From<&'a mut Connection> for RestClient<'a> {
+    fn from(value: &'a mut Connection) -> Self {
+        let cli = RestClient {
+            connection: value,
+            handle: None,
+        };
+        return cli;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_make_rest_cli() -> Result<()> {
+        Ok(())
+    }
+}
