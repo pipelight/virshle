@@ -25,11 +25,12 @@ impl NodeRestClient {
 
         let mut templates: HashMap<Node, Vec<VmTemplate>> = HashMap::new();
         for node in nodes {
+            let mut conn = Connection::from(&node);
             match node.open().await {
                 Err(e) => {
                     warn!("{}", e);
                 }
-                Ok(mut conn) => {
+                Ok(_) => {
                     let mut rest = RestClient::from(&mut conn);
                     let node_templates: Vec<VmTemplate> =
                         rest.get("/template/list").await?.to_value().await?;
@@ -56,7 +57,6 @@ impl NodeRestClient {
                 Ok(_) => {
                     let state = conn.get_state().await?;
                     let mut rest = RestClient::from(&mut conn);
-                    rest.open().await?;
                     let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
                     node_info.insert(node, (state, Some(res)));
                 }
@@ -73,11 +73,12 @@ impl NodeRestClient {
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
         for node in nodes {
+            let mut conn = Connection::from(&node);
             match node.open().await {
                 Err(e) => {
                     error!("{}", e);
                 }
-                Ok(mut conn) => {
+                Ok(_) => {
                     let mut rest = RestClient::from(&mut conn);
                     let node_vms: Vec<Vm> = rest.get("/vm/list").await?.to_value().await?;
                     vms.insert(node, node_vms);

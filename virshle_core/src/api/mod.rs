@@ -1,13 +1,9 @@
-pub mod grpc;
 pub mod rest;
+mod server_methods;
 
-pub use grpc::{NodeGrpcClient, NodeGrpcServer};
 pub use rest::{NodeRestClient, NodeRestServer};
 
 // Methods
-pub mod client_methods;
-pub mod server_methods;
-
 pub use server_methods::NodeMethod;
 
 // Socket
@@ -33,9 +29,8 @@ impl NodeServer {
      */
     pub async fn run() -> Result<(), VirshleError> {
         let rest_router = NodeRestServer::make_router().await?;
-        let grpc_router = NodeGrpcServer::make_router()?;
 
-        let app = Router::new().merge(rest_router).merge(grpc_router);
+        let app = Router::new().merge(rest_router);
 
         let listener = Self::make_socket().await?;
         axum::serve(listener, app).await?;

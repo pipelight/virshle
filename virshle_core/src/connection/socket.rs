@@ -54,7 +54,6 @@ impl ConnectionHandle for UnixConnection {
                 let err = ConnectionError::DaemonDown;
                 return Err(err.into());
             }
-            // Ok(v) => TokioIo::new(v),
             Ok(v) => v,
         };
         Ok(Stream::Socket(stream))

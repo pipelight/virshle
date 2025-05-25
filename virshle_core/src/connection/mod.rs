@@ -57,7 +57,9 @@ use virshle_error::{ConnectionError, VirshleError, WrapError};
 * For now, usage of known types in enumeration is preffered.
 */
 pub trait Streamable:
-    tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send
+    // tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sized
+// tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sync
+tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send
 {
 }
 // pub trait Streamable: hyper::rt::Read + hyper::rt::Write {}

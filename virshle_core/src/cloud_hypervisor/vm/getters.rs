@@ -181,11 +181,11 @@ impl Vm {
      * Return vm info
      */
     pub async fn get_info(&self) -> Result<VmInfoResponse, VirshleError> {
-        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
-        let mut conn = Connection::UnixConnection(UnixConnection::new(socket)?);
+        let mut conn = Connection::from(self);
         conn.open().await?;
+
         let mut rest = RestClient::from(&mut conn);
         let response = rest.get(endpoint).await?;
         let data = &response.to_string().await?;
@@ -212,10 +212,9 @@ impl Vm {
     }
 
     pub async fn get_state(&self) -> Result<VmState, VirshleError> {
-        let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.info";
 
-        let mut conn = Connection::UnixConnection(UnixConnection::new(socket)?);
+        let mut conn = Connection::from(self);
         let state = match conn.open().await {
             Ok(v) => {
                 let mut rest = RestClient::from(&mut conn);
