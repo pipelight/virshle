@@ -127,7 +127,7 @@ impl From<&Node> for Connection {
 
 impl From<&Vm> for Connection {
     fn from(value: &Vm) -> Self {
-        let uri = value.get_socket().unwrap();
+        let uri = value.get_socket_uri().unwrap();
         match Uri::new(&uri).unwrap() {
             Uri::SshUri(v) => Connection::SshConnection(SshConnection {
                 uri: v,

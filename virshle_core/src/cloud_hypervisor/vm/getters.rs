@@ -177,6 +177,10 @@ impl Vm {
         let path = format!("{MANAGED_DIR}/vm/{}/ch.sock", self.uuid);
         Ok(path)
     }
+    pub fn get_socket_uri(&self) -> Result<String, VirshleError> {
+        let path = format!("unix://{MANAGED_DIR}/vm/{}/ch.sock", self.uuid);
+        Ok(path)
+    }
     /*
      * Return vm info
      */
@@ -215,6 +219,7 @@ impl Vm {
         let endpoint = "/api/v1/vm.info";
 
         let mut conn = Connection::from(self);
+
         let state = match conn.open().await {
             Ok(v) => {
                 let mut rest = RestClient::from(&mut conn);
