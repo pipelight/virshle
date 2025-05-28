@@ -1,0 +1,6 @@
+hostname = "vm-test"
+ipv6 = ""
+
+[[ssh]]
+user = "anon"
+authorized_keys = "my_public_ed25519_key"

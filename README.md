@@ -1,210 +1,122 @@
-# Virshle - Painless virtual machines.
+# Virshle: Virtual Machines with .
 
-Features:
+Create virtual machines from templates.
 
-- Light virtual machines.
-- Write resource definitions in **TOML**.
-- Use **predefined [templates](https://github.com/pipelight/virshle/virshle_core/virshle.config.toml)**
-  to twist numerous clones of the same machine.
+## Install (NixOs)
 
-> [!IMPORTANT]  
-> Tool in early development stage.
-> I wanted something as fast as possible,
-> so of course it runs on edgy tech by default.😈
->
-> - openvswitch-dpdk (network)
-> - cloud-hypervisor (virtual machine manager)
+Install the NixOs module via flakes.
 
-## 🚀 Get started!
+But this isn't enough to add network connectivity to VMs,
+So make sure you have your host network configuration as in
+`modules/networkint.nix`.
 
-### Debug
+## Usage.
 
-You can increase verbosity for each command and get detailed logs.
+### Create your first VM.
 
-```sh
-virshle -vvvv
-```
+Put some template definition into the configuration file.
 
-### Bulk create from templates
+A functional machine needs at least :
 
-You can define multiple resources in the same file.
-And create/ensure them with a single command.
+- A bootable OS disk.
+- A network configuration.
 
-Checkout example in the predefined
-[templates](https://github.com/pipelight/virshle/templates) directory.
-
-The following commands creates a different vm everytime it is called.
-
-```sh
-virshle create <template_file>
-```
-
-###
-
-Manage virtual machines and networks easily.
-Commands have been simplified to a minimal CRUD api.
-
-Here is the cli struct.
-
-```sh
-virshle <resource> <method>
-```
-
-You can manipulate those resources.
-
-| resources     |
-| ------------- |
-| vm (domain)   |
-| net (network) |
-| secret        |
-
-Simple operations on resources.
-
-| methods     |
-| ----------- |
-| create      |
-| rm (delete) |
-| ls (list)   |
-
-Here is an example of command line usage.
-
-```sh
-# List domains (virtual machines, guests)
-virshle vm ls
-```
-
-![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table_base.png)
-
-```sh
-
-virshle vm ls -vv
-```
-
-![tables comparison](https://github.com/pipelight/virshle/blob/master/public/images/table_ips.png)
-
-```sh
-# List networks
-
-virshle net ls
-
-# Create a domain
-
-virshle vm create ./template/vm/base.toml
-
-# Delete resources
-
-virshle vm rm <vm_name>
-
-```
-
-### Define a virtual machine (domain)
-
-The following Toml file defines a VM called "nixos":
-
-- with 2cpu and 4GiB of RAM
-- attached to a default network
-- based on a custom nixos image
+See the template below that defines a small machine preset named `xs`.
 
 ```toml
-name = "vm-nixos"
-uuid = "4dea24b3-1d52-d8f3-2516-782e98a23fa0"
-vcpu = 2
-vram = 2 # in GiB
+# /etc/virshle/config.toml
+[[template.vm]]
+name = "xs"
+vcpu = 1
+vram = 2
 
-[[disk]]
-path = "./disk/path"
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "50G"
 
-[[net]]
-name = "default"
-
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.vhost]
 ```
 
-Bring the guest up with,
+Then you can create a machine from that template.
 
 ```sh
-virshle vm create <vm_definition>.toml
+v vm create -t xs
 ```
 
-This is how you would define a network.
+Of course you can list your vm and their state with a simple command.
+
+```sh
+v vm ls
+```
+
+![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/vm_list.png)
+
+Then start your vm
+
+```sh
+v vm start --id <vm_id>
+```
+
+### Access your VM
+
+Virshle only allows you to access VMs through **ssh**.
+
+_However, when you want to attach the VM to your terminal,
+you can create the VM with `virshle` and boot it from `cloud-hypervisor`._
+
+As of today, this is the default and only network configuration available.
 
 ```toml
-[net]
-name = "default_4"
-uuid = "9a05da11-e96b-47f3-8253-a3a482e445f5"
-
-forward."@mode" = 'nat'
-[network.bridge]
-"@name" = "virbr0"
-"@stp" = "on"
-"@delay" = 0
-
-[network.mac]
-"@address" = "52:54:00:0a:cd:21"
-
-[[network.ip]]
-"@familly" = "ipv4"
-"@address" = "192.168.122.1"
-"@netmask" = "255.255.255.0"
-
-[network.ip.dhcp.range]
-"@start" = "192.168.122.2"
-"@end" = "192.168.122.254"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.vhost]
 ```
 
-Bring it up with
+Your VM network is managed by Open_vSwitch.
+It essentially creates a virtual switch for your every VM.
+this switch is then bridged to your network
 
-```sh
-virshle net create ./template/network/network.toml
-```
+## How this work.
 
-## 🛠️ Install
+### The stack
 
-You must have libvirt already installed.
+Virshle is only some **Rust** glue that stick together:
 
-### With Cargo (the Rust package manager)
+- cloud-hypervisor (VM)
+- Open_vSwitch (Network)
 
-```sh-vue
-cargo install --git https://github.com/pipelight/virshle
-```
+I wanted to make a tool that is rather decorrelated from the linux kernel.
+So the network is handled in user space, outside of the kernel through
+[Open_vSwitch](https://github.com/openvswitch/ovs)
+And virtualization is made through
+[cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
+which supports multiple hypervisors.
 
-### With Nixos (and flakes)
+### Resources management
 
-Try it in an isolated shell.
+Resources from your template definition
+are copied into virshle working directory `/var/lib/virshle/`.
 
-```nix
-nix shell github:pipelight/virshle
-```
+![working_directory_tree](https://github.com/pipelight/virshle/blob/master/public/images/working_directory_tree.png)
 
-Install it on your system.
+Which mean that your virtual machine do not run on the disk at
+`~/Iso/nixos.efi.img`, but on a copy of that disk, leaving the original file
+unaffected.
 
-```nix
-{
-  description = "NixOS configuration for crocuda development";
+You can then twist numerous copies of the same machine
+by spamming this same command.
 
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    virshle.url = "github:pipelight/virshle";
-  };
+## Alternatives
 
-  outputs = {
-    nixpkgs,
-    virshle,
-  }: {
+Virshle is in the vein of our good old [libvirt](https://libvirt.org/).
 
-    # Put this somewhere in your
-    # environment system packages
-    # user packages
-    # or
-    # home manager packages
-    virshle.packages.${system}.default
+It's aim is to be a comfortable cli to spin up your VM from.
 
-  };
-}
-```
+If you want VM for specific usage like workload isolation,
+some hypervisors may suit you better:
 
-## Thanks
-
-Inspired by:
-
-- [virsh](https://github.com/libvirt/libvirt).
-- [docker](https://github.com/docker/compose).
+- [Firecracker](https://github.com/firecracker-microvm/firecracker)
+- [CrosVm](https://chromium.googlesource.com/chromiumos/platform/crosvm)

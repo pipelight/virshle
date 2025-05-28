@@ -51,9 +51,7 @@ impl NodeRestServer {
             )
             .route(
                 "/vm/start",
-                put(async move |params| {
-                    NodeMethod::start_vm(params).await.unwrap();
-                }),
+                put(async move |params| NodeMethod::start_vm(params).await.unwrap()),
             )
             // .route(
             //     "/vm/stop",

@@ -45,7 +45,8 @@ impl Response {
     pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
         let status: StatusCode = self.inner.status();
         if status.is_success() {
-            let value: T = serde_json::from_str(&self.to_string().await?)?;
+            let string = &self.to_string().await?;
+            let value: T = serde_json::from_str(string)?;
             Ok(value)
         } else {
             let message = "Http response error";

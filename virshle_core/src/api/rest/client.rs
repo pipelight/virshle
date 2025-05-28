@@ -130,6 +130,7 @@ impl NodeRestClient {
         if args.vm_args.uuid.is_some() || args.vm_args.id.is_some() || args.vm_args.name.is_some() {
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
+
             let vm: Vec<Vm> = rest
                 .put("/vm/start", Some(args.vm_args.clone()))
                 .await?

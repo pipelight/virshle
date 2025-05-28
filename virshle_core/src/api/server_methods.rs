@@ -13,7 +13,7 @@ use crate::config::NodeInfo;
 
 // Hypervisor
 use crate::cli::VmArgs;
-use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, Vm, VmTemplate};
+use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, Vm, VmState, VmTemplate};
 use crate::config::VirshleConfig;
 
 // Error handling
@@ -56,20 +56,36 @@ impl NodeMethod {
         Ok(())
     }
 
-    pub async fn start_vm(Json(params): Json<VmArgs>) -> Result<Vm, VirshleError> {
-        // println!("{:#?}", params);
+    /*
+     * Return a string
+     */
+    pub async fn start_vm(Json(params): Json<VmArgs>) -> Result<String, VirshleError> {
         if let Some(id) = params.id {
             let mut vm = Vm::get_by_id(&id).await?;
             vm.start().await?;
-            Ok(vm)
+            let vms = vec![vm];
+            let vms = serde_json::to_string(&vms)?;
+            Ok(vms)
         } else if let Some(name) = params.name {
             let mut vm = Vm::get_by_name(&name).await?;
             vm.start().await?;
-            Ok(vm)
+            let vms = vec![vm];
+            let vms = serde_json::to_string(&vms)?;
+            Ok(vms)
         } else if let Some(uuid) = params.uuid {
             let mut vm = Vm::get_by_uuid(&uuid).await?;
             vm.start().await?;
-            Ok(vm)
+            let vms = vec![vm];
+            let vms = serde_json::to_string(&vms)?;
+            Ok(vms)
+        } else if let Some(state) = params.state {
+            let state: VmState = serde_json::from_str(&state)?;
+            let mut vms = Vm::get_by_state(state).await?;
+            for vm in &mut vms {
+                vm.start().await?;
+            }
+            let vms = serde_json::to_string(&vms)?;
+            Ok(vms)
         } else {
             let message = format!("Couldn't find vm.");
             let help = format!("Are you sure the vm exists on this node?");

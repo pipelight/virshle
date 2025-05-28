@@ -59,6 +59,16 @@ impl Vm {
         }
         Ok(vms)
     }
+    pub async fn get_by_state(state: VmState) -> Result<Vec<Vm>, VirshleError> {
+        let vms = Self::get_all().await?;
+        let mut vm_w_state = vec![];
+        for vm in vms {
+            if vm.get_state().await? == state {
+                vm_w_state.push(vm);
+            }
+        }
+        Ok(vm_w_state)
+    }
     /*
      * Get a Vm definition from its name.
      */

@@ -190,12 +190,10 @@ impl Vm {
 
         self.push_config_to_vmm().await?;
 
-        let socket = &self.get_socket()?;
-        let endpoint = "/api/v1/vm.boot";
-
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
 
+        let endpoint = "/api/v1/vm.boot";
         let response = rest.put::<()>(endpoint, None).await?;
 
         if !response.status().is_success() {
@@ -216,13 +214,12 @@ impl Vm {
     async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
         let config = VmConfig::from(self);
 
-        let socket = &self.get_socket()?;
-        let endpoint = "/api/v1/vm.create";
-
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
 
+        let endpoint = "/api/v1/vm.create";
         let response = rest.put::<VmConfig>(endpoint, Some(config)).await?;
+
         Ok(())
     }
 }
