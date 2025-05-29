@@ -37,7 +37,7 @@ pub enum Commands {
 pub enum Crud {
     /// Creates a virtual machine.
     #[command(arg_required_else_help = true)]
-    Create(File),
+    Create(CreateArgs),
     /// Starts/Restart a virtual machine.
     #[command(arg_required_else_help = true)]
     Start(StartArgs),
@@ -58,17 +58,20 @@ pub enum Crud {
     Ls(VmArgs),
 
     #[command(hide = true)]
-    Update(File),
+    Update(CreateArgs),
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq)]
-pub struct File {
+#[derive(Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct CreateArgs {
     #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
         conflicts_with = "template",
     )]
     pub file: Option<String>,
     #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
     pub template: Option<String>,
+
+    #[arg(short, long, value_name = "NODE_NAME")]
+    pub node: Option<String>,
 }
 
 #[derive(Debug, Args, Clone, Eq, PartialEq, Default, Serialize, Deserialize)]

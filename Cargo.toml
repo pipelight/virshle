@@ -8,8 +8,7 @@ members = [
   # "virshle-daemon",
 
   # Generate sqlite database
-  "migration",
-
+  "virshle_migration",
 
   "virshle_core",
 

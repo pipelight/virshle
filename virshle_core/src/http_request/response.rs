@@ -9,9 +9,9 @@ use serde::Serialize;
 use serde_json::{from_slice, Value};
 
 // Error Handling
-use log::{debug, info};
+use log::{debug, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
-use virshle_error::{LibError, VirshleError, WrapError};
+use virshle_error::{LibError, VirshleError, VirshleErrorResponse, WrapError};
 
 #[derive(Debug)]
 pub struct Response {
@@ -42,16 +42,35 @@ impl Response {
         let value: String = String::from_utf8(data.to_vec())?;
         Ok(value)
     }
-    pub async fn to_value<T: DeserializeOwned>(self) -> Result<T, VirshleError> {
+    pub async fn to_value<T>(self) -> Result<T, VirshleError>
+    where
+        T: DeserializeOwned + std::fmt::Debug,
+    {
         let status: StatusCode = self.inner.status();
         if status.is_success() {
             let string = &self.to_string().await?;
             let value: T = serde_json::from_str(string)?;
+            trace!("Body {{\n{:#?}\n}}", value);
             Ok(value)
         } else {
-            let message = "Http response error";
-            let help = format!("{}", status);
-            Err(LibError::builder().msg(message).help(&help).build().into())
+            let string = &self.to_string().await?;
+
+            let mut value: VirshleErrorResponse =
+                match serde_json::from_str::<VirshleErrorResponse>(string) {
+                    Ok(v) => v,
+                    Err(e) => VirshleErrorResponse {
+                        message: "UnknownErrorType".to_owned(),
+                        help: string.to_owned(),
+                    },
+                };
+            // Concat http res status to error message
+            value.help = value.help + &format!("\n{}", status);
+
+            Err(LibError::builder()
+                .msg(&value.message)
+                .help(&value.help)
+                .build()
+                .into())
         }
     }
 }

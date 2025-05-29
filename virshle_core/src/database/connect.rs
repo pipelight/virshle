@@ -2,13 +2,13 @@
 // use indexmap::IndexMap;
 use super::entity::{prelude::*, *};
 use crate::config::MANAGED_DIR;
-use migration::{Migrator, MigratorTrait};
 use sea_orm::{
     error::{ConnAcquireErr, DbErr},
     Database, DatabaseConnection,
 };
 use sea_orm::{prelude::*, sea_query::OnConflict, ActiveValue, InsertResult};
 use std::path::Path;
+use virshle_migration::{Migrator, MigratorTrait};
 
 // Error Handling
 use miette::{Error, IntoDiagnostic, Result};

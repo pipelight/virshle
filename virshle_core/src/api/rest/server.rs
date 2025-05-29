@@ -1,7 +1,7 @@
 use axum::{
     extract::{Extension, Path, Query},
     http::Request,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, post, put},
     Json, Router,
 };
@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use sysinfo::System;
 
 // Error handling
-use miette::{IntoDiagnostic, Result};
+use miette::{Diagnostic, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 pub struct NodeRestServer;
@@ -39,19 +39,15 @@ impl NodeRestServer {
             .route("/vm/list", get(NodeMethod::get_all_vm().await.unwrap()))
             .route(
                 "/vm/create",
-                put(async move |params| {
-                    NodeMethod::create_vm(params).await.unwrap();
-                }),
+                put(async move |params| NodeMethod::create_vm(params).await),
             )
             .route(
                 "/vm/info",
-                put(async move |params| {
-                    NodeMethod::get_vm_info(params).await.unwrap();
-                }),
+                put(async move |params| NodeMethod::get_vm_info(params).await),
             )
             .route(
                 "/vm/start",
-                put(async move |params| NodeMethod::start_vm(params).await.unwrap()),
+                put(async move |params| NodeMethod::start_vm(params).await),
             )
             // .route(
             //     "/vm/stop",

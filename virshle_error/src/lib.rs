@@ -7,9 +7,9 @@ use axum::{
     body::Body,
     response::{IntoResponse, Response},
 };
-use http_body_util::{BodyExt, Full};
+use http_body_util::BodyExt;
 use hyper::{body::Bytes, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
@@ -166,18 +166,25 @@ pub enum ConnectionError {
     SshAgentError(#[from] russh::AgentAuthError),
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct VirshleErrorReponse {
-    help: String,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VirshleErrorResponse {
+    pub message: String,
+    pub help: String,
 }
 
 impl IntoResponse for VirshleError {
     fn into_response(self) -> Response<Body> {
-        let origin = self.diagnostic_source().unwrap();
-        let error_response = VirshleErrorReponse {
-            help: origin.to_string(),
+        let mut err = VirshleErrorResponse {
+            message: self.to_string(),
+            help: "".to_owned(),
         };
-        let body = Body::from(serde_json::to_value(error_response).unwrap().to_string());
+
+        if let Some(origin) = self.diagnostic_source() {
+            err.help = origin.to_string();
+        }
+
+        let body = Body::from(serde_json::to_value(err).unwrap().to_string());
+
         let res = Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(body)

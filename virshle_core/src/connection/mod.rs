@@ -49,6 +49,7 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 
 // Error Handling
+use log::{debug, trace};
 use miette::{Error, Result};
 use virshle_error::{ConnectionError, VirshleError, WrapError};
 
@@ -128,24 +129,28 @@ impl From<&Node> for Connection {
 impl From<&Vm> for Connection {
     fn from(value: &Vm) -> Self {
         let uri = value.get_socket_uri().unwrap();
-        match Uri::new(&uri).unwrap() {
+        let conn = match Uri::new(&uri).unwrap() {
             Uri::SshUri(v) => Connection::SshConnection(SshConnection {
                 uri: v,
                 ssh_handle: None,
             }),
             Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
-        }
+        };
+        trace!("created connection for vm: {}", value.uuid);
+        conn
     }
 }
 impl From<&mut Vm> for Connection {
     fn from(value: &mut Vm) -> Self {
         let uri = value.get_socket_uri().unwrap();
-        match Uri::new(&uri).unwrap() {
+        let conn = match Uri::new(&uri).unwrap() {
             Uri::SshUri(v) => Connection::SshConnection(SshConnection {
                 uri: v,
                 ssh_handle: None,
             }),
             Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
-        }
+        };
+        trace!("created connection for vm: {}", value.uuid);
+        conn
     }
 }

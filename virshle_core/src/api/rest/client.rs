@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use crate::connection::{Connection, ConnectionHandle, ConnectionState};
 use crate::http_request::{Rest, RestClient};
 
-use crate::cli::{StartArgs, VmArgs};
+use crate::cli::{CreateArgs, StartArgs, VmArgs};
 use crate::{Node, NodeInfo, Vm, VmState, VmTemplate};
 use std::str::FromStr;
 
 // Error handling
-use log::{error, info, warn};
+use log::{error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -114,7 +114,40 @@ impl NodeRestClient {
         }
         Ok(nodes)
     }
-    /* */
+    /*
+     * Create a virtual machine on a node.
+     */
+    pub async fn create_vm(args: CreateArgs) -> Result<(), VirshleError> {
+        let config = VirshleConfig::get()?;
+        // Set node to be queried
+        let node: Node;
+        if let Some(node_name) = &args.node {
+            node = config.get_node_by_name(&node_name)?;
+        } else {
+            node = Node::default();
+        }
+
+        // Create a vm from strict definition in file.
+        if let Some(file) = &args.file {
+            // let mut vm = Vm::from_file(&file)?;
+            // vm.create().await?;
+        }
+        // Create a vm from template.
+        if let Some(name) = &args.template {
+            let mut conn = Connection::from(&node);
+            let mut rest = RestClient::from(&mut conn);
+
+            let vm: Vec<Vm> = rest.put("/vm/create", Some(args)).await?.to_value().await?;
+
+            let res = format!("Started vm: on node {}", node.name);
+            info!("{}", res);
+        }
+
+        Ok(())
+    }
+    /*
+     * Start a virtual machine on a node.
+     */
     pub async fn start_vm(args: StartArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
         let attach = args.attach;

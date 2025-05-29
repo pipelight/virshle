@@ -10,9 +10,6 @@ pkgs.rustPlatform.buildRustPackage rec {
   src = ./.;
   cargoLock = {
     lockFile = ./Cargo.lock;
-    outputHashes = {
-      "tonic-rpc-0.2.1" = "sha256-gKEmGW1O4ne6pmLBd3CEg2JqpFe03tCheyAMwFcbCeo=";
-    };
   };
 
   # disable tests

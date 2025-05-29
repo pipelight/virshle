@@ -74,17 +74,8 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    // Create a vm from strict definition in file.
-                    if let Some(file) = args.file {
-                        let mut vm = Vm::from_file(&file)?;
-                        vm.create().await?;
-                    }
                     // Create a vm from template.
-                    if let Some(name) = args.template {
-                        let template = VirshleConfig::get()?.get_template(&name)?;
-                        let mut vm = Vm::from(&template);
-                        vm.create().await?;
-                    }
+                    let e = NodeRestClient::create_vm(args).await?;
                 }
                 Crud::Info(args) => {
                     if let Some(name) = args.name {

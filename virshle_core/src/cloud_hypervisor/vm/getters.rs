@@ -24,7 +24,7 @@ use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertRe
 use crate::config::MANAGED_DIR;
 
 // Error Handling
-use log::info;
+use log::{debug, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -55,6 +55,7 @@ impl Vm {
                     return Err(err.into());
                 }
             };
+            warn!("id loop {:#?}", vm.id);
             vms.push(vm)
         }
         Ok(vms)
@@ -235,7 +236,6 @@ impl Vm {
                 let mut rest = RestClient::from(&mut conn);
                 let response = rest.get(endpoint).await?;
                 let status = response.status();
-
                 match status {
                     StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
                     StatusCode::OK => {
@@ -250,6 +250,7 @@ impl Vm {
         };
         Ok(state)
     }
+
     pub async fn get_ips(&self) -> Result<Vec<String>, VirshleError> {
         let ips = vec![];
         Ok(ips)

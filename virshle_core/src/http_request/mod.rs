@@ -115,6 +115,9 @@ impl<'a> Rest for RestClient<'a> {
         self.open().await?;
 
         if let Some(handle) = &mut self.handle {
+            let b = handle.sender.is_ready();
+            trace!("{:#?}", b);
+
             let response: HyperResponse<Incoming> =
                 handle.sender.send_request(request.to_owned()).await?;
 
@@ -192,11 +195,11 @@ pub async fn handshake(stream: Stream) -> Result<StreamHandle, VirshleError> {
             let v = TokioIo::new(v);
             match http1::handshake(v).await {
                 Ok((sender, connection)) => {
-                    debug!("http1 handshake succeed");
                     let handle = StreamHandle {
                         sender,
                         connection: spawn(async move { connection.await }),
                     };
+                    trace!("http1 handshake succeeded");
                     Ok(handle)
                 }
                 Err(e) => {
@@ -215,11 +218,11 @@ pub async fn handshake(stream: Stream) -> Result<StreamHandle, VirshleError> {
             let v = TokioIo::new(v);
             match http1::handshake(v).await {
                 Ok((sender, connection)) => {
-                    debug!("http1 handshake succeed");
                     let handle = StreamHandle {
                         sender,
                         connection: spawn(async move { connection.await }),
                     };
+                    trace!("http1 handshake succeeded");
                     Ok(handle)
                 }
                 Err(e) => {

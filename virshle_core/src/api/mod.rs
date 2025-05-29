@@ -1,10 +1,6 @@
 pub mod rest;
-mod server_methods;
 
-pub use rest::{NodeRestClient, NodeRestServer};
-
-// Methods
-pub use server_methods::NodeMethod;
+pub use rest::{NodeMethod, NodeRestClient, NodeRestServer};
 
 // Socket
 use std::fs;
