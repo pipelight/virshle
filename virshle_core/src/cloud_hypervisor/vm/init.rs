@@ -16,7 +16,7 @@ use pipelight_exec::{Process, Status};
 use std::fs;
 
 // Error handling
-use log::info;
+use log::{debug, info};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -34,6 +34,7 @@ impl Vm {
         let disk = Disk::from(&init_disk);
         self.disk.push(disk);
 
+        debug!("Created an init disk for vm {}", self.uuid);
         Ok(self)
     }
 }

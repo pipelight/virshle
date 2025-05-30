@@ -115,9 +115,6 @@ impl<'a> Rest for RestClient<'a> {
         self.open().await?;
 
         if let Some(handle) = &mut self.handle {
-            let b = handle.sender.is_ready();
-            trace!("{:#?}", b);
-
             let response: HyperResponse<Incoming> =
                 handle.sender.send_request(request.to_owned()).await?;
 

@@ -55,16 +55,17 @@ impl Response {
         } else {
             let string = &self.to_string().await?;
 
-            let mut value: VirshleErrorResponse =
+            let value: VirshleErrorResponse =
                 match serde_json::from_str::<VirshleErrorResponse>(string) {
-                    Ok(v) => v,
+                    Ok(mut v) => {
+                        v.help = format!("{}\n", status) + &v.help;
+                        v
+                    }
                     Err(e) => VirshleErrorResponse {
                         message: "UnknownErrorType".to_owned(),
-                        help: string.to_owned(),
+                        help: format!("{}\n", status) + string,
                     },
                 };
-            // Concat http res status to error message
-            value.help = value.help + &format!("\n{}", status);
 
             Err(LibError::builder()
                 .msg(&value.message)

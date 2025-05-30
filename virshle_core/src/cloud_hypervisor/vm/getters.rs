@@ -55,14 +55,13 @@ impl Vm {
                     return Err(err.into());
                 }
             };
-            warn!("id loop {:#?}", vm.id);
             vms.push(vm)
         }
         Ok(vms)
     }
     pub async fn get_by_state(state: VmState) -> Result<Vec<Vm>, VirshleError> {
         let vms = Self::get_all().await?;
-        let mut vm_w_state = vec![];
+        let mut vm_w_state: Vec<Vm> = vec![];
         for vm in vms {
             if vm.get_state().await? == state {
                 vm_w_state.push(vm);

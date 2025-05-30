@@ -1,7 +1,7 @@
 mod types;
 pub use types::*;
 
-use crate::api::{NodeRestClient, NodeRestServer, NodeServer};
+use crate::api::{rest::client, NodeServer};
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::{Node, VirshleConfig},
@@ -56,7 +56,7 @@ impl Cli {
              */
             Commands::Node(args) => match args {
                 Display::Ls => {
-                    let res = NodeRestClient::get_nodes_info().await?;
+                    let res = client::node::get_info().await?;
                     Node::display(res).await?;
                 }
             },
@@ -65,7 +65,7 @@ impl Cli {
              */
             Commands::Template(args) => match args {
                 Display::Ls => {
-                    let res = NodeRestClient::get_all_templates().await?;
+                    let res = client::template::get_all().await?;
                     VmTemplate::display_by_nodes(res).await?;
                 }
             },
@@ -75,7 +75,7 @@ impl Cli {
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
                     // Create a vm from template.
-                    let e = NodeRestClient::create_vm(args).await?;
+                    client::vm::create(args).await?;
                 }
                 Crud::Info(args) => {
                     if let Some(name) = args.name {
@@ -89,30 +89,18 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-                    let e = NodeRestClient::start_vm(args).await?;
+                    client::vm::start(args).await?;
                 }
                 Crud::Stop(args) => {
-                    if let Some(name) = args.name {
-                        let vm = Vm::get_by_name(&name).await?;
-                        vm.shutdown().await?;
-                    } else if let Some(id) = args.id {
-                        let vm = Vm::get_by_id(&id).await?;
-                        vm.shutdown().await?;
-                    }
+                    client::vm::shutdown(args).await?;
                 }
                 Crud::Ls(args) => {
-                    let mut e = NodeRestClient::get_all_vm().await?;
-                    e = NodeRestClient::filter(e, args).await?;
+                    let e = client::vm::get_all(args.clone()).await?;
+                    // e = NodeRestClient::filter(e, args).await?;
                     Vm::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {
-                    if let Some(name) = args.name {
-                        let vm = Vm::get_by_name(&name).await?;
-                        vm.delete().await?;
-                    } else if let Some(id) = args.id {
-                        let vm = Vm::get_by_id(&id).await?;
-                        vm.delete().await?;
-                    }
+                    client::vm::delete(args).await?;
                 }
                 _ => {}
             },

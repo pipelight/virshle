@@ -140,7 +140,7 @@ impl Vm {
             } else {
                 let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
                 let mut proc = Process::new();
-                proc.stdin(&cmd).background().detach().run()?;
+                proc.stdin(&cmd).background().detach().orphan().run()?;
             }
             // Wait until socket is created
             let socket = &self.get_socket()?;
@@ -158,6 +158,15 @@ impl Vm {
     pub async fn shutdown(&self) -> Result<(), VirshleError> {
         let socket = &self.get_socket()?;
         let endpoint = "/api/v1/vm.shutdown";
+        let mut conn = Connection::from(self);
+
+        let mut rest = RestClient::from(&mut conn);
+        let response = rest.put::<()>(endpoint, None).await?;
+        Ok(())
+    }
+    pub async fn pause(&self) -> Result<(), VirshleError> {
+        let socket = &self.get_socket()?;
+        let endpoint = "/api/v1/vm.pause";
         let mut conn = Connection::from(self);
 
         let mut rest = RestClient::from(&mut conn);

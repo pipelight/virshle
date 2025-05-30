@@ -32,6 +32,15 @@ name = "main"
 [template.vm.net.type.vhost]
 
 [[template.vm]]
+name = "fxs"
+vcpu = 1
+vram = 2
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "50G"
+
+[[template.vm]]
 name = "s"
 vcpu = 2
 vram = 4

@@ -16,10 +16,10 @@ use virshle_error::{LibError, VirshleError, WrapError};
 // Hypervisor
 use crate::config::VirshleConfig;
 
-pub struct NodeRestClient;
+pub mod template {
+    use super::*;
 
-impl NodeRestClient {
-    pub async fn get_all_templates() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
+    pub async fn get_all() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
@@ -40,8 +40,11 @@ impl NodeRestClient {
         }
         Ok(templates)
     }
+}
+pub mod node {
+    use super::*;
 
-    pub async fn get_nodes_info(
+    pub async fn get_info(
     ) -> Result<HashMap<Node, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
@@ -64,10 +67,13 @@ impl NodeRestClient {
         }
         Ok(node_info)
     }
+}
+pub mod vm {
+    use super::*;
     /*
      * Get a hashmap/dict of all vms per (reachable) node.
      */
-    pub async fn get_all_vm() -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
+    pub async fn get_all(args: VmArgs) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
@@ -80,7 +86,11 @@ impl NodeRestClient {
                 }
                 Ok(_) => {
                     let mut rest = RestClient::from(&mut conn);
-                    let node_vms: Vec<Vm> = rest.get("/vm/list").await?.to_value().await?;
+                    let node_vms: Vec<Vm> = rest
+                        .post("/vm/list", Some(args.clone()))
+                        .await?
+                        .to_value()
+                        .await?;
                     vms.insert(node, node_vms);
                 }
             }
@@ -88,36 +98,9 @@ impl NodeRestClient {
         Ok(vms)
     }
     /*
-     * Filter vms based on args.
-     */
-    pub async fn filter(
-        mut nodes: HashMap<Node, Vec<Vm>>,
-        args: VmArgs,
-    ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
-        let config = VirshleConfig::get()?;
-
-        // Filter Nodes by name
-        if let Some(node_name) = &args.node {
-            nodes.iter_mut().filter(|(k, _)| &k.name == node_name);
-        }
-
-        // Filter Vms by State
-        if let Some(state) = &args.state {
-            for (node, vms) in &mut nodes {
-                let state = VmState::from_str(state).unwrap();
-                for (i, vm) in vms.clone().iter().enumerate() {
-                    if vm.get_state().await? != state {
-                        vms.remove(i);
-                    }
-                }
-            }
-        }
-        Ok(nodes)
-    }
-    /*
      * Create a virtual machine on a node.
      */
-    pub async fn create_vm(args: CreateArgs) -> Result<(), VirshleError> {
+    pub async fn create(args: CreateArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
         // Set node to be queried
         let node: Node;
@@ -138,17 +121,45 @@ impl NodeRestClient {
             let mut rest = RestClient::from(&mut conn);
 
             let vm: Vec<Vm> = rest.put("/vm/create", Some(args)).await?.to_value().await?;
+            let vm = vm.first().unwrap();
 
-            let res = format!("Started vm: on node {}", node.name);
+            let res = format!("Created vm {:#?} on node {:#?}", vm.name, node.name);
             info!("{}", res);
         }
 
         Ok(())
     }
+    pub async fn delete(args: VmArgs) -> Result<(), VirshleError> {
+        let config = VirshleConfig::get()?;
+
+        // Set node to be queried
+        let node: Node;
+        if let Some(node_name) = &args.node {
+            node = config.get_node_by_name(&node_name)?;
+        } else {
+            node = Node::default();
+        }
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+
+        let vm: Vec<Vm> = rest
+            .put("/vm/delete", Some(args.clone()))
+            .await?
+            .to_value()
+            .await?;
+        let vm = vm.first().unwrap();
+
+        let res = format!("Deleted vm {:#?} on node {:#?}", vm.name, node.name);
+        info!("{}", res);
+
+        Ok(())
+    }
+
     /*
      * Start a virtual machine on a node.
      */
-    pub async fn start_vm(args: StartArgs) -> Result<(), VirshleError> {
+    pub async fn start(args: StartArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
         let attach = args.attach;
 
@@ -160,22 +171,51 @@ impl NodeRestClient {
             node = Node::default();
         }
 
-        if args.vm_args.uuid.is_some() || args.vm_args.id.is_some() || args.vm_args.name.is_some() {
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
 
-            let vm: Vec<Vm> = rest
-                .put("/vm/start", Some(args.vm_args.clone()))
-                .await?
-                .to_value()
-                .await?;
+        let vm: Vec<Vm> = rest
+            .put("/vm/start", Some(args.vm_args.clone()))
+            .await?
+            .to_value()
+            .await?;
+        let vm = vm.first().unwrap();
 
-            let res = format!("started vm: on node");
-            info!("{}", res);
-        }
+        let res = format!("Started vm {:#?} on node {:#?}", vm.name, node.name);
+        info!("{}", res);
+
         Ok(())
     }
-    pub async fn get_vm_info(args: VmArgs) -> Result<(), VirshleError> {
+    /*
+     * Stop a virtual machine on a node.
+     */
+    pub async fn shutdown(args: VmArgs) -> Result<(), VirshleError> {
+        let config = VirshleConfig::get()?;
+
+        // Set node to be queried
+        let node: Node;
+        if let Some(node_name) = &args.node {
+            node = config.get_node_by_name(&node_name)?;
+        } else {
+            node = Node::default();
+        }
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+
+        let vm: Vec<Vm> = rest
+            .put("/vm/shutdown", Some(args.clone()))
+            .await?
+            .to_value()
+            .await?;
+        let vm = vm.first().unwrap();
+
+        let res = format!("Shutdown vm {:#?} on node {:#?}", vm.name, node.name);
+        info!("{}", res);
+
+        Ok(())
+    }
+    pub async fn get_info(args: VmArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
 
         // Set node to be queried
@@ -206,6 +246,33 @@ impl NodeRestClient {
         }
         Ok(())
     }
+    /*
+     * Filter vms based on args.
+     */
+    pub async fn filter(
+        mut nodes: HashMap<Node, Vec<Vm>>,
+        args: VmArgs,
+    ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
+        let config = VirshleConfig::get()?;
+
+        // Filter Nodes by name
+        if let Some(node_name) = &args.node {
+            nodes.iter_mut().filter(|(k, _)| &k.name == node_name);
+        }
+
+        // Filter Vms by State
+        // if let Some(state) = &args.state {
+        //     for (node, vms) in &mut nodes {
+        //         let state = VmState::from_str(state).unwrap();
+        //         for (i, vm) in vms.clone().iter().enumerate() {
+        //             if vm.get_state().await? != state {
+        //                 vms.remove(i);
+        //             }
+        //         }
+        //     }
+        // }
+        Ok(nodes)
+    }
 }
 
 #[cfg(test)]
@@ -214,7 +281,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_all_vm() -> Result<()> {
-        NodeRestClient::get_all_vm().await?;
+        let args = VmArgs::default();
+        vm::get_all(args).await?;
         Ok(())
     }
     #[tokio::test]

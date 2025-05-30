@@ -7,8 +7,7 @@ use axum::{
     body::Body,
     response::{IntoResponse, Response},
 };
-use http_body_util::BodyExt;
-use hyper::{body::Bytes, StatusCode};
+use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 
 use thiserror::Error;

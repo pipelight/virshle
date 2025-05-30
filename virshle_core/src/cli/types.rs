@@ -55,6 +55,7 @@ pub enum Crud {
     Info(VmArgs),
 
     /// List existing vms.
+    #[command()]
     Ls(VmArgs),
 
     #[command(hide = true)]

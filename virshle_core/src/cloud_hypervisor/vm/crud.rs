@@ -32,7 +32,6 @@ impl Vm {
     pub async fn create(&mut self) -> Result<Self, VirshleError> {
         // Persist vm config into database
         self.create_db_record().await?;
-
         Ok(self.to_owned())
     }
 
@@ -147,11 +146,12 @@ impl Vm {
      * and assiociated socket.
      */
     pub fn delete_ch_proc(&self) -> Result<(), VirshleError> {
-        Finder::new()
+        let finder = Finder::new()
             .seed("cloud-hypervisor")
             .seed(&self.uuid.to_string())
-            .search_no_parents()?
-            .kill()?;
+            .search_no_parents()?;
+
+        finder.kill()?;
 
         let socket = &self.get_socket()?;
         let path = Path::new(&socket);

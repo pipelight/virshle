@@ -18,7 +18,7 @@ use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
 // Error Handling
-use log::info;
+use log::{debug, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -208,7 +208,11 @@ impl InitDisk<'_> {
                     return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
-                    info!("{:#?}", res.io.stdout);
+                    trace!(
+                        "Executed {:#?} -> Stdio {{\n{:#?}\n}}",
+                        res.io.stdin,
+                        res.io.stdout
+                    );
                 }
             };
         }
@@ -251,7 +255,11 @@ impl InitDisk<'_> {
                     return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
-                    info!("{:#?}", res.io.stdout);
+                    trace!(
+                        "Executed {:#?} -> Stdio {{\n{:#?}\n}}",
+                        res.io.stdin,
+                        res.io.stdout
+                    );
                 }
             };
         }
@@ -283,7 +291,11 @@ impl InitDisk<'_> {
                     return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
-                    info!("{:#?}", res.io.stdout);
+                    trace!(
+                        "Executed {:#?} -> Stdio {{\n{:#?}\n}}",
+                        res.io.stdin,
+                        res.io.stdout
+                    );
                 }
             };
         }
