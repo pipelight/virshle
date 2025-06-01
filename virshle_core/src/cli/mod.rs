@@ -1,7 +1,7 @@
 mod types;
 pub use types::*;
 
-use crate::api::{rest::client, NodeServer};
+use crate::api::{rest::client, rest::method, NodeServer};
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::{Node, VirshleConfig},
@@ -45,26 +45,27 @@ impl Cli {
             Commands::Init => {
                 VirshleConfig::init().await?;
             }
+            Commands::Daemon => {}
             /*
-             * Run the background daemon and wait for http requests.
-             */
-            Commands::Daemon => {
-                NodeServer::run().await?;
-            }
-            /*
-             * Operations on virtual machine templates
+             * Operations on local and remote node
              */
             Commands::Node(args) => match args {
-                Display::Ls => {
+                NodeArgs::Ls => {
                     let res = client::node::get_info().await?;
                     Node::display(res).await?;
+                }
+                /*
+                 * Serve the node rest API and wait for http requests.
+                 */
+                NodeArgs::Serve => {
+                    NodeServer::run().await?;
                 }
             },
             /*
              * Operations on virtual machine templates
              */
             Commands::Template(args) => match args {
-                Display::Ls => {
+                TemplateArgs::Ls => {
                     let res = client::template::get_all().await?;
                     VmTemplate::display_by_nodes(res).await?;
                 }
@@ -89,7 +90,17 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
-                    client::vm::start(args).await?;
+                    match args.attach {
+                        true => {
+                            // Bypass rest API,
+                            // and run on local node direcly.
+                            method::vm::_start_attach(args.vm_args).await?;
+                        }
+                        _ => {
+                            // Rest API
+                            client::vm::start(args).await?;
+                        }
+                    };
                 }
                 Crud::Stop(args) => {
                     client::vm::shutdown(args).await?;

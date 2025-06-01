@@ -12,6 +12,8 @@ use hyper::{Request, Response as HyperResponse, StatusCode};
 use hyper_util::rt::TokioIo;
 
 use serde::{Deserialize, Serialize};
+use std::time;
+use tokio::time::timeout;
 
 // Socket
 use tokio::spawn;
@@ -22,7 +24,7 @@ use serde::de::DeserializeOwned;
 
 use std::future::Future;
 // Error Handling
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -96,7 +98,33 @@ impl<'a> Rest for RestClient<'a> {
         if self.handle.is_none() {
             match self.connection.open().await {
                 Ok(stream) => {
-                    let handle = handshake(stream).await?;
+                    // Test handshake
+                    let mut handle = handshake(stream).await?;
+
+                    // A running cloud-hypervisor process can be clunky
+                    // and wait forever after a handshake so we test response
+                    // duration.
+
+                    // Test endpoint response
+                    let request = Request::builder()
+                        .uri("/")
+                        .method("GET")
+                        .header("Host", "localhost")
+                        .body(Full::new(Bytes::new()))?;
+
+                    // Timeout reponse and return succesfully if a response is sent,
+                    // Wether it is a succesful response or an error message.
+                    let time: u64 = 1000;
+                    let response = handle.sender.send_request(request.to_owned());
+                    let response = timeout(time::Duration::from_millis(time), response)
+                        .await
+                        .map_err(|e| {
+                            LibError::builder()
+                                .msg(&e.to_string())
+                                .help(&format!("Request timeout {time}ms reached."))
+                                .build()
+                        })?;
+
                     self.handle = Some(handle);
                 }
                 Err(e) => return Err(e),
@@ -109,25 +137,26 @@ impl<'a> Rest for RestClient<'a> {
         endpoint: &str,
         request: &Request<Full<Bytes>>,
     ) -> Result<Response, VirshleError> {
-        debug!("{:#?}", request);
+        trace!("{:#?}", request);
 
         // Ensure connection is open and has a stream handle.
         self.open().await?;
 
         if let Some(handle) = &mut self.handle {
-            let response: HyperResponse<Incoming> =
-                handle.sender.send_request(request.to_owned()).await?;
-
-            let status: StatusCode = response.status();
-            let response: Response = Response::new(endpoint, response);
-            trace!("{:#?}", response);
-
-            // if !status.is_success() {
-            //     let message = format!("Status failed: {}", status);
-            //     return Err(LibError::new(&message, "").into());
-            // }
-
-            Ok(response)
+            let send: Result<HyperResponse<Incoming>, _> =
+                handle.sender.send_request(request.to_owned()).await;
+            match send {
+                Ok(response) => {
+                    let status: StatusCode = response.status();
+                    let response: Response = Response::new(endpoint, response);
+                    trace!("{:#?}", response);
+                    Ok(response)
+                }
+                Err(e) => {
+                    error!("{:#?}", e);
+                    Err(e.into())
+                }
+            }
         } else {
             let err = LibError::builder()
                 .msg("Connection has no handler.")

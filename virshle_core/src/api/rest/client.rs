@@ -26,12 +26,12 @@ pub mod template {
         let mut templates: HashMap<Node, Vec<VmTemplate>> = HashMap::new();
         for node in nodes {
             let mut conn = Connection::from(&node);
-            match node.open().await {
+            let mut rest = RestClient::from(&mut conn);
+            match rest.open().await {
                 Err(e) => {
                     warn!("{}", e);
                 }
                 Ok(_) => {
-                    let mut rest = RestClient::from(&mut conn);
                     let node_templates: Vec<VmTemplate> =
                         rest.get("/template/list").await?.to_value().await?;
                     templates.insert(node, node_templates);
@@ -52,14 +52,14 @@ pub mod node {
         let mut node_info: HashMap<Node, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
         for node in nodes {
             let mut conn = Connection::from(&node);
-            match conn.open().await {
+            let mut rest = RestClient::from(&mut conn);
+            match rest.open().await {
                 Err(e) => {
                     error!("{}", e);
-                    node_info.insert(node, (conn.get_state().await?, None));
+                    node_info.insert(node, (rest.connection.get_state().await?, None));
                 }
                 Ok(_) => {
-                    let state = conn.get_state().await?;
-                    let mut rest = RestClient::from(&mut conn);
+                    let state = rest.connection.get_state().await?;
                     let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
                     node_info.insert(node, (state, Some(res)));
                 }
@@ -80,12 +80,12 @@ pub mod vm {
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
         for node in nodes {
             let mut conn = Connection::from(&node);
-            match node.open().await {
+            let mut rest = RestClient::from(&mut conn);
+            match rest.open().await {
                 Err(e) => {
                     error!("{}", e);
                 }
                 Ok(_) => {
-                    let mut rest = RestClient::from(&mut conn);
                     let node_vms: Vec<Vm> = rest
                         .post("/vm/list", Some(args.clone()))
                         .await?
@@ -161,7 +161,6 @@ pub mod vm {
      */
     pub async fn start(args: StartArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
-        let attach = args.attach;
 
         // Set node to be queried
         let node: Node;

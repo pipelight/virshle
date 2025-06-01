@@ -70,7 +70,7 @@ impl Vm {
                     fs::remove_file(&socket_path)?;
                 }
                 // This results in "machin_name-network_name".
-                let port_name = format!("{}-{}", self.name, e.name);
+                let port_name = format!("vm-{}-{}", self.name, e.name);
                 Ovs::create_vm_port(&port_name, &socket_path)?;
             }
         }
@@ -135,7 +135,7 @@ impl Vm {
                 if path.exists() {
                     fs::remove_file(&socket_path)?;
                 }
-                let port_name = format!("{}-{}", self.name, e.name);
+                let port_name = format!("vm-{}-{}", self.name, e.name);
                 Ovs::delete_vm_port(&port_name)?;
             }
         }

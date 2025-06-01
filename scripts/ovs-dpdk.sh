@@ -7,47 +7,38 @@
 # Can't set tap device mac with ovs-vsctl
 # But it seems to be based on device name.
  
-ifname="vm1"
+ifname="vm-test"
 brname="br0"
 uuid="test"
 
+env_dir="/var/lib/virshle/vm/test"
+
 # Clean
-sudo rm /var/lib/virshle/socket/$uuid.sock
+sudo rm $env_dir/$uuid.sock
 sudo rm /tmp/vhost-user1.sock
 
-sudo ovs-vsctl \
-  -- --if-exists del-br $brname
+# sudo ovs-vsctl \
+#   -- --if-exists del-br $brname
 sudo ovs-vsctl \
   -- --if-exists del-port $brname $ifname
-
-# Create patch cable 1/2
-sudo ovs-vsctl \
-  -- --may-exist add-port vs0 patch_vs0br0 \
-  -- set interface patch_vs0br0 type=patch \
-  -- set interface patch_vs0br0 options:peer=patch_br0vs0 \
-
-# Create dpdk port
-sudo ovs-vsctl add-br $brname \
-  -- set bridge $brname datapath_type=netdev
-
-# Create patch cable 2/2
-sudo ovs-vsctl \
-  -- --may-exist add-port $brname patch_br0vs0 \
-  -- set interface patch_br0_vs0 type=patch \
-  -- set interface patch_br0_vs0 options:peer=patch_vs0br0 \
+#
+# Create env
+sudo mkdir -p ${env_dir}/net
+sudo mkdir -p ${env_dir}/disk
+cp /home/anon/Iso/nixos.efi.img $env_dir/disk/os
 
 sudo ovs-vsctl \
   -- add-port $brname $ifname \
   -- set interface $ifname type=dpdkvhostuserclient \
-  -- set interface $ifname options:vhost-server-path=/tmp/vhost-user1.sock \
+  -- set interface $ifname options:vhost-server-path=$env_dir/net/main.sock \
   -- set interface $ifname options:n_rxq=2
 
 cloud-hypervisor \
-    --api-socket /var/lib/virshle/socket/$uuid.sock \
+    --api-socket $env_dir/ch.sock \
     --kernel /run/cloud-hypervisor/hypervisor-fw \
-    --disk path=/home/anon/Iso/nixos.efi.img path=/home/anon/Iso/pipelight-init.img \
-    --cpus boot=2 \
-    --memory size=512M,hugepages=on,shared=true \
+    --disk path=os \
+    --cpus boot=1 \
+    --memory size=2048M,hugepages=on,shared=true \
     --console off \
     --serial tty \
     --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw" \

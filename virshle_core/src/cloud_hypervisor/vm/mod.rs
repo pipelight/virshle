@@ -29,6 +29,7 @@ use crate::http_request::{Rest, RestClient};
 use crate::database::entity::{prelude::*, *};
 
 // Error Handling
+use log::debug;
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -127,25 +128,32 @@ impl Vm {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
 
-        // If can't establish connection to socket,
-        // Then start new process.
+        // If we can't establish connection to socket,
+        // this means cloud-hypervisor is dead.
+        // So we start a new viable process.
         let mut conn = Connection::from(self);
         if conn.open().await.is_err() {
-            if let Some(config) = &self.config {
-                if config.attach {
-                    let proc = Command::new("cloud-hypervisor")
-                        .args(["--api-socket", &self.get_socket()?])
-                        .spawn()?;
+            match self.is_attach().ok() {
+                Some(true) => {
+                    let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
+                    debug!("Starting ch: {:#?}", cmd);
+                    Process::new().stdin(&cmd).run()?;
                 }
-            } else {
-                let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
-                let mut proc = Process::new();
+                _ => {
+                    let cmd = format!(
+                        "nohup cloud-hypervisor --api-socket {}",
+                        &self.get_socket()?
+                    );
+                    debug!("Starting ch: {:#?}", cmd);
+                    Process::new()
+                        .stdin(&cmd)
+                        .orphan()
+                        .background()
+                        .detach()
+                        .run()?;
+                }
+            };
 
-                #[cfg(debug_assertions)]
-                proc.stdin(&cmd).background().detach().run()?;
-                #[cfg(not(debug_assertions))]
-                proc.stdin(&cmd).background().detach().orphan().run()?;
-            }
             // Wait until socket is created
             let socket = &self.get_socket()?;
             let path = Path::new(socket);
@@ -166,6 +174,12 @@ impl Vm {
 
         let mut rest = RestClient::from(&mut conn);
         let response = rest.put::<()>(endpoint, None).await?;
+
+        // Remove ch process
+        self.delete_ch_proc();
+        // Remove network ports
+        self.delete_networks();
+
         Ok(())
     }
     pub async fn pause(&self) -> Result<(), VirshleError> {

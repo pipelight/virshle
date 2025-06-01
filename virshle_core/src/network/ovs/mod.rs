@@ -69,6 +69,23 @@ impl OvsPort {
         self.interface = interface;
         Ok(())
     }
+    pub fn is_virshle_port(&self) -> bool {
+        self.name.starts_with("vm-")
+    }
+    pub fn get_vm_name(&self) -> Result<String, VirshleError> {
+        match self.is_virshle_port() {
+            true => {
+                let network_fullname: &str = self.name.strip_prefix("vm-").unwrap();
+                let (vm_name, net_name) = network_fullname.split_once("-").unwrap();
+                Ok(vm_name.to_owned())
+            }
+            false => {
+                let message = "This port is not managed by virshle.";
+                let help = "Port name must start by \"vm-\"";
+                Err(LibError::builder().msg(message).help(help).build().into())
+            }
+        }
+    }
 }
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -138,14 +155,14 @@ impl Ovs {
             "sudo ovs-vsctl \
                 -- --may-exist add-port {vm_bridge_name} {name} \
                 -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2"
+                -- set interface {name} options:vhost-server-path={socket_path}"
         );
         #[cfg(not(debug_assertions))]
         let cmd = format!(
             "ovs-vsctl \
                 -- --may-exist add-port {vm_bridge_name} {name} \
                 -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2"
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=1"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -176,6 +193,8 @@ impl Ovs {
             }
             Ok(()) => {}
         }
+
+        info!("Created virshle ovs switches.");
         Ok(())
     }
 
@@ -338,22 +357,25 @@ impl Ovs {
         let mut cmd = format!("ovs-vsctl");
 
         for port in vm_bridge.ports {
-            if !vms_name.contains(&port.name) {
-                if let Some(_type) = &port.interface._type {
-                    match _type {
-                        OvsInterfaceType::DpdkVhostUserClient => {
-                            cmd += &format!(
-                                " -- --if-exists del-port {} {}",
-                                vm_bridge.name, port.name
-                            );
-                        }
-                        _ => {}
-                    };
+            // Only if port is managed by virshle
+            if let Some(vm_name) = port.get_vm_name().ok() {
+                if !vms_name.contains(&vm_name) {
+                    if let Some(_type) = &port.interface._type {
+                        match _type {
+                            OvsInterfaceType::DpdkVhostUserClient => {
+                                cmd += &format!(
+                                    " -- --if-exists del-port {} {}",
+                                    vm_bridge.name, port.name
+                                );
+                                let mut proc = Process::new();
+                                let res = proc.stdin(&cmd).run()?;
+                            }
+                            _ => {}
+                        };
+                    }
                 }
             }
         }
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
         Ok(())
     }
 

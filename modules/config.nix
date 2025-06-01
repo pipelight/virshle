@@ -14,17 +14,13 @@ in
     systemd.tmpfiles.rules = [
       "Z '/var/lib/virshle' 774 root users - -"
       "d '/var/lib/virshle' 774 root users - -"
-      # Loosen permissions on openvswitch.
-      "Z '/var/run/openvswitch' 774 root users - -"
-      "d '/var/run/openvswitch' 774 root users - -"
     ];
 
     systemd.services.virshle = {
       enable = true;
       description = "Virshle node daemon (level 2 hypervisor)";
       documentation = [
-        "https://github.com/bluecatengineering/dora"
-        "virshle --help"
+        "https://github.com/pipelight/virshle"
       ];
       after = [
         "network.target"
@@ -55,33 +51,12 @@ in
         AmbientCapabilities = [
           # "CAP_NET_BIND_SERVICE"
           # "CAP_NET_ADMIN"
+          # "CAP_SET_PROC"
+          # "CAP_SETUID"
+          # "CAP_SETGID"
           "CAP_SYS_ADMIN"
         ];
       };
-    };
-
-    systemd.services.ovsdb.serviceConfig.Group = "users";
-    systemd.services.ovsdb.serviceConfig.ExecStartPost = [
-      "-${pkgs.coreutils}/bin/chown -R root:users /var/run/openvswitch"
-      "-${pkgs.coreutils}/bin/chmod -R 774 /var/run/openvswitch"
-    ];
-    systemd.services.ovs-vswitchd.serviceConfig.Group = "users";
-    systemd.services.ovs-vswitchd.serviceConfig.ExecStartPost = [
-      "-${pkgs.coreutils}/bin/chown -R root:users /var/run/openvswitch"
-      "-${pkgs.coreutils}/bin/chmod -R 774 /var/run/openvswitch"
-    ];
-
-    boot = with lib; {
-      kernelModules = ["openvswitch"];
-      kernelParams = mkDefault ["nr_hugepages=1024"];
-      kernel.sysctl = {
-        "vm.nr_hugepages" = mkDefault 1024;
-      };
-    };
-    # OpenVSwitch
-    virtualisation.vswitch = {
-      package = pkgs.openvswitch-dpdk;
-      enable = true;
     };
 
     environment.systemPackages = with pkgs; [

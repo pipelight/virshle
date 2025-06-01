@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use tabled::{Table, Tabled};
 
 // Cloud Hypervisor
+use crate::cli::VmArgs;
 use crate::cloud_hypervisor::vmm_types::{VmConfig, VmInfoResponse, VmState};
+use std::str::FromStr;
 
 use hyper::{Request, StatusCode};
 
@@ -68,6 +70,30 @@ impl Vm {
             }
         }
         Ok(vm_w_state)
+    }
+
+    pub async fn get_by_args(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
+        if let Some(id) = params.id {
+            let vm = Vm::get_by_id(&id).await?;
+            let vms = vec![vm];
+            Ok(vms)
+        } else if let Some(name) = params.name {
+            let vm = Vm::get_by_name(&name).await?;
+            let vms = vec![vm];
+            Ok(vms)
+        } else if let Some(uuid) = params.uuid {
+            let vm = Vm::get_by_uuid(&uuid).await?;
+            let vms = vec![vm];
+            Ok(vms)
+        } else if let Some(state) = params.state {
+            let state = VmState::from_str(&state).unwrap();
+            let vms = Vm::get_by_state(state).await?;
+            Ok(vms)
+        } else {
+            let message = format!("Couldn't find vm.");
+            let help = format!("Are you sure the vm exists on this node?");
+            Err(LibError::builder().msg(&message).help(&help).build().into())
+        }
     }
     /*
      * Get a Vm definition from its name.
@@ -229,10 +255,10 @@ impl Vm {
         let endpoint = "/api/v1/vm.info";
 
         let mut conn = Connection::from(self);
+        let mut rest = RestClient::from(&mut conn);
 
-        let state = match conn.open().await {
+        let state = match rest.open().await {
             Ok(v) => {
-                let mut rest = RestClient::from(&mut conn);
                 let response = rest.get(endpoint).await?;
                 let status = response.status();
                 match status {

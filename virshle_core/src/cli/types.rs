@@ -22,11 +22,11 @@ pub enum Commands {
 
     /// Operations on templates
     #[command(subcommand)]
-    Node(Display),
+    Node(NodeArgs),
 
     /// Operations on templates
     #[command(subcommand)]
-    Template(Display),
+    Template(TemplateArgs),
 
     /// Operations on virtual machines
     #[command(subcommand)]
@@ -118,6 +118,12 @@ pub struct StartArgs {
 }
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
-pub enum Display {
+pub enum TemplateArgs {
     Ls,
+}
+
+#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
+pub enum NodeArgs {
+    Ls,
+    Serve,
 }

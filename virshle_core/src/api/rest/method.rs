@@ -97,97 +97,47 @@ pub mod vm {
      * Start a vm and return it.
      */
     pub async fn start(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
-        if let Some(id) = params.id {
-            let mut vm = Vm::get_by_id(&id).await?;
+        Ok(Json(_start(params).await?))
+    }
+    pub async fn _start(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_by_args(params).await?;
+        for vm in &mut vms {
             vm.start().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(name) = params.name {
-            let mut vm = Vm::get_by_name(&name).await?;
-            vm.start().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(uuid) = params.uuid {
-            let mut vm = Vm::get_by_uuid(&uuid).await?;
-            vm.start().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(state) = params.state {
-            let state = VmState::from_str(&state).unwrap();
-            let mut vms = Vm::get_by_state(state).await?;
-            for vm in &mut vms {
-                vm.start().await?;
-            }
-            Ok(Json(vms))
-        } else {
-            let message = format!("Couldn't find vm.");
-            let help = format!("Are you sure the vm exists on this node?");
-            Err(LibError::builder().msg(&message).help(&help).build().into())
         }
+        Ok(vms)
+    }
+    pub async fn _start_attach(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_by_args(params).await?;
+        for vm in &mut vms {
+            vm.attach()?.start().await?;
+        }
+        Ok(vms)
     }
     /*
      * Delete a vm and return it.
      */
     pub async fn delete(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
-        if let Some(id) = params.id {
-            let vm = Vm::get_by_id(&id).await?;
+        Ok(Json(_delete(params).await?))
+    }
+    pub async fn _delete(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_by_args(params).await?;
+        for vm in &mut vms {
             vm.delete().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(name) = params.name {
-            let vm = Vm::get_by_name(&name).await?;
-            vm.delete().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(uuid) = params.uuid {
-            let vm = Vm::get_by_uuid(&uuid).await?;
-            vm.delete().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(state) = params.state {
-            let state = VmState::from_str(&state).unwrap();
-            let mut vms = Vm::get_by_state(state).await?;
-            for vm in &mut vms {
-                vm.delete().await?;
-            }
-            Ok(Json(vms))
-        } else {
-            let message = format!("Couldn't find vm.");
-            let help = format!("Are you sure the vm exists on this node?");
-            Err(LibError::builder().msg(&message).help(&help).build().into())
         }
+        Ok(vms)
     }
     /*
      * Shutdown a vm and return it.
      */
     pub async fn shutdown(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
-        if let Some(id) = params.id {
-            let vm = Vm::get_by_id(&id).await?;
+        Ok(Json(_shutdown(params).await?))
+    }
+    pub async fn _shutdown(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_by_args(params).await?;
+        for vm in &mut vms {
             vm.shutdown().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(name) = params.name {
-            let vm = Vm::get_by_name(&name).await?;
-            vm.shutdown().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(uuid) = params.uuid {
-            let vm = Vm::get_by_uuid(&uuid).await?;
-            vm.shutdown().await?;
-            let vms = vec![vm];
-            Ok(Json(vms))
-        } else if let Some(state) = params.state {
-            let state = VmState::from_str(&state).unwrap();
-            let mut vms = Vm::get_by_state(state).await?;
-            for vm in &mut vms {
-                vm.shutdown().await?;
-            }
-            Ok(Json(vms))
-        } else {
-            let message = format!("Couldn't find vm.");
-            let help = format!("Are you sure the vm exists on this node?");
-            Err(LibError::builder().msg(&message).help(&help).build().into())
         }
+        Ok(vms)
     }
     pub async fn get_info(Json(params): Json<VmArgs>) -> Result<VmInfoResponse, VirshleError> {
         // println!("{:#?}", params);

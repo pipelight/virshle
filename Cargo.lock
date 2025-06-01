@@ -3257,9 +3257,9 @@ dependencies = [
 
 [[package]]
 name = "pipelight_exec"
-version = "0.4.7"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15a9492082cdafe792e7a528b9f441c23e854564bc562d52782812b4e0235f4d"
+checksum = "b16e42a4a012e98df72dd25751f8705d023b4b05f953c8bee62ef42f9de457d4"
 dependencies = [
  "bon",
  "chrono",
@@ -5795,7 +5795,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "virshle"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap 4.5.39",
  "clap_complete",

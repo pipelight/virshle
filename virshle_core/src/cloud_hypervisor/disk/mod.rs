@@ -93,7 +93,7 @@ impl UserData {
         .to_owned();
 
         // Add hostname
-        let hostname = "vm-".to_owned() + &self.hostname;
+        let hostname = format!("vm-{}", self.hostname);
         p_config += &format!(
             r#"
         [[pipelines.steps]]

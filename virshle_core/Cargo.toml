@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 
 virshle_error = { path = "../virshle_error" }
-pipelight_exec = "0.4.7"
+pipelight_exec = "0.4.8"
 
 miette = { version = "7.2.0", features = ["fancy"] }
 serde_json = { version = "1.0.128", features = ["preserve_order"] }

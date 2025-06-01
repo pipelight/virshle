@@ -22,7 +22,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // Error Handling
-use log::info;
+use log::{debug, info};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
@@ -64,6 +64,7 @@ impl VirshleConfig {
                 }
             }
         }
+        debug!("Cleaned virshle filetree.");
         Ok(())
     }
     /*
@@ -82,6 +83,7 @@ impl VirshleConfig {
                 fs::create_dir_all(&directory)?;
             }
         }
+        info!("Created virshle filetree.");
         Ok(())
     }
     /*
