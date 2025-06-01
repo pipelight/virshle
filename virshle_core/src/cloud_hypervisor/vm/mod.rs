@@ -140,6 +140,10 @@ impl Vm {
             } else {
                 let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
                 let mut proc = Process::new();
+
+                #[cfg(debug_assertions)]
+                proc.stdin(&cmd).background().detach().run()?;
+                #[cfg(not(debug_assertions))]
                 proc.stdin(&cmd).background().detach().orphan().run()?;
             }
             // Wait until socket is created
