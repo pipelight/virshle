@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 // Connections and Http
 use crate::connection::{Connection, ConnectionHandle, ConnectionState};
+use crate::display::vm::VmTable;
 use crate::http_request::{Rest, RestClient};
 
 use crate::cli::{CreateArgs, StartArgs, VmArgs};
@@ -73,11 +74,11 @@ pub mod vm {
     /*
      * Get a hashmap/dict of all vms per (reachable) node.
      */
-    pub async fn get_all(args: VmArgs) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
+    pub async fn get_all(args: VmArgs) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
-        let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
+        let mut vms: HashMap<Node, Vec<VmTable>> = HashMap::new();
         for node in nodes {
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
@@ -86,11 +87,12 @@ pub mod vm {
                     error!("{}", e);
                 }
                 Ok(_) => {
-                    let node_vms: Vec<Vm> = rest
+                    let node_vms: Vec<VmTable> = rest
                         .post("/vm/list", Some(args.clone()))
                         .await?
                         .to_value()
                         .await?;
+
                     vms.insert(node, node_vms);
                 }
             }

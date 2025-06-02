@@ -2,6 +2,7 @@ mod types;
 pub use types::*;
 
 use crate::api::{rest::client, rest::method, NodeServer};
+use crate::display::VmTable;
 use crate::{
     cloud_hypervisor::{Definition, Vm, VmTemplate},
     config::{Node, VirshleConfig},
@@ -107,8 +108,7 @@ impl Cli {
                 }
                 Crud::Ls(args) => {
                     let e = client::vm::get_all(args.clone()).await?;
-                    // e = NodeRestClient::filter(e, args).await?;
-                    Vm::display_by_nodes(e).await?;
+                    VmTable::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {
                     client::vm::delete(args).await?;

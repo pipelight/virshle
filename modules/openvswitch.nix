@@ -16,13 +16,14 @@ in
       enable = true;
     };
 
-    boot = with lib; {
+    boot = {
       kernelModules = ["openvswitch"];
-      kernelParams = mkDefault ["nr_hugepages=1024"];
+      kernelParams = mkBefore ["nr_hugepages=4096"];
       kernel.sysctl = {
-        "vm.nr_hugepages" = mkDefault 1024;
+        "vm.nr_hugepages" = mkBefore 4096;
       };
     };
+
     ## Module
     systemd.tmpfiles.rules = [
       # Loosen permissions on openvswitch.

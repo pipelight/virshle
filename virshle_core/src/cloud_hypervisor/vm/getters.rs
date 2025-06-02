@@ -1,4 +1,5 @@
 use super::{Vm, VmNet};
+use crate::display::VmTable;
 
 use serde::{Deserialize, Serialize};
 use tabled::{Table, Tabled};
@@ -31,9 +32,6 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Vm {
-    /*
-     * Get all Vm from virshle database.
-     */
     pub async fn get_all() -> Result<Vec<Vm>, VirshleError> {
         let db = connect_db().await?;
         let records: Vec<database::entity::vm::Model> =

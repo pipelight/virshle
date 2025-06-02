@@ -128,6 +128,7 @@ impl Vm {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
 
+        let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
         // If we can't establish connection to socket,
         // this means cloud-hypervisor is dead.
         // So we start a new viable process.
@@ -135,16 +136,9 @@ impl Vm {
         if conn.open().await.is_err() {
             match self.is_attach().ok() {
                 Some(true) => {
-                    let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
-                    debug!("Starting ch: {:#?}", cmd);
                     Process::new().stdin(&cmd).run()?;
                 }
                 _ => {
-                    let cmd = format!(
-                        "nohup cloud-hypervisor --api-socket {}",
-                        &self.get_socket()?
-                    );
-                    debug!("Starting ch: {:#?}", cmd);
                     Process::new()
                         .stdin(&cmd)
                         .orphan()
@@ -160,6 +154,8 @@ impl Vm {
             while !path.exists() {
                 tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
             }
+
+            debug!("Started vm: {:#?}", cmd);
         }
         Ok(())
     }
@@ -224,7 +220,7 @@ impl Vm {
         let response = rest.put::<()>(endpoint, None).await?;
 
         if !response.status().is_success() {
-            let message = "Couldn't create vm.";
+            let message = "Couldn't boot vm.";
             return Err(LibError::builder()
                 .msg(&message)
                 .help(&response.to_string().await?)

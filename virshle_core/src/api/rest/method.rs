@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 // Node
 use crate::config::NodeInfo;
 
+use crate::display::vm::VmTable;
 // Hypervisor
 use crate::cli::{CreateArgs, VmArgs};
 use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, Vm, VmState, VmTemplate};
@@ -55,15 +56,18 @@ pub mod template {
 
 pub mod vm {
     use super::*;
-    pub async fn get_all(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
+    pub async fn get_all(Json(params): Json<VmArgs>) -> Result<Json<Vec<VmTable>>, VirshleError> {
+        Ok(Json(_get_all(params).await?))
+    }
+    pub async fn _get_all(params: VmArgs) -> Result<Vec<VmTable>, VirshleError> {
         let vm_res = if let Some(state) = params.state {
             let state = VmState::from_str(&state).unwrap();
-            Vm::get_by_state(state).await
+            VmTable::from_vec(&Vm::get_by_state(state).await?).await
         } else {
-            Vm::get_all().await
+            VmTable::from_vec(&Vm::get_all().await?).await
         };
         match vm_res {
-            Ok(v) => Ok(Json(v)),
+            Ok(v) => Ok(v),
             Err(e) => {
                 error!("{}", e);
                 Err(e)

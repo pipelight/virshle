@@ -38,10 +38,10 @@ in
         Group = "users";
         Environment = "PATH=/run/current-system/sw/bin";
         ExecStartPre = [
-          "-${package}/bin/virshle init -vvv"
+          "-${package}/bin/virshle init -vvvv"
         ];
         ExecStart = ''
-          ${package}/bin/virshle daemon -vvv
+          ${package}/bin/virshle node serve -vvv
         '';
         WorkingDirectory = "/var/lib/virshle";
         # StandardInput = "null";

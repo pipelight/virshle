@@ -33,8 +33,9 @@ pub struct VmTable {
     pub ips: Vec<String>,
     pub uuid: Uuid,
 }
+
 impl VmTable {
-    async fn from(vm: &Vm) -> Result<Self, VirshleError> {
+    pub async fn from(vm: &Vm) -> Result<Self, VirshleError> {
         let table = VmTable {
             id: vm.id,
             name: vm.name.to_owned(),
@@ -45,6 +46,14 @@ impl VmTable {
             uuid: vm.uuid,
         };
         Ok(table)
+    }
+    pub async fn from_vec(vms: &Vec<Vm>) -> Result<Vec<Self>, VirshleError> {
+        let mut table_vms = vec![];
+        for vm in vms {
+            let e = VmTable::from(&vm).await?;
+            table_vms.push(e);
+        }
+        Ok(table_vms)
     }
 }
 
@@ -61,6 +70,23 @@ pub fn display_state(state: &VmState) -> String {
 }
 
 impl VmTable {
+    pub async fn display_by_nodes(items: HashMap<Node, Vec<Self>>) -> Result<(), VirshleError> {
+        // Display vm by nodes with table header
+        for (node, table) in items {
+            let name = node.name.bright_purple().bold().to_string();
+            let header: String = match Uri::new(&node.url)? {
+                Uri::SshUri(e) => format!(
+                    "{name} on {}@{}",
+                    e.user.yellow().bold(),
+                    e.host.green().bold()
+                ),
+                Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
+            };
+            VmTable::display_w_header(table, &header);
+        }
+
+        Ok(())
+    }
     pub fn display_w_header(items: Vec<Self>, header: &str) -> Result<(), VirshleError> {
         println!("\n{}", header);
         let mut res = Table::new(&items);
@@ -90,44 +116,6 @@ impl VmTable {
             res.with(Style::rounded());
         }
         println!("{}", res);
-        Ok(())
-    }
-}
-impl Vm {
-    pub async fn display_by_nodes(items: HashMap<Node, Vec<Self>>) -> Result<(), VirshleError> {
-        // Convert vm to pretty printable type
-        let mut tables: HashMap<Node, Vec<VmTable>> = HashMap::new();
-        for (node, vms) in items {
-            let mut vms_table: Vec<VmTable> = vec![];
-            for vm in vms {
-                let e = VmTable::from(&vm).await?;
-                vms_table.push(e);
-            }
-            tables.insert(node, vms_table);
-        }
-
-        // Display vm by nodes with table header
-        for (node, table) in tables {
-            let name = node.name.bright_purple().bold().to_string();
-            let header: String = match Uri::new(&node.url)? {
-                Uri::SshUri(e) => format!(
-                    "{name} on {}@{}",
-                    e.user.yellow().bold(),
-                    e.host.green().bold()
-                ),
-                Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
-            };
-            VmTable::display_w_header(table, &header);
-        }
-
-        Ok(())
-    }
-    pub async fn display(items: Vec<Vm>) -> Result<(), VirshleError> {
-        let mut table: Vec<VmTable> = vec![];
-        for e in items {
-            table.push(VmTable::from(&e).await?);
-        }
-        VmTable::display(table)?;
         Ok(())
     }
 }

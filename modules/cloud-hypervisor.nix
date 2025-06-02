@@ -10,13 +10,6 @@ with lib; let
   cfg = config.services.${moduleName};
 in
   mkIf cfg.enable {
-    boot = {
-      kernelParams = mkDefault ["nr_hugepages=4096"];
-      kernel.sysctl = {
-        "vm.nr_hugepages" = mkDefault 4024;
-      };
-    };
-
     systemd.tmpfiles.rules = let
       cloud-hypervisor-fw = pkgs.fetchurl {
         url = "https://github.com/cloud-hypervisor/rust-hypervisor-firmware/releases/download/0.4.2/hypervisor-fw";

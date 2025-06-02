@@ -89,7 +89,9 @@ pub struct NetConfig {
     pub vhost_socket: Option<String>,
     #[serde(default)]
     pub vhost_mode: VhostMode,
+    // queue_size: Option<u64>,
     num_queues: Option<u64>,
+    // mtu: Option<u64>,
     // Removed ch unused default
     #[serde(flatten)]
     other: serde_json::Value,
@@ -216,6 +218,9 @@ impl From<&Vm> for VmConfig {
                 net_configs.push(NetConfig {
                     vhost_user: true,
                     num_queues: Some(e.vcpu * 2),
+                    // num_queues: Some(2),
+                    // queue_size: Some(256),
+                    // mtu: None,
                     vhost_socket: e.get_net_socket(&net).ok(),
                     vhost_mode: VhostMode::Server,
                     ..Default::default()

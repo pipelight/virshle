@@ -155,14 +155,14 @@ impl Ovs {
             "sudo ovs-vsctl \
                 -- --may-exist add-port {vm_bridge_name} {name} \
                 -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path}"
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2"
         );
         #[cfg(not(debug_assertions))]
         let cmd = format!(
             "ovs-vsctl \
                 -- --may-exist add-port {vm_bridge_name} {name} \
                 -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=1"
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;

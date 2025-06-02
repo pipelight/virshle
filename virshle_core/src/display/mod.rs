@@ -6,6 +6,7 @@ pub mod vm;
 
 // Reexport
 pub use utils::display_vram;
+pub use vm::VmTable;
 
 // use crate::resources::Vm;
 
