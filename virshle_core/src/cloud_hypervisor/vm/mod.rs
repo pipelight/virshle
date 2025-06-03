@@ -29,7 +29,7 @@ use crate::http_request::{Rest, RestClient};
 use crate::database::entity::{prelude::*, *};
 
 // Error Handling
-use log::debug;
+use log::{debug, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -69,14 +69,23 @@ pub struct VmNet {
 #[serde(rename_all = "snake_case")]
 pub enum NetType {
     Vhost(Vhost),
+    Tap(Tap),
 }
 impl fmt::Display for NetType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let string = match self {
             NetType::Vhost(v) => "vhost".to_owned(),
+            NetType::Tap(v) => "tap".to_owned(),
         };
         write!(f, "{}", string)
     }
+}
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct Tap {
+    // Set static mac address or random if none.
+    pub mac: Option<String>,
+    // Request a static ipv4 ip on the interface.
+    pub ip: Option<String>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Vhost {
@@ -136,7 +145,12 @@ impl Vm {
         if conn.open().await.is_err() {
             match self.is_attach().ok() {
                 Some(true) => {
-                    Process::new().stdin(&cmd).run()?;
+                    let proc = Command::new("cloud-hypervisor")
+                        .args(["--api-socket", &self.get_socket()?])
+                        .stdin(Stdio::inherit())
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .spawn()?;
                 }
                 _ => {
                     Process::new()
@@ -236,6 +250,7 @@ impl Vm {
      */
     async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
         let config = VmConfig::from(self);
+        trace!("{:#?}", config);
 
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);

@@ -9,7 +9,7 @@ pub use node::{Node, NodeInfo};
 use crate::api::NodeServer;
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
-use crate::network::Ovs;
+use crate::network::ovs;
 
 // Global vars
 use once_cell::sync::Lazy;
@@ -99,7 +99,7 @@ impl VirshleConfig {
         // Remove vm files that do not match any db entry
         Self::_clean_filetree().await?;
         // Ensure host and vm switches configuration
-        Ovs::ensure_switches().await?;
+        ovs::ensure_switches().await?;
         Ok(())
     }
 }

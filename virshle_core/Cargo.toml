@@ -67,6 +67,7 @@ tonic = { version = "0.13.1", features = ["zstd"] }
 #   "json",
 # ] }
 tokio-stream = "0.1.17"
+tappers = "0.4.2"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

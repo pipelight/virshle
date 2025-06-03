@@ -27,34 +27,38 @@ pub struct IpInterface {
     pub state: String,
 }
 
-#[derive(Default, Clone, Debug)]
-pub struct Ip;
+pub fn get_interfaces() -> Result<Vec<IpInterface>, VirshleError> {
+    let cmd = "ip -j a".to_owned();
+    let mut proc = Process::new();
+    let res = proc.stdin(&cmd).run()?;
 
-impl Ip {
-    pub fn get_interfaces(&self) -> Result<Vec<IpInterface>, VirshleError> {
-        let cmd = "ip -j a".to_owned();
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
+    let mut interfaces: Vec<IpInterface> = vec![];
+    if let Some(stdout) = res.io.stdout {
+        interfaces = serde_json::from_str(&stdout)?;
+    }
+    Ok(interfaces)
+}
+pub fn get_main_interface() -> Result<IpInterface, VirshleError> {
+    let interfaces = get_interfaces()?;
+    let main = interfaces.iter().find(|e| e.name.starts_with("en"));
 
-        let mut interfaces: Vec<IpInterface> = vec![];
-        if let Some(stdout) = res.io.stdout {
-            interfaces = serde_json::from_str(&stdout)?;
+    match main {
+        None => {
+            let message = "Couldn't find main ethernet interface.";
+            let help = "Do you have eno1 or ens3..?";
+            return Err(LibError::builder().msg(message).help(help).build().into());
         }
-        Ok(interfaces)
-    }
-    pub fn get_main_interface(&self) -> Result<IpInterface, VirshleError> {
-        let interfaces = self.get_interfaces()?;
-        let main = interfaces.iter().find(|e| e.name.starts_with("en"));
-
-        match main {
-            None => {
-                let message = "Couldn't find main ethernet interface.";
-                let help = "Do you have eno1 or ens3..?";
-                return Err(LibError::builder().msg(message).help(help).build().into());
-            }
-            Some(v) => return Ok(v.to_owned()),
-        };
-    }
+        Some(v) => return Ok(v.to_owned()),
+    };
+}
+pub fn device_up(name: &str) -> Result<(), VirshleError> {
+    #[cfg(debug_assertions)]
+    let cmd = format!("sudo ip link set {} up", name);
+    #[cfg(not(debug_assertions))]
+    let cmd = format!("ip link set {} up", name);
+    let mut proc = Process::new();
+    let res = proc.stdin(&cmd).run()?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -64,16 +68,14 @@ mod test {
     // Ip command
     #[test]
     fn test_ip_get_interfaces() -> Result<()> {
-        let ip = Ip::default();
-        let res = ip.get_interfaces()?;
+        let res = get_interfaces()?;
 
         println!("{:#?}", res);
         Ok(())
     }
     #[test]
     fn test_ip_get_main_interface() -> Result<()> {
-        let ip = Ip::default();
-        let res = ip.get_main_interface()?;
+        let res = get_main_interface()?;
 
         println!("{:#?}", res);
         Ok(())

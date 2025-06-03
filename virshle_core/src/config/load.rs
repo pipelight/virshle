@@ -1,6 +1,5 @@
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
-use crate::network::Ovs;
 
 use super::VirshleConfig;
 // Global vars

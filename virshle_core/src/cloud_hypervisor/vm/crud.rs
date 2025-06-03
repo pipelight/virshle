@@ -1,4 +1,4 @@
-use super::{Disk, Vm, VmNet};
+use super::{Disk, NetType, Vm, VmNet};
 use crate::config::MANAGED_DIR;
 
 // Process
@@ -17,7 +17,7 @@ use sea_orm::{
 };
 
 // Ovs
-use crate::network::Ovs;
+use crate::network::{ip, ovs};
 
 // Error Handling
 use log::info;
@@ -57,24 +57,37 @@ impl Vm {
     /*
      * Add network ports to ovs config.
      */
-    pub fn create_networks(&self) -> Result<Vec<VmNet>, VirshleError> {
-        let mut net: Vec<VmNet> = vec![];
-        if let Some(networks) = &self.net {
-            net = networks.to_owned();
-            for e in networks {
-                // Delete existing socket if any
-                // because ch will create one on process start.
-                let socket_path = self.get_net_socket(e)?;
-                let path = Path::new(&socket_path);
-                if path.exists() {
-                    fs::remove_file(&socket_path)?;
-                }
+    pub fn create_networks(&self) -> Result<(), VirshleError> {
+        if let Some(nets) = &self.net {
+            for net in nets {
                 // This results in "machin_name-network_name".
-                let port_name = format!("vm-{}-{}", self.name, e.name);
-                Ovs::create_vm_port(&port_name, &socket_path)?;
+                let port_name = format!("vm-{}-{}", self.name, net.name);
+
+                match &net._type {
+                    NetType::Vhost(v) => {
+                        // Delete existing socket if any
+                        // because ch will create one on process start.
+                        let socket_path = self.get_net_socket(net)?;
+                        let path = Path::new(&socket_path);
+                        if path.exists() {
+                            fs::remove_file(&socket_path)?;
+                        }
+                        // Replace existing port with a fresh one.
+                        ovs::delete_port(&port_name).ok();
+                        ovs::dpdk::create_port(&port_name, &socket_path)?;
+                    }
+                    NetType::Tap(v) => {
+                        // Replace existing port and tap device with fresh ones.
+                        ovs::delete_port(&port_name).ok();
+                        ovs::tap::create_port(&port_name)?;
+
+                        let tap_name = port_name[..15].to_owned();
+                        ip::device_up(&tap_name)?;
+                    }
+                };
             }
         }
-        Ok(net)
+        Ok(())
     }
     /*
      * Remove a vm definition from database.
@@ -136,7 +149,7 @@ impl Vm {
                     fs::remove_file(&socket_path)?;
                 }
                 let port_name = format!("vm-{}-{}", self.name, e.name);
-                Ovs::delete_vm_port(&port_name)?;
+                ovs::delete_port(&port_name)?;
             }
         }
         Ok(net)

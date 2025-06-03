@@ -5104,6 +5104,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
+name = "tappers"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5666e78a429302faab85e8cbfe6f72a2c72a5ded0c2e15454fabd5c1ba846bda"
+dependencies = [
+ "libc",
+ "once_cell",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "tarpc"
 version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5846,6 +5857,7 @@ dependencies = [
  "strum 0.27.1",
  "sysinfo 0.35.1",
  "tabled",
+ "tappers",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",

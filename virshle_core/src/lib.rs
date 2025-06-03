@@ -26,7 +26,7 @@ pub mod http_request;
 
 // Host network manipulation.
 pub mod network;
-pub use network::Ip;
+pub use network::{ip, ovs};
 
 // Stores vm definitions in sqlite database
 pub mod database;

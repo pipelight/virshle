@@ -1,9 +1,8 @@
 pub mod ip;
-pub use ip::Ip;
+pub mod tap;
 pub use std::str::FromStr;
 
 pub mod ovs;
-pub use ovs::Ovs;
 
 // Error handling
 use miette::{IntoDiagnostic, Result};

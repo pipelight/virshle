@@ -8,7 +8,8 @@
 * to be sent to cloud-hypervisor http api,
 * in just a few lines.
 */
-use super::{Disk, Vm};
+use super::{vm::NetType, Disk, Vm};
+use crate::network::tap;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -82,16 +83,27 @@ pub struct PayloadConfig {
     pub cmdline: Option<String>,
 }
 
+// From cloud_hypervisor definition
+pub const MAC_ADDR_LEN: usize = 6;
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct MacAddr {
+    bytes: [u8; MAC_ADDR_LEN],
+}
 // Network
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct NetConfig {
-    pub vhost_user: bool,
-    pub vhost_socket: Option<String>,
+    num_queues: Option<u64>,
+    pub mac: Option<MacAddr>,
+
+    // tap
+    pub fd: Option<Vec<i32>>,
+
+    // dpdk
     #[serde(default)]
     pub vhost_mode: VhostMode,
-    // queue_size: Option<u64>,
-    num_queues: Option<u64>,
-    // mtu: Option<u64>,
+    pub vhost_user: bool,
+    pub vhost_socket: Option<String>,
+
     // Removed ch unused default
     #[serde(flatten)]
     other: serde_json::Value,
@@ -215,16 +227,29 @@ impl From<&Vm> for VmConfig {
         if let Some(nets) = &e.net {
             let mut net_configs: Vec<NetConfig> = vec![];
             for net in nets {
-                net_configs.push(NetConfig {
-                    vhost_user: true,
-                    num_queues: Some(e.vcpu * 2),
-                    // num_queues: Some(2),
-                    // queue_size: Some(256),
-                    // mtu: None,
-                    vhost_socket: e.get_net_socket(&net).ok(),
-                    vhost_mode: VhostMode::Server,
-                    ..Default::default()
-                });
+                let port_name = format!("vm-{}-{}", e.name, net.name);
+
+                match &net._type {
+                    NetType::Vhost(v) => {
+                        net_configs.push(NetConfig {
+                            num_queues: Some(e.vcpu * 2),
+                            // dpdk specific
+                            vhost_user: true,
+                            vhost_socket: e.get_net_socket(&net).ok(),
+                            vhost_mode: VhostMode::Server,
+                            ..Default::default()
+                        });
+                    }
+                    NetType::Tap(v) => {
+                        let fd = tap::get_fd(&port_name).unwrap();
+                        net_configs.push(NetConfig {
+                            num_queues: Some(e.vcpu * 2),
+                            //tap
+                            fd: Some(vec![fd]),
+                            ..Default::default()
+                        });
+                    }
+                }
             }
             config.net = Some(net_configs);
         }

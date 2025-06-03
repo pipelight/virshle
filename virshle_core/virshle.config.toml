@@ -29,16 +29,28 @@ path = "~/Iso/nixos.efi.img"
 size = "50G"
 [[template.vm.net]]
 name = "main"
-[template.vm.net.type.vhost]
+[template.vm.net.type.tap]
 
 [[template.vm]]
-name = "fxs"
+name = "xs-offline"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.efi.img"
 size = "50G"
+
+[[template.vm]]
+name = "xs-dpdk"
+vcpu = 1
+vram = 2
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "50G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.vhost]
 
 [[template.vm]]
 name = "s"
