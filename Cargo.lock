@@ -2319,6 +2319,7 @@ checksum = "bd070e393353796e801d209ad339e89596eb4c8d430d18ede6a1cced8fafbd99"
 dependencies = [
  "autocfg",
  "hashbrown 0.12.3",
+ "serde",
 ]
 
 [[package]]
@@ -4407,9 +4408,16 @@ version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6b6f7f2fcb69f747921f79f3926bd1e203fce4fef62c268dd3abfb6d86029aa"
 dependencies = [
+ "base64",
+ "chrono",
+ "hex",
+ "indexmap 1.9.3",
+ "indexmap 2.9.0",
  "serde",
  "serde_derive",
+ "serde_json",
  "serde_with_macros",
+ "time",
 ]
 
 [[package]]
@@ -5838,6 +5846,7 @@ dependencies = [
  "human_bytes",
  "hyper",
  "hyper-util",
+ "libc",
  "log",
  "macaddr",
  "miette",
@@ -5853,6 +5862,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
+ "serde_with",
  "shellexpand",
  "strum 0.27.1",
  "sysinfo 0.35.1",

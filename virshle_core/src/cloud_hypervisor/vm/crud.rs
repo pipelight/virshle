@@ -17,7 +17,7 @@ use sea_orm::{
 };
 
 // Ovs
-use crate::network::{ip, ovs};
+use crate::network::{ip, ovs, tap};
 
 // Error Handling
 use log::info;
@@ -80,9 +80,7 @@ impl Vm {
                         // Replace existing port and tap device with fresh ones.
                         ovs::delete_port(&port_name).ok();
                         ovs::tap::create_port(&port_name)?;
-
-                        let tap_name = port_name[..15].to_owned();
-                        ip::device_up(&tap_name)?;
+                        tap::up(&port_name)?;
                     }
                 };
             }

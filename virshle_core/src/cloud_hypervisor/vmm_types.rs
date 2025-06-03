@@ -11,6 +11,7 @@
 use super::{vm::NetType, Disk, Vm};
 use crate::network::tap;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -90,6 +91,7 @@ pub struct MacAddr {
     bytes: [u8; MAC_ADDR_LEN],
 }
 // Network
+#[skip_serializing_none]
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct NetConfig {
     num_queues: Option<u64>,
