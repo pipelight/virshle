@@ -29,7 +29,7 @@ use crate::http_request::{Rest, RestClient};
 use crate::database::entity::{prelude::*, *};
 
 // Error Handling
-use log::{debug, trace};
+use log::{debug, error, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -137,7 +137,12 @@ impl Vm {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
 
-        let cmd = format!("cloud-hypervisor --api-socket {}", &self.get_socket()?);
+        #[cfg(not(debug_assertions))]
+        let cmd = format!("cloud-hypervisor");
+
+        #[cfg(debug_assertions)]
+        let cmd = format!("sudo cloud-hypervisor");
+
         // If we can't establish connection to socket,
         // this means cloud-hypervisor is dead.
         // So we start a new viable process.
@@ -145,7 +150,7 @@ impl Vm {
         if conn.open().await.is_err() {
             match self.is_attach().ok() {
                 Some(true) => {
-                    let proc = Command::new("cloud-hypervisor")
+                    let proc = Command::new(&cmd)
                         .args(["--api-socket", &self.get_socket()?])
                         .stdin(Stdio::inherit())
                         .stdout(Stdio::inherit())
@@ -154,7 +159,7 @@ impl Vm {
                 }
                 _ => {
                     Process::new()
-                        .stdin(&cmd)
+                        .stdin(&format!("{} --api-socket {}", &cmd, &self.get_socket()?))
                         .orphan()
                         .background()
                         .detach()
@@ -168,6 +173,16 @@ impl Vm {
             while !path.exists() {
                 tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
             }
+
+            // Set loose permission on cloud-hypervisor socket.
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo chgrp users {}", &self.get_socket()?))
+                .run()?;
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo chmod 774 {}", &self.get_socket()?))
+                .run()?;
 
             debug!("Started vm: {:#?}", cmd);
         }
@@ -234,10 +249,13 @@ impl Vm {
         let response = rest.put::<()>(endpoint, None).await?;
 
         if !response.status().is_success() {
+            let err_msg = &response.to_string().await?;
+            error!("{}", &err_msg);
+
             let message = "Couldn't boot vm.";
             return Err(LibError::builder()
                 .msg(&message)
-                .help(&response.to_string().await?)
+                .help(&err_msg)
                 .build()
                 .into());
         }

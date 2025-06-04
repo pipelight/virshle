@@ -25,8 +25,8 @@ pub fn unix_name(name: &str) -> String {
 * Return tap fd.
 */
 pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
-    let unix_name = unix_name(name);
-    let tap_name = tappers::Interface::new(unix_name)?;
+    let name = unix_name(name);
+    let tap_name = tappers::Interface::new(name)?;
     let tap = tappers::Tap::new_named(tap_name)?;
     let fd = tap.as_raw_fd() as i32;
     let fd_clone = fd.clone();

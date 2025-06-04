@@ -50,11 +50,11 @@ in
 
         AmbientCapabilities = [
           # "CAP_NET_BIND_SERVICE"
-          # "CAP_NET_ADMIN"
           # "CAP_SET_PROC"
           # "CAP_SETUID"
           # "CAP_SETGID"
           "CAP_SYS_ADMIN"
+          "CAP_NET_ADMIN"
         ];
       };
     };

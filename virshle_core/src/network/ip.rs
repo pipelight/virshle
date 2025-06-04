@@ -60,12 +60,13 @@ pub fn get_main_interface() -> Result<IpInterface, VirshleError> {
 * Bring interface up.
 */
 pub fn up(name: &str) -> Result<(), VirshleError> {
-    #[cfg(debug_assertions)]
     let name = fd::unix_name(name);
 
+    #[cfg(debug_assertions)]
     let cmd = format!("sudo ip link set {} up", name);
     #[cfg(not(debug_assertions))]
     let cmd = format!("ip link set {} up", name);
+
     let mut proc = Process::new();
     let res = proc.stdin(&cmd).run()?;
     Ok(())
@@ -75,17 +76,17 @@ pub mod tap {
 
     pub fn delete(name: &str) -> Result<(), VirshleError> {
         let vm_bridge_name = "br0";
-        let unix_name = fd::unix_name(name);
+        let name = fd::unix_name(name);
 
         #[cfg(debug_assertions)]
         let cmd = format!(
             "sudo ip link \
-                del dev {unix_name}"
+                del dev {name}"
         );
         #[cfg(not(debug_assertions))]
         let cmd = format!(
             "ip link \
-                del dev {unix_name}"
+                del dev {name}"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -102,13 +103,13 @@ pub mod tap {
 
     pub fn create(name: &str) -> Result<(), VirshleError> {
         let vm_bridge_name = "br0";
-        let unix_name = fd::unix_name(name);
+        let name = fd::unix_name(name);
 
         #[cfg(debug_assertions)]
         let cmd = format!(
             "sudo ip link \
                 add link {vm_bridge_name} \
-                name {unix_name} \
+                name {name} \
                 type macvtap"
         );
         #[cfg(not(debug_assertions))]

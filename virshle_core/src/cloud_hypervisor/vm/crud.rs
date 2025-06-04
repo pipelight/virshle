@@ -80,12 +80,12 @@ impl Vm {
                         // Replace existing port and tap device with fresh ones.
 
                         // OVS
-                        // ovs::delete_port(&port_name).ok();
-                        // ovs::create_port(&port_name).ok();
+                        ovs::delete_port(&port_name).ok();
+                        ovs::tap::create_port(&port_name)?;
 
                         // IP
-                        ip::tap::delete(&port_name).ok();
-                        ip::tap::create(&port_name)?;
+                        // ip::tap::delete(&port_name).ok();
+                        // ip::tap::create(&port_name)?;
 
                         ip::up(&port_name)?;
                     }
