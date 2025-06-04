@@ -260,12 +260,12 @@ impl Vm {
                 let response = rest.get(endpoint).await?;
                 let status = response.status();
                 match status {
-                    StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
                     StatusCode::OK => {
                         let data = &response.to_string().await?;
                         let data: VmInfoResponse = serde_json::from_str(&data)?;
                         VmState::from(data.state)
                     }
+                    StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
                     _ => VmState::NotCreated,
                 }
             }

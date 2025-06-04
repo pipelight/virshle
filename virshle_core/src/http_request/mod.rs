@@ -150,15 +150,13 @@ impl<'a> Rest for RestClient<'a> {
                     let status: StatusCode = response.status();
                     let response: Response = Response::new(endpoint, response);
                     trace!("{:#?}", response);
+
                     if !status.is_success() {
-                        let body = response.to_string().await?;
                         let status = status.to_string();
                         error!("{}", status);
-                        error!("Response {{\n\tBody {{\n\t{:#?}\n\t}},\n}}", &body);
-                        Err(LibError::builder().msg(&status).help(&body).build().into())
-                    } else {
-                        Ok(response)
                     }
+
+                    Ok(response)
                 }
                 Err(e) => {
                     error!("{:#?}", e);

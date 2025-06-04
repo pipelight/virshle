@@ -10,6 +10,9 @@ pkgs.rustPlatform.buildRustPackage rec {
   src = ./.;
   cargoLock = {
     lockFile = ./Cargo.lock;
+    outputHashes = {
+      "tappers-0.4.2" = "sha256-kx/gLngL7+fH5JmJTVTGawyNdRde59dbFdrzermy/CE=";
+    };
   };
 
   # disable tests

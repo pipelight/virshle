@@ -17,7 +17,7 @@ use sea_orm::{
 };
 
 // Ovs
-use crate::network::{ip, ovs, tap};
+use crate::network::{fd, ip, ovs};
 
 // Error Handling
 use log::info;
@@ -78,9 +78,16 @@ impl Vm {
                     }
                     NetType::Tap(v) => {
                         // Replace existing port and tap device with fresh ones.
-                        ovs::delete_port(&port_name).ok();
-                        // ovs::tap::create_port(&port_name)?;
-                        tap::up(&port_name)?;
+
+                        // OVS
+                        // ovs::delete_port(&port_name).ok();
+                        // ovs::create_port(&port_name).ok();
+
+                        // IP
+                        ip::tap::delete(&port_name).ok();
+                        ip::tap::create(&port_name)?;
+
+                        ip::up(&port_name)?;
                     }
                 };
             }

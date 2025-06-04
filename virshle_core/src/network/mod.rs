@@ -1,5 +1,5 @@
+pub mod fd;
 pub mod ip;
-pub mod tap;
 pub use std::str::FromStr;
 
 pub mod ovs;

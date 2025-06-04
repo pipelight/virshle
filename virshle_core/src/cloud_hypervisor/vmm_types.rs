@@ -9,7 +9,7 @@
 * in just a few lines.
 */
 use super::{vm::NetType, Disk, Vm};
-use crate::network::tap;
+use crate::network::fd;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::PathBuf;
@@ -237,7 +237,7 @@ impl From<&Vm> for VmConfig {
                         });
                     }
                     NetType::Tap(v) => {
-                        let fd = tap::get_fd(&port_name).unwrap();
+                        let fd = fd::get_fd(&port_name).unwrap();
                         net_configs.push(NetConfig {
                             num_queues: Some(e.vcpu * 2),
                             //tap

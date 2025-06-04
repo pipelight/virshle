@@ -27,7 +27,7 @@ in
 
       # Set dedicated RAM in GB (ex: 16),
       # and hhugepage size in kb (default 2048)
-      ram_to_hugepage = dedicated_ram: hugepage_size: (dedicated_ram * pow 1024 3) / hugepage_size;
+      ram_to_hugepage = dedicated_ram: hugepage_size: toString ((dedicated_ram * pow 1024 2) / hugepage_size);
     in {
       kernelModules = ["openvswitch"];
       kernelParams = mkBefore ["nr_hugepages=${ram_to_hugepage 16 2048}"];

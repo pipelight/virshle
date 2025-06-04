@@ -4,17 +4,19 @@ set -x
 
 # Host network adapter to bridge the guest onto
 host_net="eno1"
+tap="vm-test"
 
 ###################
 # Tap device
-sudo ip link del macvtap0  2> /dev/null
-rm /var/lib/virshle/socket/test.sock 2> /dev/null
+sudo ip link del vm-test  2> /dev/null
+rm /var/lib/virshle/socket/vm/test/ch.sock 2> /dev/null
+
 # The MAC address must be attached to the macvtap and be used inside the guest
 mac="c2:67:4f:53:29:cb"
 # Create the macvtap0 as a new virtual MAC associated with the host network
 sudo ip link add link "$host_net" name macvtap0 type macvtap
-sudo ip link set macvtap0 address "$mac" up
-sudo ip link show macvtap0
+sudo ip link set $tap address "$mac" up
+sudo ip link show $tap
 
 
 ###################
@@ -24,17 +26,17 @@ sudo ip link show macvtap0
 
 ###################
 # Cloud hypervisor socket
-uuid="test"
+vm_uuid="test"
 
 # A new character device is created for this interface
-tapindex=$(< /sys/class/net/macvtap0/ifindex)
+tapindex=$(< /sys/class/net/$tap/ifindex)
 tapdevice="/dev/tap$tapindex"
 
 # Ensure that we can access this device
 sudo chown "$UID:$UID" "$tapdevice"
 
 cloud-hypervisor \
-    --api-socket /var/lib/virshle/socket/$uuid.sock \
+    --api-socket /var/lib/virshle/vm/$vm_uuid/ch.sock \
     --kernel /run/cloud-hypervisor/hypervisor-fw \
     --console off \
     --serial tty \

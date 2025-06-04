@@ -492,6 +492,7 @@ pub mod dpdk {
 }
 pub mod tap {
     use super::*;
+
     /*
      * Add vm port into ovs config.
      */
@@ -518,6 +519,20 @@ pub mod tap {
             return Err(LibError::builder().msg(message).help(&help).build().into());
         }
         Ok(())
+    }
+
+    /*
+     * Return all Tap interface from ovs cli.
+     */
+    pub fn get_all() -> Result<Vec<OvsInterface>, VirshleError> {
+        let interfaces = super::interface::get_all()?;
+        let taps: Vec<OvsInterface> = interfaces
+            .iter()
+            .filter(|e| e._type == Some(OvsInterfaceType::Tap))
+            .filter(|e| e.name.starts_with("vm-"))
+            .map(|e| e.to_owned())
+            .collect();
+        Ok(taps)
     }
 }
 
