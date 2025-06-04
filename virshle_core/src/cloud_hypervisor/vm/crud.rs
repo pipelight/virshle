@@ -79,7 +79,7 @@ impl Vm {
                     NetType::Tap(v) => {
                         // Replace existing port and tap device with fresh ones.
                         ovs::delete_port(&port_name).ok();
-                        ovs::tap::create_port(&port_name)?;
+                        // ovs::tap::create_port(&port_name)?;
                         tap::up(&port_name)?;
                     }
                 };

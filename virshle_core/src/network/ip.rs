@@ -60,6 +60,36 @@ pub fn device_up(name: &str) -> Result<(), VirshleError> {
     let res = proc.stdin(&cmd).run()?;
     Ok(())
 }
+pub mod tap {
+    use super::*;
+
+    pub fn create_port(name: &str) -> Result<(), VirshleError> {
+        let vm_bridge_name = "br0";
+        #[cfg(debug_assertions)]
+        let cmd = format!(
+            "sudo ip link \
+                add link {vm_bridge_name} \
+                name {name} \
+                type macvtap"
+        );
+        #[cfg(not(debug_assertions))]
+        let cmd = format!(
+            "ip link \
+                add link {vm_bridge_name} \
+                name {name} \
+                type macvtap"
+        );
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        if let Some(stderr) = res.io.stderr {
+            let message = "Ip command failed";
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
+        }
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod test {

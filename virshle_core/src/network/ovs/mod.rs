@@ -470,14 +470,14 @@ pub mod dpdk {
             "sudo ovs-vsctl \
                 -- --may-exist add-port {vm_bridge_name} {name} \
                 -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2"
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
         );
         #[cfg(not(debug_assertions))]
         let cmd = format!(
             "ovs-vsctl \
                 -- --may-exist add-port {vm_bridge_name} {name} \
                 -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2"
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;

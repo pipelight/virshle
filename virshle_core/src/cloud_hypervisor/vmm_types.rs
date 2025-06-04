@@ -84,18 +84,12 @@ pub struct PayloadConfig {
     pub cmdline: Option<String>,
 }
 
-// From cloud_hypervisor definition
-pub const MAC_ADDR_LEN: usize = 6;
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub struct MacAddr {
-    bytes: [u8; MAC_ADDR_LEN],
-}
 // Network
 #[skip_serializing_none]
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct NetConfig {
     num_queues: Option<u64>,
-    pub mac: Option<MacAddr>,
+    pub mac: Option<String>,
 
     // tap
     pub fd: Option<Vec<i32>>,

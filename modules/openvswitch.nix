@@ -16,9 +16,21 @@ in
       enable = true;
     };
 
-    boot = {
+    boot = let
+      # Power base 10
+      pow = n: i:
+        if i == 1
+        then n
+        else if i == 0
+        then 1
+        else n * pow n (i - 1);
+
+      # Set dedicated RAM in GB (ex: 16),
+      # and hhugepage size in kb (default 2048)
+      ram_to_hugepage = dedicated_ram: hugepage_size: (dedicated_ram * pow 1024 3) / hugepage_size;
+    in {
       kernelModules = ["openvswitch"];
-      kernelParams = mkBefore ["nr_hugepages=4096"];
+      kernelParams = mkBefore ["nr_hugepages=${ram_to_hugepage 16 2048}"];
       kernel.sysctl = {
         "vm.nr_hugepages" = mkBefore 4096;
       };
