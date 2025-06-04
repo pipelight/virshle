@@ -21,6 +21,9 @@ pub fn unix_name(name: &str) -> String {
     res
 }
 
+/*
+* Return tap fd.
+*/
 pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
     let unix_name = unix_name(name);
     let tap_name = tappers::Interface::new(unix_name)?;
@@ -33,6 +36,13 @@ pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_unix_name() -> Result<()> {
+        let res = unix_name("vm-sasuke_uchiha-main");
+        assert_eq!(&res, "vm-sasuke_uchih");
+        Ok(())
+    }
 
     #[test]
     fn test_ovs_get_interfaces() -> Result<()> {
