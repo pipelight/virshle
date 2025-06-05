@@ -28,7 +28,6 @@ pub struct OvsBridge {
 impl OvsBridge {
     pub fn hydrate(&mut self) -> Result<(), VirshleError> {
         let bridge = Rc::new(self.to_owned());
-
         let ports_uuid = self._ports_uuid.clone();
         for uuid in ports_uuid {
             let mut port = OvsPort::get_by_uuid(uuid)?;
@@ -250,5 +249,32 @@ impl OvsInterface {
                 return Err(LibError::builder().msg(&message).help(help).build().into());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    // Brigdges
+    #[test]
+    fn test_ovs_get_bridges() -> Result<()> {
+        let res = OvsBridge::get_all()?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+    // Ports
+    #[test]
+    fn test_ovs_get_ports() -> Result<()> {
+        let res = OvsPort::get_all()?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+    // Interfaces
+    #[test]
+    fn test_ovs_get_interfaces() -> Result<()> {
+        let res = OvsInterface::get_all()?;
+        println!("{:#?}", res);
+        Ok(())
     }
 }

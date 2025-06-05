@@ -5114,6 +5114,8 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tappers"
 version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5666e78a429302faab85e8cbfe6f72a2c72a5ded0c2e15454fabd5c1ba846bda"
 dependencies = [
  "libc",
  "once_cell",

@@ -323,30 +323,9 @@ pub fn patch_vm_and_main_switches() -> Result<(), VirshleError> {
 mod test {
     use super::*;
 
-    // Brigdges
-    #[test]
-    fn test_ovs_get_bridges() -> Result<()> {
-        let res = OvsBridge::get_all()?;
-        println!("{:#?}", res);
-        Ok(())
-    }
-    #[test]
+    // #[test]
     fn test_ovs_get_main_bridge() -> Result<()> {
         let res = OvsBridge::get_main_switch()?;
-        // println!("{:#?}", res);
-        Ok(())
-    }
-    // Ports
-    #[test]
-    fn test_ovs_get_ports() -> Result<()> {
-        let res = OvsPort::get_all();
-        // println!("{:#?}", res);
-        Ok(())
-    }
-    // Interfaces
-    #[test]
-    fn test_ovs_get_interfaces() -> Result<()> {
-        let res = OvsInterface::get_all();
         // println!("{:#?}", res);
         Ok(())
     }

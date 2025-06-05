@@ -228,24 +228,32 @@ impl From<&Vm> for VmConfig {
                 match &net._type {
                     NetType::Vhost(v) => {
                         net_configs.push(NetConfig {
-                            num_queues: Some(e.vcpu * 2),
                             // dpdk specific
                             vhost_user: Some(true),
                             vhost_mode: Some(VhostMode::Server),
                             vhost_socket: e.get_net_socket(&net).ok(),
+                            // multiqueue support
+                            // num_queues: Some(e.vcpu * 2),
                             ..Default::default()
                         });
                     }
                     NetType::Tap(v) => {
+                        // external Tap via name
                         let tap_name = fd::unix_name(&port_name);
-                        // let fd = fd::get_fd(&port_name).unwrap();
                         net_configs.push(NetConfig {
-                            num_queues: Some(e.vcpu * 2),
                             //tap
-                            // fd: Some(vec![fd]),
                             tap: Some(tap_name),
+                            // multiqueue support
+                            // num_queues: Some(e.vcpu * 2),
                             ..Default::default()
                         });
+
+                        // external Tap via file descriptor
+                        // let fd = fd::get_fd(&port_name).unwrap();
+                        // net_configs.push(NetConfig {
+                        //     fd: Some(vec![fd]),
+                        //     ..Default::default()
+                        // });
                     }
                 }
             }

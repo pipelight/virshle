@@ -68,10 +68,13 @@ tonic = { version = "0.13.1", features = ["zstd"] }
 # ] }
 tokio-stream = "0.1.17"
 
-# tappers = "0.4.2"
-# tappers = { git = "ssh://git@github.com/pipelight/tappers.git", branch = "dev" }
+# use this one for easy fd.
 # tappers = { git = "https://github.com/pipelight/tappers", branch = "dev" }
-tappers = { path = "/home/anon/.ghr/github.com/pkts-rs/tappers" }
+
+tappers = "0.4.2"
+# tappers = { git = "ssh://git@github.com/pipelight/tappers.git", branch = "dev" }
+# tappers = { path = "/home/anon/.ghr/github.com/pkts-rs/tappers" }
+
 
 libc = "0.2.172"
 serde_with = "3.12.0"

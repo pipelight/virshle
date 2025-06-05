@@ -15,6 +15,7 @@ use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
 
 use super::fd;
+use crate::network::ovs::OvsBridge;
 
 pub fn delete(name: &str) -> Result<(), VirshleError> {
     let vm_bridge_name = "br0";
@@ -44,32 +45,40 @@ pub fn delete(name: &str) -> Result<(), VirshleError> {
 }
 
 pub fn create(name: &str) -> Result<(), VirshleError> {
-    let vm_bridge_name = "br0";
+    let vm_bridge = OvsBridge::get_vm_switch()?;
+
     let name = fd::unix_name(name);
+    let mut cmds: Vec<String> = vec![];
+
+    // Create multiqueue tap device
+    #[cfg(debug_assertions)]
+    cmds.push(format!(
+        "sudo ip tap \
+            add name {name} \
+            mode tap"
+    ));
+    #[cfg(not(debug_assertions))]
+    cmds.push(format!(
+        "sudo ip tap \
+            add name {name} \
+            mode tap"
+    ));
 
     #[cfg(debug_assertions)]
-    let cmd = format!(
-        "sudo ip link \
-                add link {vm_bridge_name} \
-                name {name} \
-                type macvtap"
-    );
-    #[cfg(not(debug_assertions))]
-    let cmd = format!(
-        "ip link \
-                add link {vm_bridge_name} \
-                name {name} \
-                type macvtap"
-    );
-    let mut proc = Process::new();
-    let res = proc.stdin(&cmd).run()?;
+    cmds.push(format!("ovs-vsctl add-port {} {}", vm_bridge.name, name));
 
-    if let Some(stderr) = res.io.stderr {
-        let message = format!("ip command failed: {:#?}", cmd);
-        let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-        error!("{}", &message);
-        error!("{}", &help);
-        return Err(LibError::builder().msg(&message).help(&help).build().into());
+    for cmd in cmds {
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        if let Some(stderr) = res.io.stderr {
+            let message = format!("ip command failed: {:#?}", cmd);
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+            error!("{}", &message);
+            error!("{}", &help);
+            return Err(LibError::builder().msg(&message).help(&help).build().into());
+        }
     }
+
     Ok(())
 }

@@ -34,7 +34,7 @@ impl Vm {
      * And start the virtual machine and .
      */
     pub async fn start(&mut self) -> Result<(), VirshleError> {
-        // self.create_networks()?;
+        self.create_networks()?;
 
         self.start_vmm().await?;
 
@@ -123,14 +123,14 @@ impl Vm {
                         // Ovs
                         // Replace existing port and tap device with fresh ones.
                         // Try to delete the port and silently fail.
-                        if let Some(port) = OvsBridge::get_vm_switch()?.get_port(&port_name).ok() {
-                            port.delete().ok();
-                        }
-                        OvsBridge::get_vm_switch()?.create_tap_port(&port_name)?;
+                        // if let Some(port) = OvsBridge::get_vm_switch()?.get_port(&port_name).ok() {
+                        //     port.delete().ok();
+                        // }
+                        // OvsBridge::get_vm_switch()?.create_tap_port(&port_name)?;
 
                         // IP
-                        // ip::tap::delete(&port_name).ok();
-                        // ip::tap::create(&port_name)?;
+                        ip::tap::delete(&port_name).ok();
+                        ip::tap::create(&port_name)?;
 
                         ip::up(&port_name)?;
                     }

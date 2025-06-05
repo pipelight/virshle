@@ -62,6 +62,8 @@ pub fn unflatten(value: &mut Value) -> Result<(), VirshleError> {
  * Internally used by `to_json` method.
  *
  * Flatten ovs-vsctl crazy json values into sane and usable values.
+ * BUG: OVS will return arrays for missing values
+ * even if type is other(ex: string)
  */
 fn convert_bad_json_to_good_json(value: &Value) -> Result<Value, VirshleError> {
     if value.is_array() {
