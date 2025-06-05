@@ -17,7 +17,7 @@ use sea_orm::{
 };
 
 // Ovs
-use crate::network::{fd, ip, ovs};
+use crate::network::{ip, ip::fd, ovs::OvsBridge};
 
 // Error Handling
 use log::info;
@@ -25,75 +25,6 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
-    /*
-     * Add vm config to database.
-     * Resources are not created there but rather on vm start.
-     */
-    pub async fn create(&mut self) -> Result<Self, VirshleError> {
-        // Persist vm config into database
-        self.create_db_record().await?;
-        Ok(self.to_owned())
-    }
-
-    /*
-     * Create vm record and persist into database.
-     */
-    async fn create_db_record(&mut self) -> Result<Self, VirshleError> {
-        let record = database::entity::vm::ActiveModel {
-            uuid: ActiveValue::Set(self.uuid.to_string()),
-            name: ActiveValue::Set(self.name.clone()),
-            definition: ActiveValue::Set(serde_json::to_value(&self)?),
-            ..Default::default()
-        };
-
-        let db = connect_db().await?;
-        let res: InsertResult<vm::ActiveModel> =
-            database::prelude::Vm::insert(record).exec(&db).await?;
-        self.id = Some(res.last_insert_id as u64);
-
-        Ok(self.to_owned())
-    }
-
-    /*
-     * Add network ports to ovs config.
-     */
-    pub fn create_networks(&self) -> Result<(), VirshleError> {
-        if let Some(nets) = &self.net {
-            for net in nets {
-                // This results in "machin_name-network_name".
-                let port_name = format!("vm-{}-{}", self.name, net.name);
-
-                match &net._type {
-                    NetType::Vhost(v) => {
-                        // Delete existing socket if any
-                        // because ch will create one on process start.
-                        let socket_path = self.get_net_socket(net)?;
-                        let path = Path::new(&socket_path);
-                        if path.exists() {
-                            fs::remove_file(&socket_path)?;
-                        }
-                        // Replace existing port with a fresh one.
-                        ovs::delete_port(&port_name).ok();
-                        ovs::dpdk::create_port(&port_name, &socket_path)?;
-                    }
-                    NetType::Tap(v) => {
-                        // Replace existing port and tap device with fresh ones.
-
-                        // OVS
-                        ovs::delete_port(&port_name).ok();
-                        ovs::tap::create_port(&port_name)?;
-
-                        // IP
-                        // ip::tap::delete(&port_name).ok();
-                        // ip::tap::create(&port_name)?;
-
-                        ip::up(&port_name)?;
-                    }
-                };
-            }
-        }
-        Ok(())
-    }
     /*
      * Remove a vm definition from database.
      * And delete vm resources and process.
@@ -154,7 +85,11 @@ impl Vm {
                     fs::remove_file(&socket_path)?;
                 }
                 let port_name = format!("vm-{}-{}", self.name, e.name);
-                ovs::delete_port(&port_name)?;
+
+                // Try to delete the port and silently fail.
+                if let Some(port) = OvsBridge::get_vm_switch()?.get_port(&port_name).ok() {
+                    port.delete().ok();
+                }
             }
         }
         Ok(net)
@@ -169,11 +104,25 @@ impl Vm {
             .seed(&self.uuid.to_string())
             .search_no_parents()?;
 
+        #[cfg(debug_assertions)]
+        if let Some(matches) = finder.matches {
+            for _match in matches {
+                if let Some(pid) = _match.pid {
+                    Process::new().stdin(&format!("sudo kill -9 {pid}")).run()?;
+                }
+            }
+        }
+        #[cfg(not(debug_assertions))]
         finder.kill()?;
 
         let socket = &self.get_socket()?;
         let path = Path::new(&socket);
         if path.exists() {
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo rm {}", &socket))
+                .run()?;
+            #[cfg(not(debug_assertions))]
             fs::remove_file(&socket)?;
         }
 

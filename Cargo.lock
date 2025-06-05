@@ -5114,7 +5114,6 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 [[package]]
 name = "tappers"
 version = "0.4.2"
-source = "git+https://github.com/pipelight/tappers?branch=dev#7fadda01b98e0a54ae9ce8a35c58fee71fd0bc1f"
 dependencies = [
  "libc",
  "once_cell",
@@ -5880,6 +5879,7 @@ dependencies = [
  "uuid",
  "virshle_error",
  "virshle_migration",
+ "whoami",
 ]
 
 [[package]]
@@ -6086,6 +6086,7 @@ checksum = "6994d13118ab492c3c80c1f81928718159254c53c472bf9ce36f8dae4add02a7"
 dependencies = [
  "redox_syscall",
  "wasite",
+ "web-sys",
 ]
 
 [[package]]

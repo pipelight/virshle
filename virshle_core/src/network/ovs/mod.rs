@@ -1,7 +1,13 @@
+mod convert;
+mod getters;
+mod translate;
+
+// Reexport
+pub use translate::{OvsBridge, OvsInterface, OvsInterfaceType, OvsPort};
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};
 use std::collections::HashMap;
-use std::fmt;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -23,49 +29,69 @@ use std::fs;
 use std::path::Path;
 
 use crate::network::InterfaceState;
-mod json;
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct OvsBridge {
-    #[serde(rename = "_uuid")]
-    pub uuid: Uuid,
-    pub name: String,
-
-    #[serde(rename = "ports")]
-    _ports_uuid: Vec<Uuid>,
-    #[serde(skip)]
-    pub ports: Vec<OvsPort>,
-}
 impl OvsBridge {
-    pub fn hydrate(&mut self) -> Result<(), VirshleError> {
-        let mut ports: Vec<OvsPort> = vec![];
-        for uuid in self._ports_uuid.clone() {
-            let port = port::get_by_uuid(&uuid)?;
-            ports.push(port);
+    /*
+     * Add vm port into ovs config.
+     */
+    pub fn create_tap_port(&self, name: &str) -> Result<(), VirshleError> {
+        let vm_bridge_name = &self.name;
+
+        #[cfg(debug_assertions)]
+        let cmd = format!(
+            "sudo ovs-vsctl \
+                -- --may-exist add-port {vm_bridge_name} {name} \
+                -- set interface {name} type=tap"
+        );
+        #[cfg(not(debug_assertions))]
+        let cmd = format!(
+            "ovs-vsctl \
+                -- --may-exist add-port {vm_bridge_name} {name} \
+                -- set interface {name} type=tap"
+        );
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        if let Some(stderr) = res.io.stderr {
+            let message = "Ovs command failed: Couldn't create tap port";
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
         }
-        self.ports = ports;
+        Ok(())
+    }
+    /*
+     * Add vm port into ovs config.
+     */
+    pub fn create_dpdk_port(&self, name: &str, socket_path: &str) -> Result<(), VirshleError> {
+        let vm_bridge_name = &self.name;
+
+        #[cfg(debug_assertions)]
+        let cmd = format!(
+            "sudo ovs-vsctl \
+                -- --may-exist add-port {vm_bridge_name} {name} \
+                -- set interface {name} type=dpdkvhostuserclient \
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
+        );
+        #[cfg(not(debug_assertions))]
+        let cmd = format!(
+            "ovs-vsctl \
+                -- --may-exist add-port {vm_bridge_name} {name} \
+                -- set interface {name} type=dpdkvhostuserclient \
+                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
+        );
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        if let Some(stderr) = res.io.stderr {
+            let message = "Ovs command failed: Couldn't create dpdk port";
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
+        }
         Ok(())
     }
 }
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct OvsPort {
-    #[serde(rename = "_uuid")]
-    pub uuid: Uuid,
-    pub name: String,
-
-    #[serde(rename = "interfaces")]
-    _interface_uuid: Uuid,
-    #[serde(skip)]
-    pub interface: OvsInterface,
-}
 impl OvsPort {
-    pub fn hydrate(&mut self) -> Result<(), VirshleError> {
-        let uuid = self._interface_uuid;
-        let interface = interface::get_by_uuid(&uuid)?;
-        self.interface = interface;
-        Ok(())
-    }
     pub fn is_virshle_port(&self) -> bool {
         self.name.starts_with("vm-")
     }
@@ -83,65 +109,147 @@ impl OvsPort {
             }
         }
     }
-}
+    /*
+     * Remove network port from the vm switch.
+     */
+    pub fn delete(&self) -> Result<(), VirshleError> {
+        let vm_bridge_name = OvsBridge::get_vm_switch()?.name;
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct OvsInterface {
-    #[serde(rename = "_uuid")]
-    pub uuid: Uuid,
-    #[serde(default, rename = "type")]
-    pub _type: Option<OvsInterfaceType>,
-    #[serde(rename = "ifindex")]
-    pub index: Option<u64>,
-    pub name: String,
-    #[serde(rename = "mac_in_use")]
-    pub mac: String,
-    #[serde(rename = "admin_state")]
-    pub state: String,
-}
+        let cmd = format!(
+            "sudo ovs-vsctl \
+            -- --if-exists del-port {} {}",
+            self.bridge.name, self.name
+        );
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
 
-#[derive(Default, Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum OvsInterfaceType {
-    #[default]
-    System,
-    Internal,
-    Patch,
-    DpdkVhostUserClient,
-    Tap,
-}
-impl fmt::Display for OvsInterfaceType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let string = match self {
-            OvsInterfaceType::System => "system".to_owned(),
-            OvsInterfaceType::Internal => "internal".to_owned(),
-            OvsInterfaceType::Patch => "patch".to_owned(),
-            OvsInterfaceType::DpdkVhostUserClient => "dpdkvhostuserclient".to_owned(),
-            OvsInterfaceType::Tap => "tap".to_owned(),
-        };
-        write!(f, "{}", string)
+        if let Some(stderr) = res.io.stderr {
+            let message = "Ovs command failed.";
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+            return Err(LibError::builder().msg(message).help(&help).build().into());
+        }
+        Ok(())
     }
 }
-
-/*
- * Remove network port from the vm switch.
- */
-pub fn delete_port(name: &str) -> Result<(), VirshleError> {
-    let vm_bridge_name = get_vm_bridge()?.name;
-
-    let cmd = format!(
-        "sudo ovs-vsctl \
-            -- --if-exists del-port {vm_bridge_name} {name}"
-    );
-    let mut proc = Process::new();
-    let res = proc.stdin(&cmd).run()?;
-
-    if let Some(stderr) = res.io.stderr {
-        let message = "Ovs command failed.";
-        let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-        return Err(LibError::builder().msg(message).help(&help).build().into());
+impl OvsBridge {
+    /*
+     * Return the ovs main switch.
+     * Usually this switch is the one that provides internet (external)
+     * connectivity.
+     * It has your main interface (ex: eno1) as port.
+     */
+    pub fn get_main_switch() -> Result<OvsBridge, VirshleError> {
+        let bridges = OvsBridge::get_all()?;
+        let bridge = bridges.iter().find(|e| {
+            e.ports
+                .iter()
+                .find(|e| e.interface.name.starts_with("en"))
+                .is_some()
+        });
+        match bridge {
+            Some(v) => Ok(v.to_owned()),
+            None => {
+                let message = "Couldn't identify the main bridge";
+                let help = "Did you set up a main virtual switch correctly?";
+                return Err(LibError::builder().msg(message).help(help).build().into());
+            }
+        }
     }
-    Ok(())
+    /*
+     * Return the virshle managed switch.
+     * This is the switch where the vm are plugged in.
+     */
+    pub fn get_vm_switch() -> Result<OvsBridge, VirshleError> {
+        let vm_bridge_name = "br0";
+        let bridges = Self::get_all()?;
+
+        let bridge = bridges.iter().find(|e| {
+            e.ports
+                .iter()
+                .find(|e| e.interface.name == vm_bridge_name)
+                .is_some()
+        });
+
+        match bridge {
+            Some(v) => Ok(v.to_owned()),
+            None => {
+                let message = "Couldn't identify the vm dedicated bridge";
+                let help = "Did you set up a vm virtual switch correctly?";
+                return Err(LibError::builder().msg(message).help(help).build().into());
+            }
+        }
+    }
+    /*
+     * Creates vm dedicated switch to plug vm port in.
+     */
+    pub fn set_vm_switch() -> Result<(), VirshleError> {
+        info!("Create a virtual switch for virtual machines.");
+        let vm_bridge_name = "br0";
+
+        #[cfg(debug_assertions)]
+        let cmd = format!(
+            "sudo ovs-vsctl \
+            -- --may-exist add-br {vm_bridge_name} \
+            -- set bridge {vm_bridge_name} datapath_type=netdev"
+        );
+        #[cfg(not(debug_assertions))]
+        let cmd = format!(
+            "ovs-vsctl \
+            -- --may-exist add-br {vm_bridge_name} \
+            -- set bridge {vm_bridge_name} datapath_type=netdev"
+        );
+
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        if let Some(stderr) = res.io.stderr {
+            let message = "Ovs command failed, couldn't create a vm switch.";
+            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
+
+            return Err(LibError::builder().msg(message).help(&help).build().into());
+        }
+
+        Ok(())
+    }
+
+    /*
+     * Remove ports from vm dedicated switch,
+     * If a port is not related to an existing vm in database.
+     */
+    pub async fn remove_orphan_ports(&self) -> Result<(), VirshleError> {
+        let vms_name: Vec<String> = Vm::get_all()
+            .await?
+            .iter()
+            .map(|e| e.name.to_owned())
+            .collect();
+
+        #[cfg(debug_assertions)]
+        let mut cmd = format!("sudo ovs-vsctl");
+        #[cfg(not(debug_assertions))]
+        let mut cmd = format!("ovs-vsctl");
+
+        for port in &self.ports {
+            // Only if port is managed by virshle
+            if let Some(vm_name) = port.get_vm_name().ok() {
+                if !vms_name.contains(&vm_name) {
+                    if let Some(_type) = &port.interface._type {
+                        match _type {
+                            OvsInterfaceType::DpdkVhostUserClient => {
+                                cmd += &format!(
+                                    " -- --if-exists del-port {} {}",
+                                    self.name, port.name
+                                );
+                                let mut proc = Process::new();
+                                let res = proc.stdin(&cmd).run()?;
+                            }
+                            _ => {}
+                        };
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
 }
 /*
  * Split host main network interface to provide connectivity to vms.
@@ -153,10 +261,10 @@ pub async fn ensure_switches() -> Result<(), VirshleError> {
     // and link it to vm switch.
 
     // Will do the job for now.
-    _set_vm_bridge()?;
-    _clean_vm_bridge().await?;
+    OvsBridge::set_vm_switch()?;
+    OvsBridge::get_vm_switch()?.remove_orphan_ports().await?;
 
-    match _patch_vm_bridge() {
+    match patch_vm_and_main_switches() {
         Err(e) => {
             error!("{}", e);
         }
@@ -168,109 +276,11 @@ pub async fn ensure_switches() -> Result<(), VirshleError> {
 }
 
 /*
- * Get ovs network switches/bridges.
- */
-pub fn get_bridges() -> Result<Vec<OvsBridge>, VirshleError> {
-    #[cfg(debug_assertions)]
-    let cmd = "sudo ovs-vsctl -f json list bridge".to_owned();
-    #[cfg(not(debug_assertions))]
-    let cmd = "ovs-vsctl -f json list bridge".to_owned();
-
-    let mut proc = Process::new();
-    let res = proc.stdin(&cmd).run()?;
-
-    match res.io.stdout {
-        Some(v) => {
-            let mut res: Vec<OvsBridge> = serde_json::from_value(json::to_json(&v)?)?;
-            // Hydration cascade
-            res.iter_mut().for_each(|e| e.hydrate().unwrap());
-
-            return Ok(res);
-        }
-        None => {
-            let message = "Couldn't find any bridges";
-            let help = "Do you have access right to ovs database?";
-            return Err(LibError::builder().msg(message).help(help).build().into());
-        }
-    }
-}
-pub fn get_main_bridge() -> Result<OvsBridge, VirshleError> {
-    let bridges = get_bridges()?;
-    let bridge = bridges.iter().find(|e| {
-        e.ports
-            .iter()
-            .find(|e| e.interface.name.starts_with("en"))
-            .is_some()
-    });
-    match bridge {
-        Some(v) => Ok(v.to_owned()),
-        None => {
-            let message = "Couldn't identify the main bridge";
-            let help = "Did you set up a main virtual switch correctly?";
-            return Err(LibError::builder().msg(message).help(help).build().into());
-        }
-    }
-}
-pub fn get_vm_bridge() -> Result<OvsBridge, VirshleError> {
-    let vm_bridge_name = "br0";
-    let bridges = get_bridges()?;
-
-    let bridge = bridges.iter().find(|e| {
-        e.ports
-            .iter()
-            .find(|e| e.interface.name == vm_bridge_name)
-            .is_some()
-    });
-
-    match bridge {
-        Some(v) => Ok(v.to_owned()),
-        None => {
-            let message = "Couldn't identify the vm dedicated bridge";
-            let help = "Did you set up a vm virtual switch correctly?";
-            return Err(LibError::builder().msg(message).help(help).build().into());
-        }
-    }
-}
-/*
- * Create a virtual switch/bridge on host
- * to plug vms network main port in.
- */
-pub fn _set_vm_bridge() -> Result<(), VirshleError> {
-    info!("Create a virtual switch for virtual machines.");
-    let vm_bridge_name = "br0";
-
-    #[cfg(debug_assertions)]
-    let cmd = format!(
-        "sudo ovs-vsctl \
-            -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=netdev"
-    );
-    #[cfg(not(debug_assertions))]
-    let cmd = format!(
-        "ovs-vsctl \
-            -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=netdev"
-    );
-
-    let mut proc = Process::new();
-    let res = proc.stdin(&cmd).run()?;
-
-    if let Some(stderr) = res.io.stderr {
-        let message = "Ovs command failed, couldn't create a vm switch.";
-        let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-
-        return Err(LibError::builder().msg(message).help(&help).build().into());
-    }
-
-    Ok(())
-}
-
-/*
  * Link the vm switch to a main switch (if any) for internet connectivity.
  */
-pub fn _patch_vm_bridge() -> Result<(), VirshleError> {
+pub fn patch_vm_and_main_switches() -> Result<(), VirshleError> {
     let vm_bridge_name = "br0";
-    let main_bridge_name = get_main_bridge()?.name;
+    let main_bridge_name = OvsBridge::get_main_switch()?.name;
 
     // - add patch cable to main switch (1/2)
     // - add vm switch
@@ -308,233 +318,6 @@ pub fn _patch_vm_bridge() -> Result<(), VirshleError> {
 
     Ok(())
 }
-/*
- * Remove dpdkvhostuserclient ports from vm brigde
- * if not related to an existing vm in database.
- */
-pub async fn _clean_vm_bridge() -> Result<(), VirshleError> {
-    let vms_name: Vec<String> = Vm::get_all()
-        .await?
-        .iter()
-        .map(|e| e.name.to_owned())
-        .collect();
-    let vm_bridge = get_vm_bridge()?;
-
-    #[cfg(debug_assertions)]
-    let mut cmd = format!("sudo ovs-vsctl");
-    #[cfg(not(debug_assertions))]
-    let mut cmd = format!("ovs-vsctl");
-
-    for port in vm_bridge.ports {
-        // Only if port is managed by virshle
-        if let Some(vm_name) = port.get_vm_name().ok() {
-            if !vms_name.contains(&vm_name) {
-                if let Some(_type) = &port.interface._type {
-                    match _type {
-                        OvsInterfaceType::DpdkVhostUserClient => {
-                            cmd += &format!(
-                                " -- --if-exists del-port {} {}",
-                                vm_bridge.name, port.name
-                            );
-                            let mut proc = Process::new();
-                            let res = proc.stdin(&cmd).run()?;
-                        }
-                        _ => {}
-                    };
-                }
-            }
-        }
-    }
-    Ok(())
-}
-pub mod port {
-    use super::*;
-
-    pub fn get_all() -> Result<Vec<OvsPort>, VirshleError> {
-        #[cfg(debug_assertions)]
-        let cmd = "sudo ovs-vsctl -f json list port".to_owned();
-        #[cfg(not(debug_assertions))]
-        let cmd = "ovs-vsctl -f json list port".to_owned();
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.io.stdout {
-            Some(v) => {
-                let mut res: Vec<OvsPort> = serde_json::from_value(json::to_json(&v)?)?;
-                // Hydration cascade
-                res.iter_mut().for_each(|e| e.hydrate().unwrap());
-                return Ok(res);
-            }
-            None => {
-                let message = "Couldn't find any ports";
-                let help = "Do you have access right to ovs database?";
-                return Err(LibError::builder().msg(message).help(help).build().into());
-            }
-        }
-    }
-
-    pub fn get_by_uuid(uuid: &Uuid) -> Result<OvsPort, VirshleError> {
-        #[cfg(debug_assertions)]
-        let cmd = format!("sudo ovs-vsctl -f json list port {uuid}");
-        #[cfg(not(debug_assertions))]
-        let cmd = format!("ovs-vsctl -f json list port {uuid}");
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.io.stdout {
-            Some(v) => match json::to_json(&v)?.as_array().unwrap().first() {
-                Some(v) => {
-                    let mut res: OvsPort = serde_json::from_value(v.to_owned())?;
-                    res.hydrate()?;
-                    return Ok(res);
-                }
-                None => {
-                    let message = format!("Couldn't find a port with uuid: {uuid}");
-                    let help = "Are you sure this port exists?";
-                    return Err(LibError::builder().msg(&message).help(help).build().into());
-                }
-            },
-            None => {
-                let message = format!("Couldn't find a port with uuid: {uuid}");
-                let help = "Do you have access right to ovs database?";
-                return Err(LibError::builder().msg(&message).help(help).build().into());
-            }
-        }
-    }
-}
-pub mod interface {
-    use super::*;
-    /*
-     * Return the bridge that is linked to
-     * the main network interface/ ethernet port (eno1)
-     */
-    // pub fn get_main_switch(&self) -> Result<Bridge, VirshleError> {
-    //     let bridges = self.get_bridges()?;
-    //     Ok(bridge)
-    // }
-    pub fn get_all() -> Result<Vec<OvsInterface>, VirshleError> {
-        #[cfg(debug_assertions)]
-        let cmd = "sudo ovs-vsctl -f json list interface".to_owned();
-        #[cfg(not(debug_assertions))]
-        let cmd = "ovs-vsctl -f json list interface".to_owned();
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        let mut bridges = vec![];
-        if let Some(stdout) = res.io.stdout {
-            bridges = serde_json::from_value(json::to_json(&stdout)?)?;
-        }
-        Ok(bridges)
-    }
-    pub fn get_by_uuid(uuid: &Uuid) -> Result<OvsInterface, VirshleError> {
-        #[cfg(debug_assertions)]
-        let cmd = format!("sudo ovs-vsctl -f json list interface {uuid}");
-        #[cfg(not(debug_assertions))]
-        let cmd = format!("ovs-vsctl -f json list interface {uuid}");
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.io.stdout {
-            Some(v) => match json::to_json(&v)?.as_array().unwrap().first() {
-                Some(v) => {
-                    let res: OvsInterface = serde_json::from_value(v.to_owned())?;
-                    return Ok(res);
-                }
-                None => {
-                    let message = format!("Couldn't find an interface with uuid: {uuid}");
-                    let help = "Are you sure this interface exists?";
-                    return Err(LibError::builder().msg(&message).help(help).build().into());
-                }
-            },
-            None => {
-                let message = format!("Couldn't find an interface with uuid: {uuid}");
-                let help = "Do you have access right to ovs database?";
-                return Err(LibError::builder().msg(&message).help(help).build().into());
-            }
-        }
-    }
-}
-pub mod dpdk {
-    use super::*;
-    /*
-     * Add vm port into ovs config.
-     */
-    pub fn create_port(name: &str, socket_path: &str) -> Result<(), VirshleError> {
-        let vm_bridge_name = "br0";
-        #[cfg(debug_assertions)]
-        let cmd = format!(
-            "sudo ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
-        );
-        #[cfg(not(debug_assertions))]
-        let cmd = format!(
-            "ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
-        );
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            return Err(LibError::builder().msg(message).help(&help).build().into());
-        }
-        Ok(())
-    }
-}
-pub mod tap {
-    use super::*;
-
-    /*
-     * Add vm port into ovs config.
-     */
-    pub fn create_port(name: &str) -> Result<(), VirshleError> {
-        let vm_bridge_name = "br0";
-        #[cfg(debug_assertions)]
-        let cmd = format!(
-            "sudo ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=tap"
-        );
-        #[cfg(not(debug_assertions))]
-        let cmd = format!(
-            "ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=tap"
-        );
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            return Err(LibError::builder().msg(message).help(&help).build().into());
-        }
-        Ok(())
-    }
-
-    /*
-     * Return all Tap interface from ovs cli.
-     */
-    pub fn get_all() -> Result<Vec<OvsInterface>, VirshleError> {
-        let interfaces = super::interface::get_all()?;
-        let taps: Vec<OvsInterface> = interfaces
-            .iter()
-            .filter(|e| e._type == Some(OvsInterfaceType::Tap))
-            .filter(|e| e.name.starts_with("vm-"))
-            .map(|e| e.to_owned())
-            .collect();
-        Ok(taps)
-    }
-}
 
 #[cfg(test)]
 mod test {
@@ -543,27 +326,27 @@ mod test {
     // Brigdges
     #[test]
     fn test_ovs_get_bridges() -> Result<()> {
-        let res = get_bridges()?;
+        let res = OvsBridge::get_all()?;
         println!("{:#?}", res);
         Ok(())
     }
     #[test]
     fn test_ovs_get_main_bridge() -> Result<()> {
-        let res = get_main_bridge()?;
+        let res = OvsBridge::get_main_switch()?;
         // println!("{:#?}", res);
         Ok(())
     }
     // Ports
     #[test]
     fn test_ovs_get_ports() -> Result<()> {
-        let res = port::get_all();
+        let res = OvsPort::get_all();
         // println!("{:#?}", res);
         Ok(())
     }
     // Interfaces
     #[test]
     fn test_ovs_get_interfaces() -> Result<()> {
-        let res = interface::get_all();
+        let res = OvsInterface::get_all();
         // println!("{:#?}", res);
         Ok(())
     }
@@ -577,7 +360,7 @@ mod test {
 
     #[tokio::test]
     async fn test_clean_vm_bridge() -> Result<()> {
-        _clean_vm_bridge().await?;
+        OvsBridge::get_vm_switch()?.remove_orphan_ports().await?;
         Ok(())
     }
 }

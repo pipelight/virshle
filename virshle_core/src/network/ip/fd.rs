@@ -1,6 +1,3 @@
-use super::ip;
-use super::ovs;
-use super::ovs::{OvsInterface, OvsInterfaceType};
 use std::os::fd::AsRawFd;
 
 use pipelight_exec::Process;
@@ -27,7 +24,10 @@ pub fn unix_name(name: &str) -> String {
 pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
     let name = unix_name(name);
     let tap_name = tappers::Interface::new(name)?;
-    let tap = tappers::Tap::new_named(tap_name)?;
+
+    let mut tap = tappers::Tap::new_named(tap_name)?;
+    tap.set_nonblocking(true)?;
+
     let fd = tap.as_raw_fd() as i32;
     let fd_clone = fd.clone();
     Ok(fd.clone())
@@ -36,6 +36,7 @@ pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::network::ovs::{OvsBridge, OvsInterfaceType};
 
     #[test]
     fn test_unix_name() -> Result<()> {
@@ -45,9 +46,9 @@ mod test {
     }
 
     #[test]
-    fn test_ovs_get_interfaces() -> Result<()> {
-        let res = ovs::tap::get_all()?;
-        println!("{:#?}", res);
+    fn test_ovs_get_tap_interfaces() -> Result<()> {
+        let taps = OvsBridge::get_vm_switch()?.get_ports_by_type(&OvsInterfaceType::Tap);
+        println!("{:#?}", taps);
         Ok(())
     }
     #[test]
@@ -58,7 +59,7 @@ mod test {
     }
     #[test]
     fn test_get_random_tap_fd() -> Result<()> {
-        let taps = ovs::tap::get_all()?;
+        let taps = OvsBridge::get_vm_switch()?.get_ports_by_type(&OvsInterfaceType::Tap);
         let tap = taps.first().unwrap();
         let name = tap.name.clone();
         let res = get_fd(&name)?;

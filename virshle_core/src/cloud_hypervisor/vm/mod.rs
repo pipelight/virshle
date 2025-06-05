@@ -1,4 +1,5 @@
-pub mod crud;
+pub mod create;
+pub mod delete;
 pub mod from;
 pub mod getters;
 pub mod init;
@@ -29,7 +30,7 @@ use crate::http_request::{Rest, RestClient};
 use crate::database::entity::{prelude::*, *};
 
 // Error Handling
-use log::{debug, error, trace};
+use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -137,11 +138,10 @@ impl Vm {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
 
-        #[cfg(not(debug_assertions))]
-        let cmd = format!("cloud-hypervisor");
-
         #[cfg(debug_assertions)]
         let cmd = format!("sudo cloud-hypervisor");
+        #[cfg(not(debug_assertions))]
+        let cmd = format!("cloud-hypervisor");
 
         // If we can't establish connection to socket,
         // this means cloud-hypervisor is dead.
@@ -150,16 +150,23 @@ impl Vm {
         if conn.open().await.is_err() {
             match self.is_attach().ok() {
                 Some(true) => {
-                    let proc = Command::new(&cmd)
-                        .args(["--api-socket", &self.get_socket()?])
-                        .stdin(Stdio::inherit())
-                        .stdout(Stdio::inherit())
-                        .stderr(Stdio::inherit())
-                        .spawn()?;
+                    let cmd = format!(
+                        "kitty --hold sh -c \"{} --api-socket {}\"",
+                        cmd,
+                        &self.get_socket()?
+                    );
+                    Process::new()
+                        .stdin(&cmd)
+                        .term()
+                        .background()
+                        .detach()
+                        .run()?;
+                    info!("Launching: {}", &cmd);
                 }
                 _ => {
+                    let cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
                     Process::new()
-                        .stdin(&format!("{} --api-socket {}", &cmd, &self.get_socket()?))
+                        .stdin(&cmd)
                         .orphan()
                         .background()
                         .detach()
@@ -201,7 +208,8 @@ impl Vm {
         let response = rest.put::<()>(endpoint, None).await?;
 
         // Remove ch process
-        self.delete_ch_proc();
+        self.delete_ch_proc()?;
+
         // Remove network ports
         self.delete_networks();
 
@@ -227,40 +235,6 @@ impl Vm {
             }
         }
         Ok(self)
-    }
-    /*
-     * Create needed resources (network)
-     * And start the virtual machine and .
-     */
-    pub async fn start(&mut self) -> Result<(), VirshleError> {
-        self.create_networks()?;
-
-        self.start_vmm().await?;
-
-        // Provision with user defined data
-        self.add_init_disk()?;
-
-        self.push_config_to_vmm().await?;
-
-        let mut conn = Connection::from(self);
-        let mut rest = RestClient::from(&mut conn);
-
-        let endpoint = "/api/v1/vm.boot";
-        let response = rest.put::<()>(endpoint, None).await?;
-
-        if !response.status().is_success() {
-            let err_msg = &response.to_string().await?;
-            error!("{}", &err_msg);
-
-            let message = "Couldn't boot vm.";
-            return Err(LibError::builder()
-                .msg(&message)
-                .help(&err_msg)
-                .build()
-                .into());
-        }
-
-        Ok(())
     }
 
     /*

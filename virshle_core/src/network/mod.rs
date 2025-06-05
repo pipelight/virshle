@@ -1,4 +1,3 @@
-pub mod fd;
 pub mod ip;
 pub use std::str::FromStr;
 

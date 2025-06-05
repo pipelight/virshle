@@ -9,7 +9,7 @@
 * in just a few lines.
 */
 use super::{vm::NetType, Disk, Vm};
-use crate::network::fd;
+use crate::network::ip::fd;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::PathBuf;
@@ -92,12 +92,12 @@ pub struct NetConfig {
     pub mac: Option<String>,
 
     // tap
+    pub tap: Option<String>,
     pub fd: Option<Vec<i32>>,
 
     // dpdk
-    #[serde(default)]
-    pub vhost_mode: VhostMode,
-    pub vhost_user: bool,
+    pub vhost_mode: Option<VhostMode>,
+    pub vhost_user: Option<bool>,
     pub vhost_socket: Option<String>,
 
     // Removed ch unused default
@@ -230,18 +230,20 @@ impl From<&Vm> for VmConfig {
                         net_configs.push(NetConfig {
                             num_queues: Some(e.vcpu * 2),
                             // dpdk specific
-                            vhost_user: true,
+                            vhost_user: Some(true),
+                            vhost_mode: Some(VhostMode::Server),
                             vhost_socket: e.get_net_socket(&net).ok(),
-                            vhost_mode: VhostMode::Server,
                             ..Default::default()
                         });
                     }
                     NetType::Tap(v) => {
-                        let fd = fd::get_fd(&port_name).unwrap();
+                        let tap_name = fd::unix_name(&port_name);
+                        // let fd = fd::get_fd(&port_name).unwrap();
                         net_configs.push(NetConfig {
                             num_queues: Some(e.vcpu * 2),
                             //tap
-                            fd: Some(vec![fd]),
+                            // fd: Some(vec![fd]),
+                            tap: Some(tap_name),
                             ..Default::default()
                         });
                     }
