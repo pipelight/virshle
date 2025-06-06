@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, Value::Array};
+use serde_json::{Map, Number, Value, Value::Array};
 use std::collections::HashMap;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -33,6 +33,7 @@ pub fn to_json(response: &str) -> Result<Value, VirshleError> {
     }
     let mut value = Value::Array(items.clone());
     unflatten(&mut value)?;
+    flatten(&mut value)?;
 
     Ok(value)
 }
@@ -48,8 +49,43 @@ pub fn unflatten(value: &mut Value) -> Result<(), VirshleError> {
             if let Some(object) = e.as_object_mut() {
                 for (key, value) in object {
                     // Cast string into vec of string
+                    // See OvsBridge struct
                     if key == "ports" && value.is_string() {
                         *value = Value::Array(vec![value.to_owned()]);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+/*
+ * Strenghten return types.
+ * Force returning a null String instead of an empty Vec<> for null values.
+ * fo arrays containing a single value (unflatten).
+ */
+pub fn flatten(value: &mut Value) -> Result<(), VirshleError> {
+    if let Some(array) = value.as_array_mut() {
+        for e in array {
+            if let Some(object) = e.as_object_mut() {
+                for (key, value) in object {
+                    // Cast string into vec of string
+                    if [
+                        "mac".to_owned(),
+                        "mac_in_use".to_owned(),
+                        "admin_state".to_owned(),
+                    ]
+                    .contains(key)
+                        && value.is_array()
+                        && value.as_array().unwrap().to_vec().is_empty()
+                    {
+                        *value = Value::String("".to_owned());
+                    }
+                    if ["ifindex".to_owned()].contains(key)
+                        && value.is_array()
+                        && value.as_array().unwrap().to_vec().is_empty()
+                    {
+                        *value = Value::Number(Number::from_u128(0).unwrap());
                     }
                 }
             }
@@ -62,6 +98,7 @@ pub fn unflatten(value: &mut Value) -> Result<(), VirshleError> {
  * Internally used by `to_json` method.
  *
  * Flatten ovs-vsctl crazy json values into sane and usable values.
+*
  * BUG: OVS will return arrays for missing values
  * even if type is other(ex: string)
  */

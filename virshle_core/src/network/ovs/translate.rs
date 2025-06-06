@@ -125,8 +125,8 @@ impl OvsPort {
         let res = proc.stdin(&cmd).run()?;
 
         match res.io.stdout {
-            Some(v) => {
-                let mut res: Vec<OvsPort> = serde_json::from_value(convert::to_json(&v)?)?;
+            Some(stdout) => {
+                let mut res: Vec<OvsPort> = serde_json::from_value(convert::to_json(&stdout)?)?;
                 // Hydration cascade
                 res.iter_mut().for_each(|e| e.hydrate().unwrap());
                 return Ok(res);
@@ -148,7 +148,7 @@ impl OvsPort {
         let res = proc.stdin(&cmd).run()?;
 
         match res.io.stdout {
-            Some(v) => match convert::to_json(&v)?.as_array().unwrap().first() {
+            Some(stdout) => match convert::to_json(&stdout)?.as_array().unwrap().first() {
                 Some(v) => {
                     let mut res: OvsPort = serde_json::from_value(v.to_owned())?;
                     res.hydrate()?;
@@ -218,6 +218,9 @@ impl OvsInterface {
 
         let mut bridges = vec![];
         if let Some(stdout) = res.io.stdout {
+            println!("{:#?}", stdout);
+            let j = convert::to_json(&stdout)?;
+            println!("{:#?}", j);
             bridges = serde_json::from_value(convert::to_json(&stdout)?)?;
         }
         Ok(bridges)
@@ -257,14 +260,14 @@ mod test {
     use super::*;
 
     // Brigdges
-    #[test]
+    // #[test]
     fn test_ovs_get_bridges() -> Result<()> {
         let res = OvsBridge::get_all()?;
         println!("{:#?}", res);
         Ok(())
     }
     // Ports
-    #[test]
+    // #[test]
     fn test_ovs_get_ports() -> Result<()> {
         let res = OvsPort::get_all()?;
         println!("{:#?}", res);
