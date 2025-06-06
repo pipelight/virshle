@@ -6,6 +6,7 @@ pub mod init;
 
 // Reexports
 pub use from::VmTemplate;
+pub use init::{InitData, UserData, VmData};
 
 use super::vmm_types::VmConfig;
 

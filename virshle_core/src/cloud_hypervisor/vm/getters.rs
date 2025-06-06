@@ -59,33 +59,33 @@ impl Vm {
         }
         Ok(vms)
     }
-    pub async fn get_by_state(state: VmState) -> Result<Vec<Vm>, VirshleError> {
+    pub async fn get_by_state(state: &VmState) -> Result<Vec<Vm>, VirshleError> {
         let vms = Self::get_all().await?;
         let mut vm_w_state: Vec<Vm> = vec![];
         for vm in vms {
-            if vm.get_state().await? == state {
+            if vm.get_state().await? == *state {
                 vm_w_state.push(vm);
             }
         }
         Ok(vm_w_state)
     }
 
-    pub async fn get_by_args(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
+    pub async fn get_by_args(params: &VmArgs) -> Result<Vec<Vm>, VirshleError> {
         if let Some(id) = params.id {
             let vm = Vm::get_by_id(&id).await?;
             let vms = vec![vm];
             Ok(vms)
-        } else if let Some(name) = params.name {
+        } else if let Some(name) = &params.name {
             let vm = Vm::get_by_name(&name).await?;
             let vms = vec![vm];
             Ok(vms)
-        } else if let Some(uuid) = params.uuid {
+        } else if let Some(uuid) = &params.uuid {
             let vm = Vm::get_by_uuid(&uuid).await?;
             let vms = vec![vm];
             Ok(vms)
-        } else if let Some(state) = params.state {
+        } else if let Some(state) = &params.state {
             let state = VmState::from_str(&state).unwrap();
-            let vms = Vm::get_by_state(state).await?;
+            let vms = Vm::get_by_state(&state).await?;
             Ok(vms)
         } else {
             let message = format!("Couldn't find vm.");

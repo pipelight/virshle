@@ -22,17 +22,11 @@ pub fn delete(name: &str) -> Result<(), VirshleError> {
     let name = fd::unix_name(name);
 
     #[cfg(debug_assertions)]
-    let cmd = format!(
-        "sudo ip link \
-                del dev {name}"
-    );
+    let cmd = format!("sudo ip link del dev {name}");
     #[cfg(not(debug_assertions))]
-    let cmd = format!(
-        "ip link \
-                del dev {name}"
-    );
+    let cmd = format!("ip link del dev {name}");
     let mut proc = Process::new();
-    let res = proc.stdin(&cmd).run()?;
+    let res = proc.stdin(&cmd).detach().run()?;
 
     if let Some(stderr) = res.io.stderr {
         let message = format!("ip command failed: {:#?}", cmd);

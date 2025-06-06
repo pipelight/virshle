@@ -56,7 +56,7 @@ clap-verbosity-flag = "3.0.2"
 clap = "4.5.20"
 clap_complete = "4.5.33"
 tower = { version = "0.5.2", features = ["util"] }
-macaddr = { version = "1.0.1", features = ["serde"] }
+macaddr = { version = "1.0.1", features = ["serde", "serde_std"] }
 futures = "0.3.31"
 users = "0.11.0"
 tower-http = { version = "0.6.2", features = ["trace"] }
@@ -79,6 +79,7 @@ tappers = "0.4.2"
 libc = "0.2.172"
 serde_with = "3.12.0"
 whoami = "1.6.0"
+unindent = "0.2.4"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

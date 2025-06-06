@@ -23,23 +23,21 @@ use crate::http_request::{Rest, RestClient};
 // Ovs
 use crate::network::{ip, ip::fd, ovs::OvsBridge};
 
+// Init disk
+use super::UserData;
+
 // Error Handling
 use log::{error, info};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
-    /*
-     * Create needed resources (network)
-     * And start the virtual machine and .
-     */
-    pub async fn start(&mut self) -> Result<(), VirshleError> {
+    pub async fn start(&mut self, user_data: Option<UserData>) -> Result<(), VirshleError> {
         self.create_networks()?;
-
         self.start_vmm().await?;
 
         // Provision with user defined data
-        self.add_init_disk()?;
+        self.add_init_disk(user_data)?;
 
         self.push_config_to_vmm().await?;
 
@@ -63,7 +61,6 @@ impl Vm {
 
         Ok(())
     }
-
     /*
      * Add vm config to database.
      * Resources are not created there but rather on vm start.

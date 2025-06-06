@@ -115,6 +115,9 @@ pub struct StartArgs {
         default_missing_value = "true"
     )]
     pub attach: bool,
+
+    #[arg(short, long, value_name = "FILEPATH")]
+    pub user_data: Option<String>,
 }
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]

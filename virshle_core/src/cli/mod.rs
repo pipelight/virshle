@@ -4,7 +4,7 @@ pub use types::*;
 use crate::api::{rest::client, rest::method, NodeServer};
 use crate::display::VmTable;
 use crate::{
-    cloud_hypervisor::{Definition, Vm, VmTemplate},
+    cloud_hypervisor::{Definition, UserData, Vm, VmTemplate},
     config::{Node, VirshleConfig},
 };
 
@@ -77,7 +77,7 @@ impl Cli {
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
                     // Create a vm from template.
-                    client::vm::create(args).await?;
+                    client::vm::create(&args).await?;
                 }
                 Crud::Info(args) => {
                     if let Some(name) = args.name {
@@ -91,27 +91,31 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
+                    let user_data: Option<UserData> = match args.user_data {
+                        Some(path) => Some(UserData::from_file(&path)?),
+                        None => None,
+                    };
                     match args.attach {
                         true => {
                             // Bypass rest API,
                             // and run on local node direcly.
-                            method::vm::_start_attach(args.vm_args).await?;
+                            method::vm::_start_attach(&args.vm_args, user_data).await?;
                         }
                         _ => {
                             // Rest API
-                            client::vm::start(args).await?;
+                            client::vm::start(&args.vm_args, user_data).await?;
                         }
                     };
                 }
                 Crud::Stop(args) => {
-                    client::vm::shutdown(args).await?;
+                    client::vm::shutdown(&args).await?;
                 }
                 Crud::Ls(args) => {
-                    let e = client::vm::get_all(args.clone()).await?;
+                    let e = client::vm::get_all(&args).await?;
                     VmTable::display_by_nodes(e).await?;
                 }
                 Crud::Rm(args) => {
-                    client::vm::delete(args).await?;
+                    client::vm::delete(&args).await?;
                 }
                 _ => {}
             },

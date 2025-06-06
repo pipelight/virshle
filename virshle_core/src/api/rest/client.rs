@@ -6,6 +6,7 @@ use crate::display::vm::VmTable;
 use crate::http_request::{Rest, RestClient};
 
 use crate::cli::{CreateArgs, StartArgs, VmArgs};
+use crate::cloud_hypervisor::UserData;
 use crate::{Node, NodeInfo, Vm, VmState, VmTemplate};
 use std::str::FromStr;
 
@@ -74,7 +75,7 @@ pub mod vm {
     /*
      * Get a hashmap/dict of all vms per (reachable) node.
      */
-    pub async fn get_all(args: VmArgs) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
+    pub async fn get_all(args: &VmArgs) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
 
@@ -102,7 +103,7 @@ pub mod vm {
     /*
      * Create a virtual machine on a node.
      */
-    pub async fn create(args: CreateArgs) -> Result<(), VirshleError> {
+    pub async fn create(args: &CreateArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
         // Set node to be queried
         let node: Node;
@@ -131,7 +132,7 @@ pub mod vm {
 
         Ok(())
     }
-    pub async fn delete(args: VmArgs) -> Result<(), VirshleError> {
+    pub async fn delete(args: &VmArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
 
         // Set node to be queried
@@ -157,16 +158,15 @@ pub mod vm {
 
         Ok(())
     }
-
     /*
      * Start a virtual machine on a node.
      */
-    pub async fn start(args: StartArgs) -> Result<(), VirshleError> {
+    pub async fn start(args: &VmArgs, user_data: Option<UserData>) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
 
         // Set node to be queried
         let node: Node;
-        if let Some(node_name) = &args.vm_args.node {
+        if let Some(node_name) = &args.node {
             node = config.get_node_by_name(&node_name)?;
         } else {
             node = Node::default();
@@ -176,7 +176,7 @@ pub mod vm {
         let mut rest = RestClient::from(&mut conn);
 
         let vm: Vec<Vm> = rest
-            .put("/vm/start", Some(args.vm_args.clone()))
+            .put("/vm/start", Some((args.clone(), user_data)))
             .await?
             .to_value()
             .await?;
@@ -190,7 +190,7 @@ pub mod vm {
     /*
      * Stop a virtual machine on a node.
      */
-    pub async fn shutdown(args: VmArgs) -> Result<(), VirshleError> {
+    pub async fn shutdown(args: &VmArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
 
         // Set node to be queried
@@ -216,7 +216,7 @@ pub mod vm {
 
         Ok(())
     }
-    pub async fn get_info(args: VmArgs) -> Result<(), VirshleError> {
+    pub async fn get_info(args: &VmArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;
 
         // Set node to be queried
@@ -247,33 +247,6 @@ pub mod vm {
         }
         Ok(())
     }
-    /*
-     * Filter vms based on args.
-     */
-    pub async fn filter(
-        mut nodes: HashMap<Node, Vec<Vm>>,
-        args: VmArgs,
-    ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
-        let config = VirshleConfig::get()?;
-
-        // Filter Nodes by name
-        if let Some(node_name) = &args.node {
-            nodes.iter_mut().filter(|(k, _)| &k.name == node_name);
-        }
-
-        // Filter Vms by State
-        // if let Some(state) = &args.state {
-        //     for (node, vms) in &mut nodes {
-        //         let state = VmState::from_str(state).unwrap();
-        //         for (i, vm) in vms.clone().iter().enumerate() {
-        //             if vm.get_state().await? != state {
-        //                 vms.remove(i);
-        //             }
-        //         }
-        //     }
-        // }
-        Ok(nodes)
-    }
 }
 
 #[cfg(test)]
@@ -283,7 +256,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_all_vm() -> Result<()> {
         let args = VmArgs::default();
-        vm::get_all(args).await?;
+        vm::get_all(&args).await?;
         Ok(())
     }
     #[tokio::test]
@@ -292,7 +265,6 @@ mod tests {
             node: Some("default".to_owned()),
             ..Default::default()
         };
-        // Client::get_all_vm_and_filter(args).await?;
         Ok(())
     }
 }

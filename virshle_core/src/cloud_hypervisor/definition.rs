@@ -67,7 +67,7 @@ impl Definition {
     pub async fn start_vms(&mut self) -> Result<Self, VirshleError> {
         if let Some(vms) = &mut self.vm {
             for def in vms {
-                def.start().await?;
+                def.start(None).await?;
             }
         }
         Ok(self.to_owned())

@@ -1,4 +1,4 @@
-use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
+use crate::cloud_hypervisor::{Template, UserData, Vm, VmTemplate};
 use crate::database;
 
 use super::VirshleConfig;
@@ -49,6 +49,24 @@ impl VirshleConfig {
         info!("Found config file.");
         Ok(config)
     }
+    pub fn from_file(path: &str) -> Result<Self, VirshleError> {
+        let string = fs::read_to_string(path)?;
+        Self::from_toml(&string)
+    }
+    pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
+        let res = toml::from_str::<Self>(&string);
+        let item = match res {
+            Ok(res) => res,
+            Err(e) => {
+                let err = CastError::TomlError(TomlError::new(e, &string));
+                return Err(err.into());
+            }
+        };
+        Ok(item)
+    }
+}
+
+impl UserData {
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(path)?;
         Self::from_toml(&string)

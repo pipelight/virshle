@@ -1,6 +1,5 @@
-hostname = "vm-test"
-ipv6 = ""
-
 [[ssh]]
 user = "anon"
-authorized_keys = "my_public_ed25519_key"
+authorized_keys = [
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHftzK3MZD0idJTNM4BfxpkfnqxyKiBk8smdQzA1ores",
+]

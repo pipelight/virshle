@@ -20,7 +20,7 @@ use crate::config::NodeInfo;
 use crate::display::vm::VmTable;
 // Hypervisor
 use crate::cli::{CreateArgs, VmArgs};
-use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, Vm, VmState, VmTemplate};
+use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, UserData, Vm, VmState, VmTemplate};
 use crate::config::VirshleConfig;
 
 // Error handling
@@ -57,12 +57,12 @@ pub mod template {
 pub mod vm {
     use super::*;
     pub async fn get_all(Json(params): Json<VmArgs>) -> Result<Json<Vec<VmTable>>, VirshleError> {
-        Ok(Json(_get_all(params).await?))
+        Ok(Json(_get_all(&params).await?))
     }
-    pub async fn _get_all(params: VmArgs) -> Result<Vec<VmTable>, VirshleError> {
-        let vm_res = if let Some(state) = params.state {
+    pub async fn _get_all(params: &VmArgs) -> Result<Vec<VmTable>, VirshleError> {
+        let vm_res = if let Some(state) = &params.state {
             let state = VmState::from_str(&state).unwrap();
-            VmTable::from_vec(&Vm::get_by_state(state).await?).await
+            VmTable::from_vec(&Vm::get_by_state(&state).await?).await
         } else {
             VmTable::from_vec(&Vm::get_all().await?).await
         };
@@ -100,20 +100,28 @@ pub mod vm {
     /*
      * Start a vm and return it.
      */
-    pub async fn start(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
-        Ok(Json(_start(params).await?))
+    pub async fn start(
+        Json((vm_args, user_data)): Json<(VmArgs, Option<UserData>)>,
+    ) -> Result<Json<Vec<Vm>>, VirshleError> {
+        Ok(Json(_start(&vm_args, user_data).await?))
     }
-    pub async fn _start(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(params).await?;
+    pub async fn _start(
+        args: &VmArgs,
+        user_data: Option<UserData>,
+    ) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_by_args(args).await?;
         for vm in &mut vms {
-            vm.start().await?;
+            vm.start(user_data.clone()).await?;
         }
         Ok(vms)
     }
-    pub async fn _start_attach(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(params).await?;
+    pub async fn _start_attach(
+        args: &VmArgs,
+        user_data: Option<UserData>,
+    ) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_by_args(args).await?;
         for vm in &mut vms {
-            vm.attach()?.start().await?;
+            vm.attach()?.start(user_data.clone()).await?;
         }
         Ok(vms)
     }
@@ -124,7 +132,7 @@ pub mod vm {
         Ok(Json(_delete(params).await?))
     }
     pub async fn _delete(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(params).await?;
+        let mut vms = Vm::get_by_args(&params).await?;
         for vm in &mut vms {
             vm.delete().await?;
         }
@@ -137,7 +145,7 @@ pub mod vm {
         Ok(Json(_shutdown(params).await?))
     }
     pub async fn _shutdown(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(params).await?;
+        let mut vms = Vm::get_by_args(&params).await?;
         for vm in &mut vms {
             vm.shutdown().await?;
         }

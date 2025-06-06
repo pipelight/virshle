@@ -9,7 +9,7 @@
 * in just a few lines.
 */
 use super::{vm::NetType, Disk, Vm};
-use crate::network::ip::fd;
+use crate::network::{ip::fd, utils::uuid_to_mac};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::PathBuf;
@@ -90,6 +90,7 @@ pub struct PayloadConfig {
 pub struct NetConfig {
     num_queues: Option<u64>,
     pub mac: Option<String>,
+    pub host_mac: Option<String>,
 
     // tap
     pub tap: Option<String>,
@@ -228,6 +229,7 @@ impl From<&Vm> for VmConfig {
                 match &net._type {
                     NetType::Vhost(v) => {
                         net_configs.push(NetConfig {
+                            mac: Some(uuid_to_mac(&e.uuid).to_string()),
                             // dpdk specific
                             vhost_user: Some(true),
                             vhost_mode: Some(VhostMode::Server),
@@ -241,6 +243,7 @@ impl From<&Vm> for VmConfig {
                         // external Tap via name
                         let tap_name = fd::unix_name(&port_name);
                         net_configs.push(NetConfig {
+                            mac: Some(uuid_to_mac(&e.uuid).to_string()),
                             //tap
                             tap: Some(tap_name),
                             // multiqueue support
