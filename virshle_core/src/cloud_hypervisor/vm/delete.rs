@@ -74,25 +74,37 @@ impl Vm {
     /*
      * Remove network from filesystem (and ovs configuration).
      */
-    pub fn delete_networks(&self) -> Result<Vec<VmNet>, VirshleError> {
-        let mut net: Vec<VmNet> = vec![];
+    pub fn delete_networks(&self) -> Result<(), VirshleError> {
         if let Some(networks) = &self.net {
-            net = networks.to_owned();
-            for e in networks {
-                let socket_path = self.get_net_socket(&e)?;
-                let path = Path::new(&socket_path);
-                if path.exists() {
-                    fs::remove_file(&socket_path)?;
-                }
-                let port_name = format!("vm-{}-{}", self.name, e.name);
+            for net in networks {
+                // This results in "machin_name-network_name".
+                let port_name = format!("vm-{}-{}", self.name, net.name);
 
-                // Try to delete the port and silently fail.
+                // Ovs
+                // Replace existing port with a fresh one.
+                // Try to delete the port and silently fail
                 if let Some(port) = OvsBridge::get_vm_switch()?.get_port(&port_name).ok() {
                     port.delete().ok();
                 }
+
+                match &net._type {
+                    NetType::Vhost(v) => {
+                        // Delete existing socket if any
+                        // because ch will create one on process start.
+                        let socket_path = self.get_net_socket(&net)?;
+                        let path = Path::new(&socket_path);
+                        if path.exists() {
+                            fs::remove_file(&socket_path)?;
+                        }
+                    }
+                    NetType::Tap(v) => {
+                        // IP
+                        ip::tap::delete(&port_name).ok();
+                    }
+                };
             }
         }
-        Ok(net)
+        Ok(())
     }
     /*
      * Remove running vm hypervisor process if any

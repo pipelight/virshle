@@ -97,6 +97,9 @@ impl Vm {
      * Add network ports to ovs config.
      */
     pub fn create_networks(&self) -> Result<(), VirshleError> {
+        // Remove old networks
+        self.delete_networks()?;
+
         if let Some(nets) = &self.net {
             for net in nets {
                 // This results in "machin_name-network_name".
@@ -104,35 +107,15 @@ impl Vm {
 
                 match &net._type {
                     NetType::Vhost(v) => {
-                        // Delete existing socket if any
-                        // because ch will create one on process start.
-                        let socket_path = self.get_net_socket(net)?;
-                        let path = Path::new(&socket_path);
-                        if path.exists() {
-                            fs::remove_file(&socket_path)?;
-                        }
-                        // Ovs
-                        // Replace existing port with a fresh one.
-                        // Try to delete the port and silently fail
-                        if let Some(port) = OvsBridge::get_vm_switch()?.get_port(&port_name).ok() {
-                            port.delete().ok();
-                        }
+                        let socket_path = self.get_net_socket(&net)?;
                         OvsBridge::get_vm_switch()?.create_dpdk_port(&port_name, &socket_path)?;
                     }
                     NetType::Tap(v) => {
-                        // Ovs
-                        // Replace existing port and tap device with fresh ones.
-                        // Try to delete the port and silently fail.
-                        // if let Some(port) = OvsBridge::get_vm_switch()?.get_port(&port_name).ok() {
-                        //     port.delete().ok();
-                        // }
-                        // OvsBridge::get_vm_switch()?.create_tap_port(&port_name)?;
-
-                        // IP
-                        ip::tap::delete(&port_name).ok();
+                        // Create tap device
                         ip::tap::create(&port_name)?;
-
                         ip::up(&port_name)?;
+                        // Link to ovs bridge
+                        OvsBridge::get_vm_switch()?.create_tap_port(&port_name)?;
                     }
                 };
             }

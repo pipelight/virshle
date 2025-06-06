@@ -40,14 +40,12 @@ impl OvsBridge {
         #[cfg(debug_assertions)]
         let cmd = format!(
             "sudo ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=tap"
+                -- --may-exist add-port {vm_bridge_name} {name}"
         );
         #[cfg(not(debug_assertions))]
         let cmd = format!(
             "ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=tap"
+                -- --may-exist add-port {vm_bridge_name} {name}"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -99,8 +97,13 @@ impl OvsPort {
         match self.is_virshle_port() {
             true => {
                 let network_fullname: &str = self.name.strip_prefix("vm-").unwrap();
-                let (vm_name, net_name) = network_fullname.split_once("-").unwrap();
-                Ok(vm_name.to_owned())
+                if let Some((vm_name, net_name)) = network_fullname.split_once("-") {
+                    Ok(vm_name.to_owned())
+                } else {
+                    let message = "This port is not managed by virshle.";
+                    let help = "Port name must be \"vm-<vm-name>-<net-name>\"";
+                    Err(LibError::builder().msg(message).help(help).build().into())
+                }
             }
             false => {
                 let message = "This port is not managed by virshle.";
@@ -115,11 +118,17 @@ impl OvsPort {
     pub fn delete(&self) -> Result<(), VirshleError> {
         let vm_bridge_name = OvsBridge::get_vm_switch()?.name;
 
-        let cmd = format!(
-            "sudo ovs-vsctl \
+        #[cfg(debug_assertions)]
+        let mut cmd = format!("sudo ovs-vsctl");
+        #[cfg(not(debug_assertions))]
+        let mut cmd = format!("ovs-vsctl");
+
+        cmd = format!(
+            "{} \
             -- --if-exists del-port {} {}",
-            self.bridge.name, self.name
+            cmd, self.bridge.name, self.name
         );
+
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
 
@@ -223,29 +232,17 @@ impl OvsBridge {
             .map(|e| e.name.to_owned())
             .collect();
 
-        #[cfg(debug_assertions)]
-        let mut cmd = format!("sudo ovs-vsctl");
-        #[cfg(not(debug_assertions))]
-        let mut cmd = format!("ovs-vsctl");
-
         for port in &self.ports {
-            // Only if port is managed by virshle
+            // If port is managed by virshle
             if let Some(vm_name) = port.get_vm_name().ok() {
+                // If corresponding vm is in database
                 if !vms_name.contains(&vm_name) {
-                    if let Some(_type) = &port.interface._type {
-                        match _type {
-                            OvsInterfaceType::DpdkVhostUserClient => {
-                                cmd += &format!(
-                                    " -- --if-exists del-port {} {}",
-                                    self.name, port.name
-                                );
-                                let mut proc = Process::new();
-                                let res = proc.stdin(&cmd).run()?;
-                            }
-                            _ => {}
-                        };
-                    }
+                    port.delete()?;
                 }
+            }
+            // If port name is malformed but still on virshle managed switch.
+            else {
+                port.delete()?;
             }
         }
         Ok(())

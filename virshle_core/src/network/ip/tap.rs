@@ -64,9 +64,6 @@ pub fn create(name: &str) -> Result<(), VirshleError> {
             mode tap"
     ));
 
-    #[cfg(debug_assertions)]
-    cmds.push(format!("ovs-vsctl add-port {} {}", vm_bridge.name, name));
-
     for cmd in cmds {
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
