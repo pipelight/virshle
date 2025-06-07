@@ -1,5 +1,3 @@
-pub mod kernel;
-
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};
 use std::collections::HashMap;
