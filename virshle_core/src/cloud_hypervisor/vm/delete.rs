@@ -88,7 +88,7 @@ impl Vm {
                 }
 
                 match &net._type {
-                    NetType::Vhost(v) => {
+                    NetType::Vhost(_) => {
                         // Delete existing socket if any
                         // because ch will create one on process start.
                         let socket_path = self.get_net_socket(&net)?;
@@ -97,7 +97,7 @@ impl Vm {
                             fs::remove_file(&socket_path)?;
                         }
                     }
-                    NetType::Tap(v) => {
+                    NetType::Tap(_) | NetType::MacVTap(_) => {
                         // IP
                         ip::tap::delete(&port_name).ok();
                     }

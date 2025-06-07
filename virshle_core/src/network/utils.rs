@@ -9,6 +9,18 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
 /*
+* Shorten an interface name to Unix MAX_LENGTH.
+*/
+pub fn unix_name(name: &str) -> String {
+    let res = if name.len() > 15 {
+        name[..15].to_owned()
+    } else {
+        name.to_owned()
+    };
+    res
+}
+
+/*
  * Convest vm uuid to mac address.
  */
 pub fn uuid_to_mac(uuid: &Uuid) -> MacAddr6 {
@@ -46,6 +58,13 @@ pub fn uuid_to_mac(uuid: &Uuid) -> MacAddr6 {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_unix_name() -> Result<()> {
+        let res = unix_name("vm-sasuke_uchiha-main");
+        assert_eq!(&res, "vm-sasuke_uchih");
+        Ok(())
+    }
 
     #[test]
     fn test_uuid_to_mac() -> Result<()> {

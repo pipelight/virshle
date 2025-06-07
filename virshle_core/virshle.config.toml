@@ -20,7 +20,16 @@ url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 # Templates: 
 # vm standard sizes with decents presets.
 [[template.vm]]
-name = "xs"
+name = "xs-offline"
+vcpu = 1
+vram = 2
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "50G"
+
+[[template.vm]]
+name = "xs-tap"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
@@ -32,13 +41,17 @@ name = "main"
 [template.vm.net.type.tap]
 
 [[template.vm]]
-name = "xs-offline"
+name = "xs-macvtap"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.efi.img"
 size = "50G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.mac_v_tap]
+
 
 [[template.vm]]
 name = "xs-dpdk"

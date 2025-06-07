@@ -23,6 +23,7 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 // Cloud-hypervisor
 use crate::cloud_hypervisor::Vm;
+use crate::network::utils;
 
 //Fs
 use std::fs;
@@ -36,16 +37,19 @@ impl OvsBridge {
      */
     pub fn create_tap_port(&self, name: &str) -> Result<(), VirshleError> {
         let vm_bridge_name = &self.name;
+        let ifname = utils::unix_name(&name);
 
         #[cfg(debug_assertions)]
         let cmd = format!(
             "sudo ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name}"
+                -- --may-exist add-port {vm_bridge_name} {ifname} \
+                -- set interface {ifname} type=system"
         );
         #[cfg(not(debug_assertions))]
         let cmd = format!(
             "ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name}"
+                -- --may-exist add-port {vm_bridge_name} {name} \
+                -- set interface {ifname} type=system"
         );
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -288,7 +292,7 @@ pub fn patch_vm_and_main_switches() -> Result<(), VirshleError> {
             -- --may-exist add-port {main_bridge_name} patch_{main_bridge_name}_{vm_bridge_name} \
             -- set interface patch_{main_bridge_name}_{vm_bridge_name} type=patch options:peer=patch_{vm_bridge_name}_{main_bridge_name} \
             -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=netdev \
+            -- set bridge {vm_bridge_name} datapath_type=system \
             -- --may-exist add-port {vm_bridge_name} patch_{vm_bridge_name}_{main_bridge_name} \
             -- set interface patch_{vm_bridge_name}_{main_bridge_name} type=patch options:peer=patch_{main_bridge_name}_{vm_bridge_name}"
         );

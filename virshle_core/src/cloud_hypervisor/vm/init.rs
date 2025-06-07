@@ -138,6 +138,7 @@ impl InitData {
                     [[pipelines.steps]]
                     name = "set ipv6"
                     commands = [
+                        "mkdir -p /etc/ssh/authorized_keys.d",
                         "touch /etc/ssh/authorized_keys.d/{username}",
                         "> /etc/ssh/authorized_keys.d/{username}",
                         {commands}

@@ -1,6 +1,8 @@
 pub mod fd;
 pub mod tap;
 
+use crate::network::utils;
+
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};
 use std::collections::HashMap;
@@ -61,7 +63,7 @@ pub fn get_main_interface() -> Result<IpInterface, VirshleError> {
 * Bring interface up.
 */
 pub fn up(name: &str) -> Result<(), VirshleError> {
-    let name = fd::unix_name(name);
+    let name = utils::unix_name(name);
 
     #[cfg(debug_assertions)]
     let cmd = format!("sudo ip link set {} up", name);

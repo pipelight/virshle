@@ -21,7 +21,7 @@ use crate::connection::{Connection, ConnectionHandle, UnixConnection};
 use crate::http_request::{Rest, RestClient};
 
 // Ovs
-use crate::network::{ip, ip::fd, ovs::OvsBridge};
+use crate::network::{ip, ip::fd, ovs::OvsBridge, utils};
 
 // Init disk
 use super::UserData;
@@ -103,16 +103,28 @@ impl Vm {
                 let port_name = format!("vm-{}-{}", self.name, net.name);
 
                 match &net._type {
+                    // Not working on ovs-bridge of type "system"
+                    // bridge must be of type "netdev"
                     NetType::Vhost(v) => {
                         let socket_path = self.get_net_socket(&net)?;
                         OvsBridge::get_vm_switch()?.create_dpdk_port(&port_name, &socket_path)?;
                     }
+                    // Not working on ovs-bridge of type "netdev"
+                    // bridge must be of type "system"
                     NetType::Tap(v) => {
                         // Create tap device
                         ip::tap::create(&port_name)?;
                         ip::up(&port_name)?;
+
                         // Link to ovs bridge
                         OvsBridge::get_vm_switch()?.create_tap_port(&port_name)?;
+                    }
+                    // Not working on ovs-bridge of type "netdev"
+                    // bridge must be of type "system"
+                    NetType::MacVTap(v) => {
+                        // Create macvtap device
+                        ip::tap::create_macvtap(&port_name)?;
+                        ip::up(&port_name)?;
                     }
                 };
             }

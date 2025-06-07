@@ -1,22 +1,11 @@
 use std::os::fd::AsRawFd;
 
+use crate::network::utils::unix_name;
 use pipelight_exec::Process;
 
 // Error handling
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
-
-/*
-* Shorten an interface name to Unix MAX_LENGTH.
-*/
-pub fn unix_name(name: &str) -> String {
-    let res = if name.len() > 15 {
-        name[..15].to_owned()
-    } else {
-        name.to_owned()
-    };
-    res
-}
 
 /*
 * Return tap fd.
@@ -37,13 +26,6 @@ pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
 mod test {
     use super::*;
     use crate::network::ovs::{OvsBridge, OvsInterfaceType};
-
-    #[test]
-    fn test_unix_name() -> Result<()> {
-        let res = unix_name("vm-sasuke_uchiha-main");
-        assert_eq!(&res, "vm-sasuke_uchih");
-        Ok(())
-    }
 
     #[test]
     fn test_ovs_get_tap_interfaces() -> Result<()> {

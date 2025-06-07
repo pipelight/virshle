@@ -1,5 +1,5 @@
 [[pipelines]]
-name =  "example"
+name = "example"
 
 [[pipelines.steps]]
 name = "first"
@@ -7,5 +7,4 @@ commands = ["ls", "pwd"]
 
 [[pipelines.steps]]
 name = "second"
-commands = ["ls","pwd"]
-
+commands = ["ls", "pwd"]
