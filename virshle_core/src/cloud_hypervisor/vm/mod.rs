@@ -79,7 +79,7 @@ impl fmt::Display for NetType {
         let string = match self {
             NetType::Vhost(v) => "vhost".to_owned(),
             NetType::Tap(v) => "tap".to_owned(),
-            NetType::MacVTap(v) => "macvtap".to_owned(),
+            NetType::MacVTap(v) => "mac_v_tap".to_owned(),
         };
         write!(f, "{}", string)
     }
