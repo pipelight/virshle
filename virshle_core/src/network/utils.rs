@@ -34,7 +34,8 @@ pub fn uuid_to_mac(uuid: &Uuid) -> MacAddr6 {
     let mut mac = "".to_owned();
     for (i, c) in uuid.chars().enumerate() {
         mac.push_str(&c.to_string());
-        if (i + 1).is_multiple_of(2) && i < (uuid.len() - 1) {
+        // if (i + 1).is_multiple_of(2) && i < (uuid.len() - 1) {
+        if (i + 1) % 2 == 0 && i < (uuid.len() - 1) {
             mac.push_str(":")
         }
     }
