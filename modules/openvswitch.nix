@@ -12,7 +12,7 @@ in
   mkIf cfg.enable {
     # OpenVSwitch
     virtualisation.vswitch = {
-      package = pkgs.openvswitch-dpdk;
+      package = mkIf cfg.dpdk.enable pkgs.openvswitch-dpdk;
       enable = true;
     };
 
@@ -30,9 +30,9 @@ in
       ram_to_hugepage = dedicated_ram: hugepage_size: toString ((dedicated_ram * pow 1024 2) / hugepage_size);
     in {
       kernelModules = ["openvswitch"];
-      kernelParams = mkBefore ["nr_hugepages=${ram_to_hugepage 16 2048}"];
+      kernelParams = mkIf cfg.dpdk.enable (mkBefore ["nr_hugepages=${ram_to_hugepage 16 2048}"]);
       kernel.sysctl = {
-        "vm.nr_hugepages" = mkBefore 4096;
+        "vm.nr_hugepages" = mkIf dpdk.enable (mkBefore 4096);
       };
     };
 
@@ -56,6 +56,12 @@ in
 
     environment.systemPackages = with pkgs; [
       # Network manager
-      openvswitch-dpdk
+      (mkIf
+        cfg.dpdk.enable
+        openvswitch-dpdk)
+
+      (mkIf
+        (!cfg.dpdk.enable)
+        openvswitch)
     ];
   }

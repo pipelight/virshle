@@ -47,8 +47,8 @@ pub struct UserData {
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct SshData {
-    user: String,
-    authorized_keys: Vec<String>,
+    pub user: String,
+    pub authorized_keys: Vec<String>,
 }
 
 /*

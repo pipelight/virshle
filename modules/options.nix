@@ -12,5 +12,6 @@ in {
   options.services.${moduleName} = {
     enable = mkEnableOption "Enable ${moduleName}.";
     manageNetwork.enable = mkEnableOption "Configure host network to give VM network access";
+    dpdk.enable = mkEnableOption "Configure host network to give VM network access";
   };
 }

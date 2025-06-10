@@ -28,6 +28,10 @@ pub enum VirshleError {
     #[diagnostic(transparent)]
     ConnectionError(#[from] ConnectionError),
 
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    VirshleErrorResponse(#[from] VirshleErrorResponse),
+
     ////////////////////////////////
     // Type convertion
     #[error(transparent)]
@@ -165,29 +169,26 @@ pub enum ConnectionError {
     SshAgentError(#[from] russh::AgentAuthError),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Error, Diagnostic)]
+#[error("{}", message)]
+#[diagnostic(code(api::error))]
 pub struct VirshleErrorResponse {
     pub message: String,
     pub help: String,
 }
-
 impl IntoResponse for VirshleError {
     fn into_response(self) -> Response<Body> {
+        let status = StatusCode::INTERNAL_SERVER_ERROR;
         let mut err = VirshleErrorResponse {
             message: self.to_string(),
             help: "".to_owned(),
         };
-
         if let Some(origin) = self.diagnostic_source() {
             err.help = origin.to_string();
         }
 
         let body = Body::from(serde_json::to_value(err).unwrap().to_string());
-
-        let res = Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(body)
-            .unwrap();
+        let res = Response::builder().status(status).body(body).unwrap();
         return res;
     }
 }
