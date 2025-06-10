@@ -62,7 +62,7 @@ pub enum Crud {
     Update(CreateArgs),
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CreateArgs {
     #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
         conflicts_with = "template",
@@ -75,7 +75,7 @@ pub struct CreateArgs {
     pub node: Option<String>,
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct VmArgs {
     #[arg(
         long,
@@ -104,7 +104,7 @@ pub struct VmArgs {
     pub state: Option<String>,
 }
 
-#[derive(Debug, Args, Clone, Eq, PartialEq, Serialize)]
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
 pub struct StartArgs {
     #[command(flatten)]
     pub vm_args: VmArgs,
@@ -120,13 +120,15 @@ pub struct StartArgs {
     pub user_data: Option<String>,
 }
 
-#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum TemplateArgs {
+    #[default]
     Ls,
 }
 
-#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum NodeArgs {
+    #[default]
     Ls,
     Serve,
 }
