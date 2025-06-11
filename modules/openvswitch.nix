@@ -32,7 +32,7 @@ in
       kernelModules = ["openvswitch"];
       kernelParams = mkIf cfg.dpdk.enable (mkBefore ["nr_hugepages=${ram_to_hugepage 16 2048}"]);
       kernel.sysctl = {
-        "vm.nr_hugepages" = mkIf dpdk.enable (mkBefore 4096);
+        "vm.nr_hugepages" = mkIf cfg.dpdk.enable (mkBefore 4096);
       };
     };
 
