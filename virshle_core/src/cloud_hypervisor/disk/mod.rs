@@ -27,7 +27,7 @@ pub struct DiskTemplate {
     pub readonly: Option<bool>,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Disk {
     pub name: String,
     pub path: String,

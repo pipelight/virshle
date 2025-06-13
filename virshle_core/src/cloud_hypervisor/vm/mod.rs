@@ -35,12 +35,12 @@ use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Account {
     uuid: String,
     name: String,
 }
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct VmConfigPlus {
     /// The account the vm is linked to.
     pub owner: Option<Account>,
@@ -60,14 +60,14 @@ impl Default for VmConfigPlus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct VmNet {
     pub name: String,
     #[serde(rename = "type")]
     pub _type: NetType,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum NetType {
     Vhost(Vhost),
@@ -84,14 +84,14 @@ impl fmt::Display for NetType {
         write!(f, "{}", string)
     }
 }
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Tap {
     // Set static mac address or random if none.
     pub mac: Option<String>,
     // Request a static ipv4 ip on the interface.
     pub ip: Option<String>,
 }
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Vhost {
     // Set static mac address or random if none.
     pub mac: Option<String>,
@@ -99,7 +99,7 @@ pub struct Vhost {
     pub ip: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Vm {
     // id from sqlite database
     pub id: Option<u64>,
