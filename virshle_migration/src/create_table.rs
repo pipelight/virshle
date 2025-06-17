@@ -48,6 +48,7 @@ pub enum Vm {
     Uuid,
     Name,
     Definition,
+    CreatedAt,
 }
 
 #[derive(DeriveIden, Debug)]
@@ -57,6 +58,7 @@ pub enum Account {
     Uuid,
     Name,
     Definition,
+    CreatedAt,
 }
 
 #[derive(DeriveIden, Debug)]
