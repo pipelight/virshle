@@ -2,7 +2,11 @@ pub mod ip;
 pub mod utils;
 pub use std::str::FromStr;
 
+pub mod interface;
 pub mod ovs;
+
+// Query dhcp server for ipv6/ipv4 leases.
+pub mod dhcp;
 
 // Error handling
 use miette::{IntoDiagnostic, Result};

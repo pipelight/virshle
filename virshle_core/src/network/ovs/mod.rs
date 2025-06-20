@@ -1,6 +1,9 @@
-mod convert;
+pub mod convert;
 mod getters;
 mod translate;
+
+// traits
+use super::interface::Bridge;
 
 // Reexport
 pub use translate::{OvsBridge, OvsInterface, OvsInterfaceType, OvsPort};
@@ -152,7 +155,7 @@ impl OvsBridge {
      * It has your main interface (ex: eno1) as port.
      */
     pub fn get_main_switch() -> Result<OvsBridge, VirshleError> {
-        let bridges = OvsBridge::get_all()?;
+        let bridges: Vec<OvsBridge> = OvsBridge::get_all()?;
         let bridge = bridges.iter().find(|e| {
             e.ports
                 .iter()
@@ -174,7 +177,7 @@ impl OvsBridge {
      */
     pub fn get_vm_switch() -> Result<OvsBridge, VirshleError> {
         let vm_bridge_name = "br0";
-        let bridges = Self::get_all()?;
+        let bridges: Vec<OvsBridge> = Self::get_all()?;
 
         let bridge = bridges.iter().find(|e| {
             e.ports

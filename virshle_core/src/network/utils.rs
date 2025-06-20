@@ -10,6 +10,7 @@ use virshle_error::{LibError, VirshleError};
 
 /*
 * Shorten an interface name to Unix MAX_LENGTH.
+* Unix iface can' have names longer than 15 chars.
 */
 pub fn unix_name(name: &str) -> String {
     let res = if name.len() > 15 {

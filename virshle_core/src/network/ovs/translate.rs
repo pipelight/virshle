@@ -1,4 +1,5 @@
 use super::convert;
+use crate::network::interface::Bridge;
 
 use std::rc::Rc;
 
@@ -13,6 +14,54 @@ use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
 
+impl Bridge for OvsBridge {
+    /*
+     * Get ovs network switches/bridges.
+     */
+    fn get_all() -> Result<Vec<OvsBridge>, VirshleError> {
+        #[cfg(debug_assertions)]
+        let cmd = "sudo ovs-vsctl -f json list bridge".to_owned();
+        #[cfg(not(debug_assertions))]
+        let cmd = "ovs-vsctl -f json list bridge".to_owned();
+
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        match res.io.stdout {
+            Some(v) => {
+                let mut bridges: Vec<OvsBridge> = serde_json::from_value(convert::to_json(&v)?)?;
+                // for ovs_bridge in bridges {
+                //     let br: dyn Bridge = ovs_bridge.into();
+                // }
+
+                bridges.iter_mut().for_each(|e| {
+                    e.get_ports().unwrap();
+                });
+                // Hydration cascade
+                return Ok(bridges);
+            }
+            None => {
+                let message = "Couldn't find any bridges";
+                let help = "Do you have access right to ovs database?";
+                return Err(LibError::builder().msg(message).help(help).build().into());
+            }
+        }
+    }
+    fn get_ports<'a>(&mut self) -> Result<&mut Self, VirshleError>
+    where
+        Self: Bridge + Serialize + Deserialize<'a>,
+    {
+        let bridge = Rc::new(self.to_owned());
+        let ports_uuid = self._ports_uuid.clone();
+        for uuid in ports_uuid {
+            let mut port = OvsPort::get_by_uuid(uuid)?;
+            port.bridge = Rc::clone(&bridge);
+            self.ports.push(port);
+        }
+        Ok(self)
+    }
+}
+
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct OvsBridge {
     #[serde(rename = "_uuid")]
@@ -26,6 +75,33 @@ pub struct OvsBridge {
 }
 
 impl OvsBridge {
+    /*
+     * Get ovs network switches/bridges.
+     */
+    pub fn _get_all() -> Result<Vec<OvsBridge>, VirshleError> {
+        #[cfg(debug_assertions)]
+        let cmd = "sudo ovs-vsctl -f json list bridge".to_owned();
+        #[cfg(not(debug_assertions))]
+        let cmd = "ovs-vsctl -f json list bridge".to_owned();
+
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        match res.io.stdout {
+            Some(v) => {
+                let mut bridges: Vec<OvsBridge> = serde_json::from_value(convert::to_json(&v)?)?;
+                // Hydration cascade
+                bridges.iter_mut().for_each(|e| e.hydrate().unwrap());
+
+                return Ok(bridges);
+            }
+            None => {
+                let message = "Couldn't find any bridges";
+                let help = "Do you have access right to ovs database?";
+                return Err(LibError::builder().msg(message).help(help).build().into());
+            }
+        }
+    }
     pub fn hydrate(&mut self) -> Result<(), VirshleError> {
         let bridge = Rc::new(self.to_owned());
         let ports_uuid = self._ports_uuid.clone();
@@ -63,33 +139,6 @@ impl OvsBridge {
         let message = format!("Couldn't a bridge with name: {}", name);
         let help = "Do you have access right to the ovs database?";
         return Err(LibError::builder().msg(&message).help(help).build().into());
-    }
-    /*
-     * Get ovs network switches/bridges.
-     */
-    pub fn get_all() -> Result<Vec<OvsBridge>, VirshleError> {
-        #[cfg(debug_assertions)]
-        let cmd = "sudo ovs-vsctl -f json list bridge".to_owned();
-        #[cfg(not(debug_assertions))]
-        let cmd = "ovs-vsctl -f json list bridge".to_owned();
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.io.stdout {
-            Some(v) => {
-                let mut bridges: Vec<OvsBridge> = serde_json::from_value(convert::to_json(&v)?)?;
-                // Hydration cascade
-                bridges.iter_mut().for_each(|e| e.hydrate().unwrap());
-
-                return Ok(bridges);
-            }
-            None => {
-                let message = "Couldn't find any bridges";
-                let help = "Do you have access right to ovs database?";
-                return Err(LibError::builder().msg(message).help(help).build().into());
-            }
-        }
     }
 }
 
@@ -287,11 +336,12 @@ impl OvsInterface {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::network::interface::Bridge;
 
     // Brigdges
     // #[test]
     fn test_ovs_get_bridges() -> Result<()> {
-        let res = OvsBridge::get_all()?;
+        let res: Vec<OvsBridge> = OvsBridge::get_all()?;
         println!("{:#?}", res);
         Ok(())
     }
