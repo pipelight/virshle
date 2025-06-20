@@ -1,6 +1,10 @@
+use super::ip::IpInterface;
 use super::ovs;
 use super::ovs::{OvsBridge, OvsInterface};
 
+use bon::{bon, Builder};
+
+use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};
 
@@ -10,53 +14,72 @@ use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
 
-pub trait Bridge {
-    fn get_all() -> Result<Vec<impl Bridge>, VirshleError>;
+// pub trait Interface {
+//     fn create() -> Result<Self, VirshleError>;
+//     fn delete() -> Result<Self, VirshleError>;
+// }
 
-    fn get_ports<'a>(&mut self) -> Result<&mut Self, VirshleError>
-    where
-        Self: Bridge + Serialize + Deserialize<'a>;
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum InterfaceState {
+    Up,
+    Down,
+}
+impl InterfaceState {
+    fn from_str(s: &str) -> Result<Option<InterfaceState>> {
+        let cased = s.to_case(Case::Title);
+        let res = match cased.as_str() {
+            "Up" => Some(InterfaceState::Up),
+            "Down" => Some(InterfaceState::Down),
+            "Unknown" | _ => None,
+        };
+        Ok(res)
+    }
 }
 
-pub trait InterfaceLinker {
+pub trait Bridge {
     /*
-     * Link an interface to a bridge
+     * Return all bridges
      */
-    fn bridge(br: &str, iface: &str) -> Result<(), VirshleError>;
+    fn get_all() -> Result<Vec<impl Bridge>, VirshleError>;
+    // fn add_port(&self, iface_type: &InterfaceType) -> Result<impl Interface, VirshleError>;
 }
 
 pub trait InterfaceManager {
-    fn get_all() -> Result<(), VirshleError>;
-    fn create() -> Result<(), VirshleError>;
-    fn delete() -> Result<(), VirshleError>;
+    fn new() -> Result<impl InterfaceManager, VirshleError>;
+    // fn create(iface_type: &InterfaceType) -> Result<impl Interface, VirshleError>;
+    // fn delete(iface_name: &str) -> Result<(), VirshleError>;
 }
 
-// Manages interfaces with ovs-vsctl
-pub struct Ovs;
+// Manages interfaces with "ovs-vsctl"
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Ovs {
+    bridges: OvsBridges,
+}
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct OvsBridges(Vec<OvsBridge>);
 
 impl InterfaceManager for Ovs {
-    fn get_all() -> Result<(), VirshleError> {
-        Ok(())
-    }
-    fn create() -> Result<(), VirshleError> {
-        Ok(())
-    }
-    fn delete() -> Result<(), VirshleError> {
-        Ok(())
+    fn new() -> Result<Self, VirshleError> {
+        let res = Ovs {
+            bridges: OvsBridges(OvsBridge::get_all()?),
+        };
+        Ok(res)
     }
 }
 
-// Manages interfaces with ip
+// Manages interfaces with "ip"
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Ip;
 
-impl InterfaceManager for Ip {
-    fn get_all() -> Result<(), VirshleError> {
-        Ok(())
-    }
-    fn create() -> Result<(), VirshleError> {
-        Ok(())
-    }
-    fn delete() -> Result<(), VirshleError> {
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_ovs_manager() -> Result<()> {
+        let res = Ovs::new();
+        println!("{:#?}", res);
         Ok(())
     }
 }

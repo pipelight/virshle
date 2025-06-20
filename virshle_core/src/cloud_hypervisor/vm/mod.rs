@@ -105,7 +105,7 @@ pub struct Vm {
     pub id: Option<u64>,
     pub name: String,
     pub vcpu: u64,
-    // vram in Mib
+    // vram in Gib
     pub vram: u64,
     pub net: Option<Vec<VmNet>>,
     pub uuid: Uuid,
@@ -122,7 +122,7 @@ impl Default for Vm {
             id: None,
             name: random_name().unwrap(),
             vcpu: 1,
-            // vram in Mib
+            // vram in Gib
             vram: 2,
             net: None,
             uuid: Uuid::new_v4(),
@@ -252,6 +252,14 @@ impl Vm {
 
         let endpoint = "/api/v1/vm.create";
         let response = rest.put::<VmConfig>(endpoint, Some(config)).await?;
+
+        if response.status().is_success() {
+            let msg = &response.to_string().await?;
+            trace!("{}", &msg);
+        } else {
+            let err_msg = &response.to_string().await?;
+            error!("{}", &err_msg);
+        }
 
         Ok(())
     }

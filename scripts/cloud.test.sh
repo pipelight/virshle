@@ -10,7 +10,7 @@ mac="76:99:00:d8:28:e2"
 # mac="c2:67:4f:53:29:cb"
 
 # Clean previous
-rm /var/lib/virshle/socket/test.sock
+# rm /tmp/ch.sock
 # rm /var/lib/virshle/net/vhost-user3
 
 # sudo ovs-vsctl del-port vhost-user3
@@ -37,15 +37,14 @@ rm /var/lib/virshle/socket/test.sock
 
 
 cloud-hypervisor \
-    --api-socket /var/lib/virshle/socket/$uuid.sock \
+    --api-socket /tmp/ch.sock \
     --kernel /run/cloud-hypervisor/hypervisor-fw \
     --console off \
     --serial tty \
-    --disk path=/home/anon/Iso/nixos.img path=/home/anon/Iso/pipelight-init.img \
-    --cpus boot=2 \
-    --memory size=512M,hugepages=on,shared=true \
-    --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw" \
-    --net tap=tap0@eno1,mac=be:59:d1:4e:12:72
+    --disk path=/home/anon/Iso/nixos.test.img \
+    --cpus boot=1 \
+    --memory size=2048M \
+    --cmdline "earlyprintk=ttyS0 console=ttyS0 root=/dev/vda1 rw" \
 
     # --net mac=$mac,vhost_user=true,socket=/var/lib/virshle/net/vhost-user3,num_queues=4,vhost_mode=server
 

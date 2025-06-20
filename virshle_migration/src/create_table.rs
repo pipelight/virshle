@@ -27,7 +27,28 @@ impl MigrationTrait for Migration {
                     .col(string_uniq(Vm::Uuid))
                     .col(string_uniq(Vm::Name))
                     .col(json(Vm::Definition))
-                    // .col(date_time(Vm::CreatedAt))
+                    .col(date_time(Vm::CreatedAt))
+                    .col(date_time(Vm::UpdatedAt))
+                    .to_owned(),
+            )
+            .await?;
+        // Ip leases
+        manager
+            .create_table(
+                Table::create()
+                    .table(Lease::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Lease::Id))
+                    .col(integer(Lease::VmId))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("vm_id")
+                            .from(Lease::Table, Lease::VmId)
+                            .to(Vm::Table, Vm::Id),
+                    )
+                    .col(string_uniq(Lease::Ip))
+                    .col(date_time(Lease::CreatedAt))
+                    .col(date_time(Lease::UpdatedAt))
                     .to_owned(),
             )
             .await?;
@@ -50,24 +71,17 @@ pub enum Vm {
     Name,
     Definition,
     CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveIden, Debug)]
-pub enum Account {
+pub enum Lease {
     Table,
     Id,
-    Uuid,
-    Name,
-    Definition,
-    CreatedAt,
-}
-
-#[derive(DeriveIden, Debug)]
-pub enum AccountVm {
-    Table,
-    Id,
-    AccountId,
     VmId,
+    Ip,
+    CreatedAt,
+    UpdatedAt,
 }
 
 #[cfg(test)]

@@ -51,8 +51,10 @@ pub struct MemoryConfig {
     pub size: u64,
     pub shared: bool,
     pub hugepages: bool,
+
     #[serde(default)]
     pub hugepage_size: Option<u64>,
+    pub hotplug_size: Option<u64>,
     // Removed ch unused default
     #[serde(flatten)]
     other: serde_json::Value,
@@ -172,17 +174,19 @@ impl From<&Vm> for VmConfig {
     fn from(e: &Vm) -> Self {
         // Todo(): make those values dynamic
         let kernel = "/run/cloud-hypervisor/hypervisor-fw";
-
+        let mem_size = e.vram * u64::pow(1024, 3);
         let mut config = VmConfig {
             cpus: CpusConfig {
                 boot_vcpus: e.vcpu,
-                max_vcpus: e.vcpu,
+                max_vcpus: e.vcpu * 2,
                 ..Default::default()
             },
             memory: MemoryConfig {
-                size: e.vram * u64::pow(1024, 3),
-                shared: true,
+                size: mem_size,
+                shared: false,
                 hugepages: true,
+                // hugepage_size: Some(2048),
+                // hotplug_size: Some(mem_size),
                 ..Default::default()
             },
             disks: None,
@@ -200,11 +204,7 @@ impl From<&Vm> for VmConfig {
         config.payload = Some(payload);
 
         // Attach/Detach from standard output.
-        config.serial = Some(ConsoleConfig {
-            mode: ConsoleOutputMode::Tty,
-        });
-
-        config.console = match e.is_attach().unwrap() {
+        config.serial = match e.is_attach().unwrap() {
             true => Some(ConsoleConfig {
                 mode: ConsoleOutputMode::Tty,
             }),
@@ -212,6 +212,9 @@ impl From<&Vm> for VmConfig {
                 mode: ConsoleOutputMode::Off,
             }),
         };
+        config.console = Some(ConsoleConfig {
+            mode: ConsoleOutputMode::Tty,
+        });
 
         // Add disks
         let mut disk: Vec<DiskConfig> = vec![];

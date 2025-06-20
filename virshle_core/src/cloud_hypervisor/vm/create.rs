@@ -28,7 +28,7 @@ use crate::network::{ip, ip::fd, ovs::OvsBridge, utils};
 use super::UserData;
 
 // Error Handling
-use log::{error, info};
+use log::{error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
@@ -48,7 +48,10 @@ impl Vm {
         let endpoint = "/api/v1/vm.boot";
         let response = rest.put::<()>(endpoint, None).await?;
 
-        if !response.status().is_success() {
+        if response.status().is_success() {
+            let msg = &response.to_string().await?;
+            trace!("{}", &msg);
+        } else {
             let err_msg = &response.to_string().await?;
             error!("{}", &err_msg);
 

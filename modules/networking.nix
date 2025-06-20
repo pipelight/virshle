@@ -17,6 +17,8 @@ with lib; {
         # vswitches
         "vs0"
         "vs0p1"
+        "br0"
+        "vm-dhcp"
       ];
     };
 
@@ -42,6 +44,7 @@ with lib; {
     };
 
     vswitches = {
+      # Host bridge
       vs0 = {
         interfaces = {
           eno1 = {};
@@ -52,8 +55,19 @@ with lib; {
         # Add configuration to host virturl switch vs0
         # and add a weak stable mac for dhcpcd.
         extraOvsctlCmds = ''
-          set bridge vs0 datapath_type=netdev
+          set bridge vs0 datapath_type=system
           set interface vs0p1 mac=\"${slib.str_to_mac config.networking.hostName}\"
+        '';
+      };
+      # Vm isolated bridge
+      br0 = {
+        interfaces = {
+          vm-dhcp = {
+            type = "internal";
+          };
+        };
+        extraOvsctlCmds = ''
+          set bridge br0 datapath_type=system
         '';
       };
     };
@@ -68,6 +82,7 @@ with lib; {
     # "net.ipv6.conf.eno1.accept_ra" = 0;
 
     "net.ipv6.conf.vs0.accept_ra" = 0;
+    "net.ipv6.conf.br0.accept_ra" = 0;
     "net.ipv6.conf.ovs-system.accept_ra" = 0;
 
     "net.ipv6.conf.vs0p1.accept_ra" = 1;

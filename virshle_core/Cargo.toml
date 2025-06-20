@@ -80,6 +80,7 @@ libc = "0.2.172"
 serde_with = "3.12.0"
 whoami = "1.6.0"
 unindent = "0.2.4"
+ipnet = { version = "2.11.0", features = ["serde"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

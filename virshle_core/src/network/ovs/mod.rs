@@ -1,5 +1,6 @@
 pub mod convert;
 mod getters;
+mod request;
 mod translate;
 
 // traits
@@ -42,26 +43,13 @@ impl OvsBridge {
         let vm_bridge_name = &self.name;
         let ifname = utils::unix_name(&name);
 
-        #[cfg(debug_assertions)]
-        let cmd = format!(
-            "sudo ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {ifname} \
-                -- set interface {ifname} type=system"
-        );
-        #[cfg(not(debug_assertions))]
-        let cmd = format!(
-            "ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {ifname} type=system"
-        );
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
+        request::OvsRequest::interface(&ifname)
+            ._type(request::OvsInterfaceType::System)
+            .bridge(vm_bridge_name)
+            .create()
+            .build()
+            .exec()?;
 
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed: Couldn't create tap port";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            return Err(LibError::builder().msg(message).help(&help).build().into());
-        }
         Ok(())
     }
     /*
@@ -70,28 +58,14 @@ impl OvsBridge {
     pub fn create_dpdk_port(&self, name: &str, socket_path: &str) -> Result<(), VirshleError> {
         let vm_bridge_name = &self.name;
 
-        #[cfg(debug_assertions)]
-        let cmd = format!(
-            "sudo ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
-        );
-        #[cfg(not(debug_assertions))]
-        let cmd = format!(
-            "ovs-vsctl \
-                -- --may-exist add-port {vm_bridge_name} {name} \
-                -- set interface {name} type=dpdkvhostuserclient \
-                -- set interface {name} options:vhost-server-path={socket_path} options:n_rxq=2 options:mtu=1500"
-        );
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
+        request::OvsRequest::interface(name)
+            ._type(request::OvsInterfaceType::DpdkVhostUserClient)
+            .socket_path(socket_path)
+            .bridge(vm_bridge_name)
+            .create()
+            .build()
+            .exec()?;
 
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed: Couldn't create dpdk port";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            return Err(LibError::builder().msg(message).help(&help).build().into());
-        }
         Ok(())
     }
 }
@@ -202,28 +176,11 @@ impl OvsBridge {
         info!("Create a virtual switch for virtual machines.");
         let vm_bridge_name = "br0";
 
-        #[cfg(debug_assertions)]
-        let cmd = format!(
-            "sudo ovs-vsctl \
-            -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=system"
-        );
-        #[cfg(not(debug_assertions))]
-        let cmd = format!(
-            "ovs-vsctl \
-            -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=system"
-        );
-
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        if let Some(stderr) = res.io.stderr {
-            let message = "Ovs command failed, couldn't create a vm switch.";
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-
-            return Err(LibError::builder().msg(message).help(&help).build().into());
-        }
+        request::OvsRequest::bridge(vm_bridge_name)
+            ._type(request::OvsBridgeType::System)
+            .create()
+            .build()
+            .exec()?;
 
         Ok(())
     }
@@ -286,39 +243,32 @@ pub fn patch_vm_and_main_switches() -> Result<(), VirshleError> {
     let vm_bridge_name = "br0";
     let main_bridge_name = OvsBridge::get_main_switch()?.name;
 
+    let patch1 = format!("patch_{main_bridge_name}_{vm_bridge_name}");
+    let patch2 = format!("patch_{vm_bridge_name}_{main_bridge_name}");
+
     // - add patch cable to main switch (1/2)
+    request::OvsRequest::interface(&patch1)
+        ._type(request::OvsInterfaceType::Patch)
+        .bridge(&main_bridge_name)
+        .peer(&patch2)
+        .create()
+        .build()
+        .exec()?;
+
     // - add vm switch
+    request::OvsRequest::bridge(vm_bridge_name)
+        .create()
+        .build()
+        .exec()?;
+
     // - add patch cable to vm switch (2/2)
-    #[cfg(debug_assertions)]
-        let cmd = format!(
-            "sudo ovs-vsctl \
-            -- --may-exist add-port {main_bridge_name} patch_{main_bridge_name}_{vm_bridge_name} \
-            -- set interface patch_{main_bridge_name}_{vm_bridge_name} type=patch options:peer=patch_{vm_bridge_name}_{main_bridge_name} \
-            -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=system \
-            -- --may-exist add-port {vm_bridge_name} patch_{vm_bridge_name}_{main_bridge_name} \
-            -- set interface patch_{vm_bridge_name}_{main_bridge_name} type=patch options:peer=patch_{main_bridge_name}_{vm_bridge_name}"
-        );
-    #[cfg(not(debug_assertions))]
-        let cmd = format!(
-            "ovs-vsctl \
-            -- --may-exist add-port {main_bridge_name} patch_{main_bridge_name}_{vm_bridge_name} \
-            -- set interface patch_{main_bridge_name}_{vm_bridge_name} type=patch options:peer=patch_{vm_bridge_name}_{main_bridge_name} \
-            -- --may-exist add-br {vm_bridge_name} \
-            -- set bridge {vm_bridge_name} datapath_type=system \
-            -- --may-exist add-port {vm_bridge_name} patch_{vm_bridge_name}_{main_bridge_name} \
-            -- set interface patch_{vm_bridge_name}_{main_bridge_name} type=patch options:peer=patch_{main_bridge_name}_{vm_bridge_name}"
-        );
-
-    let mut proc = Process::new();
-    let res = proc.stdin(&cmd).run()?;
-
-    if let Some(stderr) = res.io.stderr {
-        let message = "Ovs command failed, couldn't add internet connectivity to vm switch.";
-        let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-
-        return Err(LibError::builder().msg(message).help(&help).build().into());
-    }
+    request::OvsRequest::interface(&patch2)
+        .bridge(&vm_bridge_name)
+        ._type(request::OvsInterfaceType::Patch)
+        .peer(&patch1)
+        .create()
+        .build()
+        .exec()?;
 
     Ok(())
 }
