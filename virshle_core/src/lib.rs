@@ -33,3 +33,6 @@ pub mod database;
 
 // Display virshle types in pretty tables.
 pub mod display;
+
+// Query dhcp server for ipv6/ipv4 leases.
+pub mod dhcp;

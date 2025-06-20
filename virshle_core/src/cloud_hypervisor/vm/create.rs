@@ -1,5 +1,6 @@
 use super::{Disk, NetType, Vm, VmNet};
 use crate::config::MANAGED_DIR;
+use crate::ovs::OvsPort;
 
 // Process
 use pipelight_exec::{Finder, Process};
@@ -117,7 +118,15 @@ impl Vm {
                         ip::up(&port_name)?;
 
                         // Link to ovs bridge
-                        OvsBridge::get_vm_switch()?.create_tap_port(&port_name)?;
+                        let vmbr = OvsBridge::get_vm_switch()?;
+                        // Silently try to delete old port if any.
+                        match OvsPort::get_by_name(&port_name) {
+                            Ok(v) => {
+                                v.delete()?;
+                            }
+                            Err(_) => {}
+                        };
+                        vmbr.create_tap_port(&port_name)?;
                     }
                     // Not working on ovs-bridge of type "netdev"
                     // bridge must be of type "system"

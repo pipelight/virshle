@@ -103,7 +103,7 @@ pub mod vm {
     /*
      * Create a virtual machine on a node.
      */
-    pub async fn create(args: &CreateArgs) -> Result<(), VirshleError> {
+    pub async fn create(args: &CreateArgs) -> Result<Vm, VirshleError> {
         let config = VirshleConfig::get()?;
         // Set node to be queried
         let node: Node;
@@ -123,14 +123,18 @@ pub mod vm {
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
 
-            let vm: Vec<Vm> = rest.put("/vm/create", Some(args)).await?.to_value().await?;
-            let vm = vm.first().unwrap();
+            let vm: Vm = rest.put("/vm/create", Some(args)).await?.to_value().await?;
 
             let res = format!("Created vm {:#?} on node {:#?}", vm.name, node.name);
             info!("{}", res);
+            Ok(vm)
+        } else {
+            Err(LibError::builder()
+                .msg("Couldn't create a Vm")
+                .help("A template name was not provided.")
+                .build()
+                .into())
         }
-
-        Ok(())
     }
     pub async fn delete(args: &VmArgs) -> Result<(), VirshleError> {
         let config = VirshleConfig::get()?;

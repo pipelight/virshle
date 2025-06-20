@@ -138,6 +138,35 @@ impl OvsPort {
             }
         }
     }
+    pub fn get_by_name(name: &str) -> Result<OvsPort, VirshleError> {
+        #[cfg(debug_assertions)]
+        let cmd = format!("sudo ovs-vsctl -f json list port {name}");
+        #[cfg(not(debug_assertions))]
+        let cmd = format!("ovs-vsctl -f json list port {name}");
+
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        match res.io.stdout {
+            Some(stdout) => match convert::to_json(&stdout)?.as_array().unwrap().first() {
+                Some(v) => {
+                    let mut res: OvsPort = serde_json::from_value(v.to_owned())?;
+                    res.hydrate()?;
+                    return Ok(res);
+                }
+                None => {
+                    let message = format!("Couldn't find a port with name: {name}");
+                    let help = "Are you sure this port exists?";
+                    return Err(LibError::builder().msg(&message).help(help).build().into());
+                }
+            },
+            None => {
+                let message = format!("Couldn't find a port with name: {name}");
+                let help = "Do you have access right to ovs database?";
+                return Err(LibError::builder().msg(&message).help(help).build().into());
+            }
+        }
+    }
     pub fn get_by_uuid(uuid: Uuid) -> Result<OvsPort, VirshleError> {
         #[cfg(debug_assertions)]
         let cmd = format!("sudo ovs-vsctl -f json list port {uuid}");

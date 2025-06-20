@@ -27,6 +27,7 @@ impl MigrationTrait for Migration {
                     .col(string_uniq(Vm::Uuid))
                     .col(string_uniq(Vm::Name))
                     .col(json(Vm::Definition))
+                    // .col(date_time(Vm::CreatedAt))
                     .to_owned(),
             )
             .await?;
