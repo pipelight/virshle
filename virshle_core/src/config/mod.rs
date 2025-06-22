@@ -9,6 +9,7 @@ pub use node::{Node, NodeInfo};
 use crate::api::NodeServer;
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
+use crate::network::dhcp::FakeDhcp;
 use crate::network::ovs;
 
 // Global vars
@@ -36,12 +37,14 @@ pub const CONFIG_DIR: &'static str = "/etc/virshle";
 pub struct VirshleConfig {
     node: Option<Vec<Node>>,
     pub template: Option<Template>,
+    pub fake_dhcp: Option<FakeDhcp>,
 }
 impl Default for VirshleConfig {
     fn default() -> Self {
         Self {
             node: Some(vec![Node::default()]),
             template: None,
+            fake_dhcp: None,
         }
     }
 }

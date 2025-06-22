@@ -5844,6 +5844,7 @@ dependencies = [
  "axum",
  "bat",
  "bon",
+ "chrono",
  "clap 4.5.39",
  "clap-verbosity-flag",
  "clap_complete",

@@ -13,6 +13,7 @@ use std::path::Path;
 use crate::database;
 use crate::database::connect_db;
 use crate::database::entity::{prelude::*, *};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use sea_orm::{
     prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult, IntoActiveModel,
 };
@@ -79,10 +80,15 @@ impl Vm {
      * Create vm record and persist into database.
      */
     async fn create_db_record(&mut self) -> Result<Self, VirshleError> {
+        let now: NaiveDateTime = Utc::now().naive_utc();
         let record = database::entity::vm::ActiveModel {
             uuid: ActiveValue::Set(self.uuid.to_string()),
             name: ActiveValue::Set(self.name.clone()),
             definition: ActiveValue::Set(serde_json::to_value(&self)?),
+
+            created_at: ActiveValue::Set(now),
+            updated_at: ActiveValue::Set(now),
+
             ..Default::default()
         };
 
