@@ -1,5 +1,5 @@
 use super::{Disk, NetType, Vm, VmNet};
-use crate::config::MANAGED_DIR;
+use crate::config::{VirshleConfig, MANAGED_DIR};
 
 // Process
 use pipelight_exec::{Finder, Process};
@@ -52,8 +52,14 @@ impl Vm {
             .filter(database::entity::vm::Column::Name.eq(&self.name))
             .one(&db)
             .await?;
-        if let Some(record) = record {
-            database::prelude::Vm::delete(record.into_active_model())
+        if let Some(record) = &record {
+            database::prelude::Vm::delete(record.clone().into_active_model())
+                .exec(&db)
+                .await?;
+
+            // Delete assiociated leases
+            database::prelude::Lease::delete_many()
+                .filter(database::entity::lease::Column::VmId.eq(record.id))
                 .exec(&db)
                 .await?;
         }

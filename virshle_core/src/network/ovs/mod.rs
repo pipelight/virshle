@@ -204,10 +204,6 @@ impl OvsBridge {
                     port.delete()?;
                 }
             }
-            // If port name is malformed but still on virshle managed switch.
-            else {
-                port.delete()?;
-            }
         }
         Ok(())
     }

@@ -9,11 +9,17 @@
 * in just a few lines.
 */
 use super::{vm::NetType, Disk, Vm};
-use crate::network::{ip::fd, utils};
+use crate::{
+    config::VirshleConfig,
+    network::{ip::fd, utils},
+};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use std::future::Future;
+use std::net::IpAddr;
 
 // Error handling
 use log::info;
@@ -93,6 +99,7 @@ pub struct NetConfig {
     num_queues: Option<u64>,
     pub mac: Option<String>,
     pub host_mac: Option<String>,
+    pub ip: Option<IpAddr>,
 
     // tap
     pub tap: Option<String>,
@@ -170,8 +177,10 @@ pub struct VmConfig {
     other: serde_json::Value,
 }
 
-impl From<&Vm> for VmConfig {
-    fn from(e: &Vm) -> Self {
+// impl From<&Vm> for VmConfig {
+// fn from(e: &Vm) -> Self {
+impl VmConfig {
+    pub async fn from(e: &Vm) -> Result<Self, VirshleError> {
         // Todo(): make those values dynamic
         let kernel = "/run/cloud-hypervisor/hypervisor-fw";
         let mem_size = e.vram * u64::pow(1024, 3);
@@ -229,6 +238,14 @@ impl From<&Vm> for VmConfig {
             for net in nets {
                 let port_name = format!("vm-{}-{}", e.name, net.name);
 
+                // Get fake_dhcp ip
+                let mut ip: Option<IpAddr> = None;
+                if let Some(fake_dhcp) = VirshleConfig::get()?.fake_dhcp {
+                    if let Some(pool) = fake_dhcp.pool.get(&net.name) {
+                        ip = Some(pool.get_random_unleased_ip().await?);
+                    }
+                }
+
                 match &net._type {
                     NetType::Vhost(_) => {
                         net_configs.push(NetConfig {
@@ -250,6 +267,7 @@ impl From<&Vm> for VmConfig {
                             mac: Some(utils::uuid_to_mac(&e.uuid).to_string()),
                             //tap
                             tap: Some(tap_name),
+                            ip,
 
                             // multiqueue support
                             // num_queues: Some(e.vcpu * 2),
@@ -279,7 +297,8 @@ impl From<&Vm> for VmConfig {
             }
             config.net = Some(net_configs);
         }
-        config
+        // config
+        Ok(config)
     }
 }
 
@@ -290,8 +309,8 @@ mod test {
     use miette::{IntoDiagnostic, Result};
     use std::path::PathBuf;
 
-    #[test]
-    fn make_vm_from_template() -> Result<()> {
+    #[tokio::test]
+    async fn make_vm_from_template() -> Result<()> {
         let toml = r#"
         name = "xs"
         vcpu = 1
@@ -314,14 +333,15 @@ mod test {
         let vm = Vm::from(&vm_template);
         println!("{:#?}", vm);
 
-        let vmm_config = VmConfig::from(&vm);
+        // let vmm_config = VmConfig::from(&vm);
+        let vmm_config = VmConfig::from(&vm).await?;
 
         println!("{:#?}", vmm_config);
         Ok(())
     }
 
-    #[test]
-    fn make_vm_from_definition_with_ids() -> Result<()> {
+    #[tokio::test]
+    async fn make_vm_from_definition_with_ids() -> Result<()> {
         let toml = r#"
         name = "test_xs"
         uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
@@ -339,7 +359,8 @@ mod test {
         "#;
 
         let vm = Vm::from_toml(&toml)?;
-        let vmm_config = VmConfig::from(&vm);
+        // let vmm_config = VmConfig::from(&vm);
+        let vmm_config = VmConfig::from(&vm).await?;
 
         // println!("{:#?}", vmm_config);
         Ok(())

@@ -244,7 +244,7 @@ impl Vm {
      * Bring the virtual machine up.
      */
     async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
-        let config = VmConfig::from(self);
+        let config = VmConfig::from(self).await?;
         trace!("{:#?}", config);
 
         let mut conn = Connection::from(self);
@@ -290,7 +290,7 @@ mod test {
     }
     // #[tokio::test]
     async fn delete_vm() -> Result<()> {
-        let mut item = Vm::default();
+        let item = Vm::default();
         item.shutdown().await?;
         Ok(())
     }

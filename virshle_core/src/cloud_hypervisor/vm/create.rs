@@ -1,5 +1,4 @@
 use super::{Disk, NetType, Vm, VmNet};
-use crate::config::MANAGED_DIR;
 use crate::ovs::OvsPort;
 
 // Process
