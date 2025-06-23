@@ -107,7 +107,7 @@ size = "100G"
 # Network
 
 ## Fake dhcp when no dhcp available on network
-[fake_dhcp]
-[fake_dhcp.pool.main]
-subnet = "X/64"
-range = ["2001:db8::1ff", "2001:db8::ffff"]
+# [fake_dhcp]
+# [fake_dhcp.pool.main]
+# subnet = "2001:db8::/64"
+# range = ["2001:db8::1ff", "2001:db8::ffff"]
