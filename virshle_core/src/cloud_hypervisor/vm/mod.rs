@@ -154,7 +154,10 @@ impl Vm {
             match self.is_attach().ok() {
                 Some(true) => {
                     let cmd = format!(
-                        "kitty --hold sh -c \"{} --api-socket {}\"",
+                        "kitty \
+                            --title ttyS0@vm-{} \
+                            --hold sh -c \"{} --api-socket {}\"",
+                        &self.name,
                         cmd,
                         &self.get_socket()?
                     );

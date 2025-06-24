@@ -37,6 +37,18 @@ pub fn create(name: &str) -> Result<(), VirshleError> {
             mode tap"
     ));
 
+    // Ensure no ipv6 is configured for tap
+    #[cfg(debug_assertions)]
+    cmds.push(format!(
+        "sudo sysctl \
+            net.ipv6.conf.{name}.accept_ra=0"
+    ));
+    #[cfg(not(debug_assertions))]
+    cmds.push(format!(
+        "sysctl \
+            net.ipv6.conf.{name}.accept_ra=0"
+    ));
+
     for cmd in cmds {
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;

@@ -81,10 +81,13 @@ impl InitData {
      * Convert user-data into a pipelight configuration file.
      */
     pub fn to_pipelight_toml_config(&self) -> Result<String, VirshleError> {
-        let mut p_config = unindent(&format!(
+        // Run before network is up
+        let mut p_config = "".to_owned();
+
+        p_config += &unindent(&format!(
             r#"
         [[pipelines]]
-        name = "init"
+        name = "init_pre"
         "#
         ))
         .to_owned();
@@ -97,7 +100,7 @@ impl InitData {
             [[pipelines.steps]]
             name = "set hostname"
             commands = [
-                "sysctl -w kernel.hostname='{hostname}'"
+                "sysctl -w kernel.hostname='{hostname}'",
             ]
             "#
             ));
@@ -106,7 +109,7 @@ impl InitData {
         if let Some(user) = &self.user {
             // Add public ipv6
             if let Some(ipv6) = &user.ipv6 {
-                let interface = "ens3";
+                let interface = "ens4";
                 p_config += &unindent(&format!(
                     r#"
                 [[pipelines.steps]]
@@ -148,6 +151,23 @@ impl InitData {
                 }
             }
         }
+        // Run after network is up
+        p_config += &unindent(&format!(
+            r#"
+        [[pipelines]]
+        name = "init_post"
+        "#
+        ));
+        p_config += &unindent(&format!(
+            r#"
+            [[pipelines.steps]]
+            name = "hard set network interface"
+            commands = [
+                "sysctl -w net.ipv6.conf.ens4.accept_ra=1"
+            ]
+            "#
+        ));
+
         Ok(p_config)
     }
 }
