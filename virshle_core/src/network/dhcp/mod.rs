@@ -32,8 +32,10 @@ pub struct IpPool {
 }
 
 impl IpPool {
-    // get_lease()
-
+    pub fn get_mask(&self) -> Result<IpAddr, VirshleError> {
+        let default_mask = IpAddr::V6(Ipv6Addr::from_str("ffff:ffff:ffff:ffff::").unwrap());
+        Ok(default_mask)
+    }
     pub async fn is_ip_already_leased(ip_addr: &IpAddr) -> Result<bool, VirshleError> {
         let db = connect_db().await?;
         let lease = database::lease::Entity::find()

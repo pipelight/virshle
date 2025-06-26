@@ -99,7 +99,9 @@ pub struct NetConfig {
     num_queues: Option<u64>,
     pub mac: Option<String>,
     pub host_mac: Option<String>,
+
     pub ip: Option<IpAddr>,
+    pub mask: Option<IpAddr>,
 
     // tap
     pub tap: Option<String>,
@@ -240,9 +242,11 @@ impl VmConfig {
 
                 // Get fake_dhcp ip
                 let mut ip: Option<IpAddr> = None;
+                let mut mask: Option<IpAddr> = None;
                 if let Some(fake_dhcp) = VirshleConfig::get()?.fake_dhcp {
                     if let Some(pool) = fake_dhcp.pool.get(&net.name) {
                         ip = Some(pool.get_random_unleased_ip().await?);
+                        mask = Some(pool.get_mask()?);
                     }
                 }
 
@@ -267,7 +271,10 @@ impl VmConfig {
                             mac: Some(utils::uuid_to_mac(&e.uuid).to_string()),
                             //tap
                             tap: Some(tap_name),
+
+                            // Fake dhcp
                             ip,
+                            mask,
 
                             // multiqueue support
                             // num_queues: Some(e.vcpu * 2),
