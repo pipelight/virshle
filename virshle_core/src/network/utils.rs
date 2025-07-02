@@ -63,7 +63,7 @@ mod test {
 
     #[test]
     fn test_unix_name() -> Result<()> {
-        let res = unix_name("vm-sasuke_uchiha-main");
+        let res = unix_name("vm-sasuke-uchiha--main");
         assert_eq!(&res, "vm-sasuke_uchih");
         Ok(())
     }

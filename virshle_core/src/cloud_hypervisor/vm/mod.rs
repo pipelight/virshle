@@ -47,7 +47,6 @@ pub struct VmConfigPlus {
 
     // Unused
     pub autostart: bool,
-    pub attach: bool,
 }
 
 impl Default for VmConfigPlus {
@@ -55,7 +54,6 @@ impl Default for VmConfigPlus {
         Self {
             owner: Default::default(),
             autostart: false,
-            attach: false,
         }
     }
 }
@@ -137,7 +135,7 @@ impl Vm {
     /*
      * Start or Restart a Vm
      */
-    async fn start_vmm(&self) -> Result<(), VirshleError> {
+    async fn start_vmm(&self, attach: Option<bool>) -> Result<(), VirshleError> {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
 
@@ -151,7 +149,7 @@ impl Vm {
         // So we start a new viable process.
         let mut conn = Connection::from(self);
         if conn.open().await.is_err() {
-            match self.is_attach().ok() {
+            match attach {
                 Some(true) => {
                     let cmd = format!(
                         "kitty \
@@ -229,18 +227,6 @@ impl Vm {
         let mut rest = RestClient::from(&mut conn);
         let response = rest.put::<()>(endpoint, None).await?;
         Ok(())
-    }
-
-    pub fn attach(&mut self) -> Result<&mut Self, VirshleError> {
-        match &mut self.config {
-            Some(v) => v.attach = true,
-            None => {
-                let mut config = VmConfigPlus::default();
-                config.attach = true;
-                self.config = Some(config);
-            }
-        }
-        Ok(self)
     }
 
     /*

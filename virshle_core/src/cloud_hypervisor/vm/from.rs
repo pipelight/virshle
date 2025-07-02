@@ -204,7 +204,7 @@ mod test {
 
             [[net]]
             name = "main"
-            [net.type.vhost]
+            [net.type.tap]
         "#;
         let item = VmTemplate::from_toml(&toml)?;
         println!("{:#?}", item);
@@ -213,7 +213,7 @@ mod test {
     #[test]
     fn make_vm_from_toml() -> Result<()> {
         let toml = r#"
-            name = "my_test_vm"
+            name = "vm-my-test"
             uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
 
             vcpu = 1
@@ -225,7 +225,7 @@ mod test {
 
             [[net]]
             name = "main"
-            [net.type.vhost]
+            [net.type.tap]
             "#;
         let item = Vm::from_toml(&toml)?;
         println!("{:#?}", item);

@@ -111,17 +111,21 @@ pub mod vm {
     ) -> Result<Vec<Vm>, VirshleError> {
         let mut vms = Vm::get_by_args(args).await?;
         for vm in &mut vms {
-            vm.start(user_data.clone()).await?;
+            vm.start(user_data.clone(), None).await?;
         }
         Ok(vms)
     }
+    /*
+     * TODO:
+     * It should forward vm tty to user tty or ssh session!
+     */
     pub async fn _start_attach(
         args: &VmArgs,
         user_data: Option<UserData>,
     ) -> Result<Vec<Vm>, VirshleError> {
         let mut vms = Vm::get_by_args(args).await?;
         for vm in &mut vms {
-            vm.attach()?.start(user_data.clone()).await?;
+            vm.start(user_data.clone(), Some(true)).await?;
         }
         Ok(vms)
     }

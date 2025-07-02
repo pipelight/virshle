@@ -78,11 +78,11 @@ impl OvsPort {
         match self.is_virshle_port() {
             true => {
                 let network_fullname: &str = self.name.strip_prefix("vm-").unwrap();
-                if let Some((vm_name, net_name)) = network_fullname.split_once("-") {
+                if let Some((vm_name, net_name)) = network_fullname.split_once("--") {
                     Ok(vm_name.to_owned())
                 } else {
                     let message = "This port is not managed by virshle.";
-                    let help = "Port name must be \"vm-<vm-name>-<net-name>\"";
+                    let help = "Port name must be \"vm-<vm-name>--<net-name>\"";
                     Err(LibError::builder().msg(message).help(help).build().into())
                 }
             }

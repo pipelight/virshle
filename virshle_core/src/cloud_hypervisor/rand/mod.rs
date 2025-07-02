@@ -56,7 +56,7 @@ pub fn random_name() -> Result<String, VirshleError> {
         .collect();
 
     let res = format!(
-        "{}_{}",
+        "{}-{}",
         firstnames.choose(&mut rand::rng()).unwrap(),
         lastnames.choose(&mut rand::rng()).unwrap()
     );

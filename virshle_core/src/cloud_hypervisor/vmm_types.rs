@@ -11,7 +11,7 @@
 use super::{vm::NetType, Disk, Vm};
 use crate::{
     config::VirshleConfig,
-    network::{ip::fd, utils},
+    network::{dhcp::DhcpType, ip::fd, utils},
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -208,23 +208,16 @@ impl VmConfig {
         // Add bootloader
         let payload = PayloadConfig {
             kernel: Some("/run/cloud-hypervisor/hypervisor-fw".to_owned()),
-            cmdline: Some(
-                "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw".to_owned(),
-            ),
+            cmdline: Some("earlyprintk=ttyS0 console=ttyS0 root=/dev/vda1 rw".to_owned()),
         };
         config.payload = Some(payload);
 
         // Attach/Detach from standard output.
-        config.serial = match e.is_attach().unwrap() {
-            true => Some(ConsoleConfig {
-                mode: ConsoleOutputMode::Tty,
-            }),
-            false => Some(ConsoleConfig {
-                mode: ConsoleOutputMode::Off,
-            }),
-        };
-        config.console = Some(ConsoleConfig {
+        config.serial = Some(ConsoleConfig {
             mode: ConsoleOutputMode::Tty,
+        });
+        config.console = Some(ConsoleConfig {
+            mode: ConsoleOutputMode::Null,
         });
 
         // Add disks
@@ -238,16 +231,19 @@ impl VmConfig {
         if let Some(nets) = &e.net {
             let mut net_configs: Vec<NetConfig> = vec![];
             for net in nets {
-                let port_name = format!("vm-{}-{}", e.name, net.name);
+                let port_name = format!("vm-{}--{}", e.name, net.name);
 
                 // Get fake_dhcp ip
                 let mut ip: Option<IpAddr> = None;
                 let mut mask: Option<IpAddr> = None;
-                if let Some(fake_dhcp) = VirshleConfig::get()?.fake_dhcp {
-                    if let Some(pool) = fake_dhcp.pool.get(&net.name) {
-                        ip = Some(pool.get_random_unleased_ip().await?);
-                        mask = Some(pool.get_mask()?);
+                match VirshleConfig::get()?.dhcp {
+                    Some(DhcpType::Fake(fake_dhcp)) => {
+                        if let Some(pool) = fake_dhcp.pool.get(&net.name) {
+                            ip = Some(pool.get_random_unleased_ip().await?);
+                            mask = Some(pool.get_mask()?);
+                        }
                     }
+                    _ => {}
                 }
 
                 match &net._type {

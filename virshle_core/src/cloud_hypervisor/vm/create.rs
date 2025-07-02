@@ -33,9 +33,13 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
-    pub async fn start(&mut self, user_data: Option<UserData>) -> Result<(), VirshleError> {
+    pub async fn start(
+        &mut self,
+        user_data: Option<UserData>,
+        attach: Option<bool>,
+    ) -> Result<(), VirshleError> {
         self.create_networks()?;
-        self.start_vmm().await?;
+        self.start_vmm(attach).await?;
 
         // Provision with user defined data
         self.add_init_disk(user_data)?;
@@ -109,7 +113,7 @@ impl Vm {
         if let Some(nets) = &self.net {
             for net in nets {
                 // This results in "machin_name-network_name".
-                let port_name = format!("vm-{}-{}", self.name, net.name);
+                let port_name = format!("vm-{}--{}", self.name, net.name);
 
                 match &net._type {
                     // Not working on ovs-bridge of type "system"

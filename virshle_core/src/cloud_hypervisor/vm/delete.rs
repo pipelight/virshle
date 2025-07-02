@@ -84,7 +84,7 @@ impl Vm {
         if let Some(networks) = &self.net {
             for net in networks {
                 // This results in "machin_name-network_name".
-                let port_name = format!("vm-{}-{}", self.name, net.name);
+                let port_name = format!("vm-{}--{}", self.name, net.name);
 
                 // Ovs
                 // Replace existing port with a fresh one.

@@ -70,6 +70,10 @@ pub enum VirshleError {
     #[diagnostic(code(virshle::io::error))]
     UuidError(#[from] uuid::Error),
 
+    #[error(transparent)]
+    #[diagnostic(code(virshle::csv::error))]
+    CsvError(#[from] csv::Error),
+
     ////////////////////////////////
     // Process execution
     #[error(transparent)]

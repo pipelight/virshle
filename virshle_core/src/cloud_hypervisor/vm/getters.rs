@@ -7,6 +7,11 @@ use tabled::{Table, Tabled};
 // Cloud Hypervisor
 use crate::cli::VmArgs;
 use crate::cloud_hypervisor::vmm_types::{VmConfig, VmInfoResponse, VmState};
+
+// Ips
+use crate::config::VirshleConfig;
+use crate::network::dhcp::{DhcpType, KeaDhcp};
+
 use std::str::FromStr;
 
 use hyper::{Request, StatusCode};
@@ -233,14 +238,6 @@ impl Vm {
         Ok(data)
     }
 
-    pub fn is_attach(&self) -> Result<bool, VirshleError> {
-        if let Some(config) = &self.config {
-            return Ok(config.attach);
-        } else {
-            return Ok(false);
-        };
-    }
-
     /*
      * Should be renamed to get_info();
      *
@@ -275,7 +272,15 @@ impl Vm {
     }
 
     pub async fn get_ips(&self) -> Result<Vec<String>, VirshleError> {
-        let ips = vec![];
+        let mut ips: Vec<String> = vec![];
+        match VirshleConfig::get()?.dhcp {
+            Some(DhcpType::Kea(kea_dhcp)) => {
+                let hostname = format!("vm-{}", &self.name);
+                let leases = KeaDhcp::get_leases_by_hostname(&hostname)?;
+                ips = leases.iter().map(|e| e.address.to_string()).collect();
+            }
+            _ => {}
+        };
         Ok(ips)
     }
 }
@@ -287,7 +292,7 @@ mod test {
 
     // #[tokio::test]
     async fn fetch_info() -> Result<()> {
-        Vm::get_by_name("default_xs").await?.get_info().await?;
+        Vm::get_by_name("vm-default-xs").await?.get_info().await?;
         Ok(())
     }
 

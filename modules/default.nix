@@ -1,6 +1,6 @@
 {...}: {
   imports = [
-    # module confguration options
+    # module configuration options
     ./options.nix
 
     # virshle

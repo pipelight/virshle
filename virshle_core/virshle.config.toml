@@ -106,8 +106,11 @@ size = "100G"
 #########################
 # Network
 
+## Kea dhcp
+[dhcp]
+[dhcp.kea]
+
 ## Fake dhcp when no dhcp available on network
-# [fake_dhcp]
-# [fake_dhcp.pool.main]
+# [dhcp.fake.pool.main]
 # subnet = "2001:db8::/64"
 # range = ["2001:db8::1ff", "2001:db8::ffff"]
