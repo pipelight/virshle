@@ -2,6 +2,7 @@ mod types;
 pub use types::*;
 
 use crate::api::{rest::client, rest::method, NodeServer};
+use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
 use crate::{
     cloud_hypervisor::{Definition, UserData, Vm, VmTemplate},
@@ -76,8 +77,13 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    // Create a vm from template.
-                    client::vm::create(&args).await?;
+                    if let Some(path) = &args.config {
+                        let vm_config_plus = VmConfigPlus::from_file(&path)?;
+                        client::vm::create(&args, Some(vm_config_plus)).await?;
+                    } else {
+                        // Create a vm from template.
+                        client::vm::create(&args, None).await?;
+                    }
                 }
                 Crud::Info(args) => {
                     if let Some(name) = args.name {

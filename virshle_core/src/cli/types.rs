@@ -73,6 +73,9 @@ pub struct CreateArgs {
 
     #[arg(short, long, value_name = "NODE_NAME")]
     pub node: Option<String>,
+
+    #[arg(long, value_name = "VM_CONFIG_FILEPATH")]
+    pub config: Option<String>,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -116,7 +119,7 @@ pub struct StartArgs {
     )]
     pub attach: bool,
 
-    #[arg(short, long, value_name = "FILEPATH")]
+    #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
 }
 

@@ -55,6 +55,8 @@ pub mod template {
 }
 
 pub mod vm {
+    use crate::cloud_hypervisor::VmConfigPlus;
+
     use super::*;
     pub async fn get_all(Json(params): Json<VmArgs>) -> Result<Json<Vec<VmTable>>, VirshleError> {
         Ok(Json(_get_all(&params).await?))
@@ -77,15 +79,21 @@ pub mod vm {
     /*
      * Get node info (cpu, ram...)
      */
-    pub async fn create(Json(params): Json<CreateArgs>) -> Result<Json<Vm>, VirshleError> {
-        Ok(Json(_create(params).await?))
+    pub async fn create(
+        Json((create_args, vm_config_plus)): Json<(CreateArgs, Option<VmConfigPlus>)>,
+    ) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_create(&create_args, vm_config_plus).await?))
     }
-    pub async fn _create(params: CreateArgs) -> Result<Vm, VirshleError> {
+    pub async fn _create(
+        create_args: &CreateArgs,
+        vm_config_plus: Option<VmConfigPlus>,
+    ) -> Result<Vm, VirshleError> {
         let config = VirshleConfig::get()?;
 
-        if let Some(name) = params.template {
+        if let Some(name) = &create_args.template {
             let template = config.get_template(&name)?;
             let mut vm = Vm::from(&template);
+            vm.config = vm_config_plus;
             vm.create().await?;
             Ok(vm)
         } else {

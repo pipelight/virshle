@@ -71,6 +71,8 @@ pub mod node {
     }
 }
 pub mod vm {
+    use crate::cloud_hypervisor::VmConfigPlus;
+
     use super::*;
     /*
      * Get a hashmap/dict of all vms per (reachable) node.
@@ -103,7 +105,10 @@ pub mod vm {
     /*
      * Create a virtual machine on a node.
      */
-    pub async fn create(args: &CreateArgs) -> Result<Vm, VirshleError> {
+    pub async fn create(
+        args: &CreateArgs,
+        vm_config_plus: Option<VmConfigPlus>,
+    ) -> Result<Vm, VirshleError> {
         let config = VirshleConfig::get()?;
         // Set node to be queried
         let node: Node;
@@ -118,12 +123,17 @@ pub mod vm {
             // let mut vm = Vm::from_file(&file)?;
             // vm.create().await?;
         }
+
         // Create a vm from template.
         if let Some(name) = &args.template {
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
 
-            let vm: Vm = rest.put("/vm/create", Some(args)).await?.to_value().await?;
+            let vm: Vm = rest
+                .put("/vm/create", Some((args, vm_config_plus)))
+                .await?
+                .to_value()
+                .await?;
 
             let res = format!("Created vm {:#?} on node {:#?}", vm.name, node.name);
             info!("{}", res);
@@ -180,7 +190,7 @@ pub mod vm {
         let mut rest = RestClient::from(&mut conn);
 
         let vm: Vec<Vm> = rest
-            .put("/vm/start", Some((args.clone(), user_data)))
+            .put("/vm/start", Some((args, user_data)))
             .await?
             .to_value()
             .await?;
