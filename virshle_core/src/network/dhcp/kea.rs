@@ -152,7 +152,6 @@ impl KeaDhcp {
                         .starts_with("dhcp4.leases")
                 {
                     trace!("reading csv file: {}", entry.path().to_str().unwrap());
-                    println!("reading csv file: {}", entry.path().to_str().unwrap());
                     let mut reader = csv::Reader::from_path(entry.path())?;
                     for result in reader.deserialize() {
                         let record: Raw4Lease = result?;
@@ -179,7 +178,6 @@ impl KeaDhcp {
                         .starts_with("dhcp6.leases")
                 {
                     trace!("reading csv file: {}", entry.path().to_str().unwrap());
-                    println!("reading csv file: {}", entry.path().to_str().unwrap());
                     let mut reader = csv::Reader::from_path(entry.path())?;
                     for result in reader.deserialize() {
                         let record: Raw6Lease = result?;

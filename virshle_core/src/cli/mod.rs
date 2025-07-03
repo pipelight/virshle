@@ -1,17 +1,23 @@
 mod types;
 pub use types::*;
 
-use crate::api::{rest::client, rest::method, NodeServer};
 use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
 use crate::{
-    cloud_hypervisor::{Definition, UserData, Vm, VmTemplate},
+    cloud_hypervisor::{Definition, UserData, Vm, VmState, VmTemplate},
     config::{Node, VirshleConfig},
 };
+use std::str::FromStr;
+use uuid::Uuid;
 
 use clap::Parser;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+
+// Rest API client
+use crate::api::method::vm::{GetManyVmArgs, GetVmArgs};
+use crate::api::{rest::client, rest::method, NodeServer};
 
 // Logger
 use env_logger::Builder;
@@ -56,6 +62,9 @@ impl Cli {
                     let res = client::node::get_info().await?;
                     Node::display(res).await?;
                 }
+                NodeArgs::Ping(ping_args) => {
+                    let res = client::node::ping(ping_args.name).await?;
+                }
                 /*
                  * Serve the node rest API and wait for http requests.
                  */
@@ -79,7 +88,9 @@ impl Cli {
                 Crud::Create(args) => {
                     if let Some(path) = &args.config {
                         let vm_config_plus = VmConfigPlus::from_file(&path)?;
-                        client::vm::create(&args, Some(vm_config_plus)).await?;
+
+                        // from cli to api args
+                        // client::vm::create(template, None, account).await?;
                     } else {
                         // Create a vm from template.
                         client::vm::create(&args, None).await?;
@@ -89,11 +100,11 @@ impl Cli {
                     if let Some(name) = args.name {
                         let vm = Vm::get_by_name(&name).await?;
                         vm.to_toml()?;
-                        vm.get_info().await?;
+                        vm.get_ch_info().await?;
                     } else if let Some(id) = args.id {
                         let vm = Vm::get_by_id(&id).await?;
                         vm.to_toml()?;
-                        vm.get_info().await?;
+                        vm.get_ch_info().await?;
                     }
                 }
                 Crud::Start(args) => {
@@ -114,11 +125,36 @@ impl Cli {
                     };
                 }
                 Crud::Stop(args) => {
-                    client::vm::shutdown(&args).await?;
+                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                        client::vm::shutdown(
+                            GetVmArgs {
+                                id: args.id,
+                                uuid: args.uuid,
+                                name: args.name,
+                            },
+                            args.node,
+                        )
+                        .await?;
+                    } else if args.state.is_some() || args.account.is_some() {
+                        client::vm::shutdown_many(
+                            GetManyVmArgs {
+                                vm_state: args.state,
+                                account_uuid: args.account,
+                            },
+                            args.node,
+                        )
+                        .await?;
+                    }
                 }
                 Crud::Ls(args) => {
-                    let e = client::vm::get_all(&args).await?;
-                    VmTable::display_by_nodes(e).await?;
+                    let e: HashMap<Node, Vec<Vm>> = client::vm::get_all(None, None, None).await?;
+                    let mut table: HashMap<Node, Vec<VmTable>> = HashMap::new();
+                    for (k, v) in e {
+                        let vm_table: Vec<VmTable> = VmTable::from_vec(&v).await?;
+                        table.insert(k, vm_table);
+                    }
+
+                    VmTable::display_by_nodes(table).await?;
                 }
                 Crud::Rm(args) => {
                     client::vm::delete(&args).await?;

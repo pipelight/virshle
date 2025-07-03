@@ -2,5 +2,7 @@
 
 pub mod prelude;
 
+pub mod account;
+pub mod account_vm;
 pub mod lease;
 pub mod vm;

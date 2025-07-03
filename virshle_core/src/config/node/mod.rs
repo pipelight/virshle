@@ -50,12 +50,18 @@ impl Node {
 }
 
 impl Node {
-    pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
-        let mut conn = Connection::from(self);
-        let mut rest = RestClient::from(&mut conn);
-        let info: NodeInfo = rest.get("/node/info").await?.to_value().await?;
-        Ok(info)
+    pub async fn unwrap_or_default(node_name: Option<String>) -> Result<Node, VirshleError> {
+        let config = VirshleConfig::get()?;
+        let node = match node_name {
+            Some(node_name) => match config.get_node_by_name(&node_name) {
+                Ok(node) => node,
+                Err(_) => Node::default(),
+            },
+            None => Node::default(),
+        };
+        Ok(node)
     }
+
     /*
      * Open connection to node and return handler.
      */

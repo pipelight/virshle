@@ -29,18 +29,32 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub struct NodeRestServer;
 impl NodeRestServer {
     pub async fn make_router() -> Result<Router, VirshleError> {
-        // build our application with a single route
-        let app = Router::new()
+        // Cloud-hypervisor direct calls.
+        let api_v1_ch = Router::new()
+            // Vm
+            .route(
+                "/vm.info",
+                get(async move |params| method::vm::get_ch_info(params).await),
+            )
+            .route(
+                "/vmm.ping",
+                get(async move |params| method::vm::get_ch_info(params).await),
+            );
+
+        // Virshle API
+        let api_v1 = Router::new()
             // Node
+            // Check for the REST API availability
+            .route("/node/ping", get(async || method::node::ping().await))
             .route("/node/info", get(async || method::node::get_info().await))
             // Template
             .route(
-                "/template/list",
+                "/template/all",
                 get(async || method::template::get_all().await),
             )
             // Vm
             .route(
-                "/vm/list",
+                "/vm/all",
                 post(async move |params| method::vm::get_all(params).await),
             )
             .route(
@@ -62,7 +76,11 @@ impl NodeRestServer {
             .route(
                 "/vm/delete",
                 put(async move |params| method::vm::delete(params).await),
-            )
+            );
+
+        let app = Router::new()
+            .nest("/api/v1", api_v1)
+            .nest("/api/v1/ch", api_v1_ch)
             .layer(map_response(Self::set_header))
             .layer(TraceLayer::new_for_http());
 

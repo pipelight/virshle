@@ -52,6 +52,46 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+
+        // User account list
+        manager
+            .create_table(
+                Table::create()
+                    .table(Account::Table)
+                    .if_not_exists()
+                    .col(pk_auto(Account::Id))
+                    .col(uuid_uniq(Account::Uuid))
+                    .to_owned(),
+            )
+            .await?;
+        // Junction table Account_Vm
+        manager
+            .create_table(
+                Table::create()
+                    .table(AccountVm::Table)
+                    .if_not_exists()
+                    .primary_key(
+                        Index::create()
+                            .col(AccountVm::AccountId)
+                            .col(AccountVm::VmId),
+                    )
+                    .col(integer(AccountVm::AccountId))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("account_uuid")
+                            .from(AccountVm::Table, AccountVm::AccountId)
+                            .to(Account::Table, Account::Id),
+                    )
+                    .col(integer(AccountVm::VmId))
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("vm_id")
+                            .from(AccountVm::Table, AccountVm::VmId)
+                            .to(Vm::Table, Vm::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
         Ok(())
     }
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
@@ -75,6 +115,13 @@ pub enum Vm {
 }
 
 #[derive(DeriveIden, Debug)]
+pub enum Account {
+    Table,
+    Id,
+    Uuid,
+}
+
+#[derive(DeriveIden, Debug)]
 pub enum Lease {
     Table,
     Id,
@@ -82,6 +129,15 @@ pub enum Lease {
     Ip,
     CreatedAt,
     UpdatedAt,
+}
+
+/// Junction table
+#[derive(DeriveIden, Debug)]
+pub enum AccountVm {
+    Table,
+    Id,
+    AccountId,
+    VmId,
 }
 
 #[cfg(test)]

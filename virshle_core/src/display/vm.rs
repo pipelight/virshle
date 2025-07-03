@@ -36,13 +36,14 @@ pub struct VmTable {
 
 impl VmTable {
     pub async fn from(vm: &Vm) -> Result<Self, VirshleError> {
+        let ips: Vec<String> = vm.get_ips().await?.iter().map(|e| e.to_string()).collect();
         let table = VmTable {
             id: vm.id,
             name: vm.name.to_owned(),
             vcpu: vm.vcpu,
             vram: vm.vram,
             state: vm.get_state().await?,
-            ips: vm.get_ips().await?,
+            ips,
             uuid: vm.uuid,
         };
         Ok(table)

@@ -142,8 +142,8 @@ pub enum VmState {
 }
 
 impl FromStr for VmState {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Error> {
+    type Err = VirshleError;
+    fn from_str(s: &str) -> Result<Self, VirshleError> {
         let res = match s {
             "not_created" => VmState::NotCreated,
             "created" => VmState::Created,

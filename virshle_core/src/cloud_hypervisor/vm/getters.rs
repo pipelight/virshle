@@ -11,12 +11,16 @@ use crate::cloud_hypervisor::vmm_types::{VmConfig, VmInfoResponse, VmState};
 // Ips
 use crate::config::VirshleConfig;
 use crate::network::dhcp::{DhcpType, KeaDhcp};
+use std::net::IpAddr;
 
 use std::str::FromStr;
 
 use hyper::{Request, StatusCode};
 
 use std::fs;
+
+// Rest Api
+use crate::api::method::vm::{GetManyVmArgs, GetVmArgs};
 
 // Http
 use crate::connection::{Connection, ConnectionHandle, UnixConnection};
@@ -25,7 +29,7 @@ use crate::http_request::{Rest, RestClient};
 //Database
 use crate::database;
 use crate::database::connect_db;
-use crate::database::entity::{prelude::*, *};
+use crate::database::entity::prelude;
 use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult};
 
 // Global configuration
@@ -39,8 +43,10 @@ use virshle_error::{LibError, VirshleError, WrapError};
 impl Vm {
     pub async fn get_all() -> Result<Vec<Vm>, VirshleError> {
         let db = connect_db().await?;
-        let records: Vec<database::entity::vm::Model> =
-            database::prelude::Vm::find().all(&db).await?;
+        let records: Vec<database::entity::vm::Model> = database::prelude::Vm::find()
+            .order_by_asc(database::entity::vm::Column::CreatedAt)
+            .all(&db)
+            .await?;
 
         let mut vms: Vec<Vm> = vec![];
         for e in records {
@@ -64,34 +70,85 @@ impl Vm {
         }
         Ok(vms)
     }
-    pub async fn get_by_state(state: &VmState) -> Result<Vec<Vm>, VirshleError> {
-        let vms = Self::get_all().await?;
-        let mut vm_w_state: Vec<Vm> = vec![];
+    pub async fn filter_by_state(vms: Vec<Vm>, state: &VmState) -> Result<Vec<Vm>, VirshleError> {
+        let mut vm_by_state: Vec<Vm> = vec![];
         for vm in vms {
             if vm.get_state().await? == *state {
-                vm_w_state.push(vm);
+                vm_by_state.push(vm);
             }
         }
-        Ok(vm_w_state)
+        Ok(vm_by_state)
     }
 
-    pub async fn get_by_args(params: &VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        if let Some(id) = params.id {
+    // Return VMs associated with a specific account on node.
+    pub async fn get_by_account(account_uuid: &Uuid) -> Result<Vec<Vm>, VirshleError> {
+        let db = connect_db().await?;
+
+        let account: Option<database::entity::account::Model> = database::prelude::Account::find()
+            .filter(database::entity::account::Column::Uuid.eq(*account_uuid))
+            .one(&db)
+            .await?;
+
+        if let Some(account) = account {
+            let records: Vec<database::entity::vm::Model> = account
+                .find_related(database::entity::prelude::Vm)
+                .order_by_asc(database::entity::vm::Column::CreatedAt)
+                .all(&db)
+                .await?;
+
+            let mut vms: Vec<Vm> = vec![];
+            for e in records {
+                let res: Result<Vm, serde_json::Error> = serde_json::from_value(e.definition);
+                let vm: Vm = match res {
+                    Ok(mut v) => {
+                        // Populate struct with database id.
+                        v.id = Some(e.id as u64);
+                        v
+                    }
+                    Err(e) => {
+                        let err = WrapError::builder()
+                            .msg("Couldn't convert database record to valid resources")
+                            .help("")
+                            .origin(VirshleError::from(e).into())
+                            .build();
+                        return Err(err.into());
+                    }
+                };
+                vms.push(vm)
+            }
+            Ok(vms)
+        } else {
+            // No VM associated with account on this node.
+            // TODO: Should maybe return an error.
+            Ok(vec![])
+        }
+    }
+
+    pub async fn get_many_by_args(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+        // Filter by account
+        let vms: Vec<Vm> = if let Some(account_uuid) = &args.account_uuid {
+            Vm::get_by_account(account_uuid).await?
+        } else {
+            Vm::get_all().await?
+        };
+        // Filter by state
+        let vms: Vec<Vm> = if let Some(vm_state) = &args.vm_state {
+            Vm::filter_by_state(vms, &vm_state).await?
+        } else {
+            vms
+        };
+        Ok(vms)
+    }
+    pub async fn get_by_args(args: &GetVmArgs) -> Result<Vm, VirshleError> {
+        if let Some(id) = args.id {
             let vm = Vm::get_by_id(&id).await?;
-            let vms = vec![vm];
-            Ok(vms)
-        } else if let Some(name) = &params.name {
+            Ok(vm)
+        } else if let Some(name) = &args.name {
             let vm = Vm::get_by_name(&name).await?;
-            let vms = vec![vm];
-            Ok(vms)
-        } else if let Some(uuid) = &params.uuid {
+            Ok(vm)
+        } else if let Some(uuid) = &args.uuid {
             let vm = Vm::get_by_uuid(&uuid).await?;
-            let vms = vec![vm];
-            Ok(vms)
-        } else if let Some(state) = &params.state {
-            let state = VmState::from_str(&state).unwrap();
-            let vms = Vm::get_by_state(&state).await?;
-            Ok(vms)
+            Ok(vm)
         } else {
             let message = format!("Couldn't find vm.");
             let help = format!("Are you sure the vm exists on this node?");
@@ -169,6 +226,11 @@ impl Vm {
     }
 }
 
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct VmInfo {
+    pub state: VmState,
+    pub ips: Vec<IpAddr>,
+}
 /*
 * Getters.
 * Get data from cloud-hypervisor on the file.
@@ -220,10 +282,9 @@ impl Vm {
         let path = format!("unix://{MANAGED_DIR}/vm/{}/ch.sock", self.uuid);
         Ok(path)
     }
-    /*
-     * Return vm info
-     */
-    pub async fn get_info(&self) -> Result<VmInfoResponse, VirshleError> {
+
+    /// Return structured informations from the vm hypervisor.
+    pub async fn get_ch_info(&self) -> Result<VmInfoResponse, VirshleError> {
         let endpoint = "/api/v1/vm.info";
 
         let mut conn = Connection::from(self);
@@ -238,14 +299,16 @@ impl Vm {
         Ok(data)
     }
 
-    /*
-     * Should be renamed to get_info();
-     *
-     */
-    pub fn get_state_sync(&self) -> Result<VmState, VirshleError> {
-        futures::executor::block_on(self.get_state())
+    /// Return vm state and ips.
+    pub async fn get_info(&self) -> Result<VmInfo, VirshleError> {
+        let res = VmInfo {
+            state: self.get_state().await?,
+            ips: self.get_ips().await?,
+        };
+        Ok(res)
     }
-
+    /// Return vm state,
+    /// or the default state if couldn't connect to vm.
     pub async fn get_state(&self) -> Result<VmState, VirshleError> {
         let endpoint = "/api/v1/vm.info";
 
@@ -270,14 +333,15 @@ impl Vm {
         };
         Ok(state)
     }
-
-    pub async fn get_ips(&self) -> Result<Vec<String>, VirshleError> {
-        let mut ips: Vec<String> = vec![];
+    /// Return vm ips,
+    /// or an empty vec if nothing found.
+    pub async fn get_ips(&self) -> Result<Vec<IpAddr>, VirshleError> {
+        let mut ips: Vec<IpAddr> = vec![];
         match VirshleConfig::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
                 let hostname = format!("vm-{}", &self.name);
                 let leases = KeaDhcp::get_leases_by_hostname(&hostname)?;
-                ips = leases.iter().map(|e| e.address.to_string()).collect();
+                ips = leases.iter().map(|e| e.address).collect();
             }
             _ => {}
         };

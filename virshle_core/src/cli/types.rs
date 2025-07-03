@@ -104,7 +104,10 @@ pub struct VmArgs {
     #[arg(short, long, value_name = "NODE_NAME")]
     pub node: Option<String>,
     #[arg(long, value_name = "VM_STATE")]
-    pub state: Option<String>,
+    pub state: Option<VmState>,
+
+    #[arg(long, value_name = "ACCOUNT_UUID")]
+    pub account: Option<Uuid>,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
@@ -134,4 +137,11 @@ pub enum NodeArgs {
     #[default]
     Ls,
     Serve,
+    Ping(WhichNode),
+}
+
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct WhichNode {
+    #[arg(long, value_name = "NODE_NAME")]
+    pub name: Option<String>,
 }

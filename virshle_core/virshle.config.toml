@@ -17,8 +17,9 @@ url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 
 
 #########################
-# Templates: 
-# vm standard sizes with decents presets.
+# Testing Templates: 
+# for testing vm
+
 [[template.vm]]
 name = "xs-offline"
 vcpu = 1
@@ -65,6 +66,22 @@ size = "50G"
 name = "main"
 [template.vm.net.type.vhost]
 
+#########################
+# Templates: 
+# vm standard sizes with decents presets.
+
+[[template.vm]]
+name = "xs"
+vcpu = 1
+vram = 2
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.efi.img"
+size = "50G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
+
 [[template.vm]]
 name = "s"
 vcpu = 2
@@ -73,6 +90,9 @@ vram = 4
 name = "os"
 path = "~/Iso/nixos.efi.img"
 size = "80G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
 
 [[template.vm]]
 name = "m"
@@ -82,6 +102,9 @@ vram = 8
 name = "os"
 path = "~/Iso/nixos.efi.img"
 size = "100G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
 
 # Big vms (for beta release)
 
@@ -112,5 +135,5 @@ size = "100G"
 
 ## Fake dhcp when no dhcp available on network
 # [dhcp.fake.pool.main]
-# subnet = "2001:db8::/64"
-# range = ["2001:db8::1ff", "2001:db8::ffff"]
+# subnet = "2a02:842b:6361:ad01::/64"
+# range = ["2a02:842b:6361:ad01::1ff", "2a02:842b:6361:ad01::ffff"]

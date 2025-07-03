@@ -17,7 +17,7 @@ pub mod cli;
 
 // Interact with cloud hypervisor processes and API.
 pub mod cloud_hypervisor;
-pub use cloud_hypervisor::{Vm, VmState, VmTemplate};
+pub use cloud_hypervisor::{Vm, VmInfo, VmState, VmTemplate};
 
 // Methods to do http easily on unix sockets.
 // Used to interact with cloud hypervisor

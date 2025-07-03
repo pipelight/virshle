@@ -6,13 +6,18 @@ pub mod init;
 
 // Reexports
 pub use from::VmTemplate;
+pub use getters::VmInfo;
 pub use init::{InitData, SshData, UserData, VmData};
 
 use super::vmm_types::VmConfig;
 
+// Serde
+use convert_case::{Case, Casing};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_slice, Value};
 use std::fmt;
 
-use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use pipelight_exec::Process;
@@ -43,16 +48,28 @@ pub struct Account {
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct VmConfigPlus {
     /// The account the vm is linked to.
-    pub owner: Option<Account>,
+    pub inner: Option<String>,
 
     // Unused
     pub autostart: bool,
 }
 
+impl VmConfigPlus {
+    pub fn new<T>(inner: &T) -> Result<Self, VirshleError>
+    where
+        T: Serialize + DeserializeOwned + std::fmt::Debug,
+    {
+        let res = VmConfigPlus {
+            inner: Some(serde_json::to_string(inner)?),
+            ..Default::default()
+        };
+        Ok(res)
+    }
+}
 impl Default for VmConfigPlus {
     fn default() -> Self {
         Self {
-            owner: Default::default(),
+            inner: Default::default(),
             autostart: false,
         }
     }

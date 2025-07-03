@@ -20,7 +20,9 @@ use crate::config::NodeInfo;
 use crate::display::vm::VmTable;
 // Hypervisor
 use crate::cli::{CreateArgs, VmArgs};
-use crate::cloud_hypervisor::{vmm_types::VmInfoResponse, UserData, Vm, VmState, VmTemplate};
+use crate::cloud_hypervisor::{
+    vmm_types::VmInfoResponse, UserData, Vm, VmInfo, VmState, VmTemplate,
+};
 use crate::config::VirshleConfig;
 
 // Error handling
@@ -30,6 +32,9 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 pub mod node {
     use super::*;
+    pub async fn ping() -> Result<(), VirshleError> {
+        Ok(())
+    }
     pub async fn get_info() -> Result<String, VirshleError> {
         let host = NodeInfo::get().await?;
         let info = serde_json::to_string(&host)?;
@@ -55,30 +60,31 @@ pub mod template {
 }
 
 pub mod vm {
+    use super::*;
     use crate::cloud_hypervisor::VmConfigPlus;
 
-    use super::*;
-    pub async fn get_all(Json(params): Json<VmArgs>) -> Result<Json<Vec<VmTable>>, VirshleError> {
-        Ok(Json(_get_all(&params).await?))
+    /// A strutc to query a VM from a node.
+    #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+    pub struct GetVmArgs {
+        pub id: Option<u64>,
+        pub uuid: Option<Uuid>,
+        pub name: Option<String>,
     }
-    pub async fn _get_all(params: &VmArgs) -> Result<Vec<VmTable>, VirshleError> {
-        let vm_res = if let Some(state) = &params.state {
-            let state = VmState::from_str(&state).unwrap();
-            VmTable::from_vec(&Vm::get_by_state(&state).await?).await
-        } else {
-            VmTable::from_vec(&Vm::get_all().await?).await
-        };
-        match vm_res {
-            Ok(v) => Ok(v),
-            Err(e) => {
-                error!("{}", e);
-                Err(e)
-            }
-        }
+    #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+    pub struct GetManyVmArgs {
+        pub vm_state: Option<VmState>,
+        pub account_uuid: Option<Uuid>,
     }
-    /*
-     * Get node info (cpu, ram...)
-     */
+    /// Return every VM on node.
+    /// Can be filtered by state and/or user account.
+    pub async fn get_all(Json(args): Json<GetManyVmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
+        Ok(Json(_get_all(args).await?))
+    }
+    pub async fn _get_all(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+        Vm::get_many_by_args(args).await
+    }
+
+    /// Create a VM on node.
     pub async fn create(
         Json((create_args, vm_config_plus)): Json<(CreateArgs, Option<VmConfigPlus>)>,
     ) -> Result<Json<Vm>, VirshleError> {
@@ -104,78 +110,135 @@ pub mod vm {
                 .into())
         }
     }
+    /*
+     * Start a vm and return it.
+     */
+    pub async fn start_many(
+        Json((args, user_data)): Json<(GetManyVmArgs, Option<UserData>)>,
+    ) -> Result<Json<Vec<Vm>>, VirshleError> {
+        Ok(Json(_start_many(args, user_data).await?))
+    }
+    pub async fn _start_many(
+        args: GetManyVmArgs,
+        user_data: Option<UserData>,
+    ) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_many_by_args(args).await?;
+        for vm in &mut vms {
+            vm.start(user_data.clone(), None).await?;
+        }
+        Ok(vms)
+    }
 
     /*
      * Start a vm and return it.
      */
     pub async fn start(
-        Json((vm_args, user_data)): Json<(VmArgs, Option<UserData>)>,
-    ) -> Result<Json<Vec<Vm>>, VirshleError> {
-        Ok(Json(_start(&vm_args, user_data).await?))
+        Json((args, user_data)): Json<(GetVmArgs, Option<UserData>)>,
+    ) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_start(args, user_data).await?))
     }
-    pub async fn _start(
-        args: &VmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(args).await?;
-        for vm in &mut vms {
-            vm.start(user_data.clone(), None).await?;
-        }
-        Ok(vms)
+    pub async fn _start(args: GetVmArgs, user_data: Option<UserData>) -> Result<Vm, VirshleError> {
+        let mut vm = Vm::get_by_args(&args).await?;
+        vm.start(user_data.clone(), None).await?;
+        Ok(vm)
     }
     /*
      * TODO:
      * It should forward vm tty to user tty or ssh session!
      */
     pub async fn _start_attach(
-        args: &VmArgs,
+        args: &GetVmArgs,
         user_data: Option<UserData>,
-    ) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(args).await?;
-        for vm in &mut vms {
-            vm.start(user_data.clone(), Some(true)).await?;
-        }
-        Ok(vms)
+    ) -> Result<Vm, VirshleError> {
+        let mut vm = Vm::get_by_args(args).await?;
+        vm.start(user_data.clone(), Some(true)).await?;
+        Ok(vm)
     }
-    /*
-     * Delete a vm and return it.
-     */
-    pub async fn delete(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
-        Ok(Json(_delete(params).await?))
+
+    /// Delete a vm and return it.
+    pub async fn delete_many(
+        Json(args): Json<GetManyVmArgs>,
+    ) -> Result<Json<Vec<Vm>>, VirshleError> {
+        Ok(Json(_delete_many(args).await?))
     }
-    pub async fn _delete(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(&params).await?;
+    pub async fn _delete_many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_many_by_args(args).await?;
         for vm in &mut vms {
             vm.delete().await?;
         }
         Ok(vms)
     }
-    /*
-     * Shutdown a vm and return it.
-     */
-    pub async fn shutdown(Json(params): Json<VmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
-        Ok(Json(_shutdown(params).await?))
+    // Delete a vm and return it.
+    pub async fn delete(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_delete(args).await?))
     }
-    pub async fn _shutdown(params: VmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_by_args(&params).await?;
+    pub async fn _delete(args: GetVmArgs) -> Result<Vm, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        vm.delete().await?;
+        Ok(vm)
+    }
+
+    /// Shutdown a vm and return the VM strutct.
+    pub async fn shutdown_many(
+        Json(args): Json<GetManyVmArgs>,
+    ) -> Result<Json<Vec<Vm>>, VirshleError> {
+        Ok(Json(_shutdown_many(args).await?))
+    }
+    pub async fn _shutdown_many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let mut vms = Vm::get_many_by_args(args).await?;
         for vm in &mut vms {
             vm.shutdown().await?;
         }
         Ok(vms)
     }
-    pub async fn get_info(Json(params): Json<VmArgs>) -> Result<VmInfoResponse, VirshleError> {
-        // println!("{:#?}", params);
-        if let Some(id) = params.id {
+    /// Shutdown a vm and return the VM strutct.
+    pub async fn shutdown(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_shutdown(args).await?))
+    }
+    pub async fn _shutdown(args: GetVmArgs) -> Result<Vm, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        vm.shutdown().await?;
+        Ok(vm)
+    }
+
+    /// Get summarized information about a VM.
+    pub async fn get_info(Json(args): Json<GetVmArgs>) -> Result<Json<VmInfo>, VirshleError> {
+        Ok(Json(_get_info(&args).await?))
+    }
+    pub async fn _get_info(args: &GetVmArgs) -> Result<VmInfo, VirshleError> {
+        if let Some(id) = args.id {
             let vm = Vm::get_by_id(&id).await?;
             let info = vm.get_info().await?;
-            Ok(info.into())
-        } else if let Some(name) = params.name {
+            Ok(info)
+        } else if let Some(name) = &args.name {
             let vm = Vm::get_by_name(&name).await?;
             let info = vm.get_info().await?;
             Ok(info)
-        } else if let Some(uuid) = params.uuid {
+        } else if let Some(uuid) = args.uuid {
             let vm = Vm::get_by_uuid(&uuid).await?;
             let info = vm.get_info().await?;
+            Ok(info)
+        } else {
+            let message = format!("Couldn't find the vm");
+            let help = format!("Are you sure the vm exists on this node?");
+            Err(LibError::builder().msg(&message).help(&help).build().into())
+        }
+    }
+
+    /// Get detailed information about a VM,
+    /// from the underlying cloud-hypervisor process.
+    pub async fn get_ch_info(Json(params): Json<VmArgs>) -> Result<VmInfoResponse, VirshleError> {
+        if let Some(id) = params.id {
+            let vm = Vm::get_by_id(&id).await?;
+            let info = vm.get_ch_info().await?;
+            Ok(info.into())
+        } else if let Some(name) = params.name {
+            let vm = Vm::get_by_name(&name).await?;
+            let info = vm.get_ch_info().await?;
+            Ok(info)
+        } else if let Some(uuid) = params.uuid {
+            let vm = Vm::get_by_uuid(&uuid).await?;
+            let info = vm.get_ch_info().await?;
             Ok(info)
         } else {
             let message = format!("Couldn't find vm.");

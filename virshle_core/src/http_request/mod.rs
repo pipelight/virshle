@@ -31,6 +31,31 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub struct RestClient<'a> {
     pub connection: &'a mut Connection,
     handle: Option<StreamHandle>,
+    pub base_url: Option<String>,
+    ping_url: Option<String>,
+}
+impl RestClient<'_> {
+    pub fn ping_url(&mut self, ping_url: &str) {
+        self.ping_url = Some(ping_url.to_owned());
+    }
+    pub fn base_url(&mut self, base_url: &str) {
+        self.base_url = Some(base_url.to_owned());
+    }
+    pub fn get_ping_url(&mut self) -> String {
+        if let Some(ping_url) = self.ping_url.clone() {
+            ping_url
+        } else {
+            "/".to_owned()
+        }
+    }
+    pub fn make_endpoint(&mut self, endpoint: &str) -> String {
+        // Prefix endpoint with a base.
+        if let Some(base_url) = &self.base_url {
+            format!("{}{}", base_url, endpoint)
+        } else {
+            endpoint.to_owned()
+        }
+    }
 }
 
 pub struct StreamHandle {
@@ -104,10 +129,9 @@ impl<'a> Rest for RestClient<'a> {
                     // A running cloud-hypervisor process can be clunky
                     // and wait forever after a handshake so we test response
                     // duration.
-
                     // Test endpoint response
                     let request = Request::builder()
-                        .uri("/")
+                        .uri(self.get_ping_url())
                         .method("GET")
                         .header("Host", "localhost")
                         .body(Full::new(Bytes::new()))?;
@@ -148,7 +172,8 @@ impl<'a> Rest for RestClient<'a> {
             match send {
                 Ok(response) => {
                     let status: StatusCode = response.status();
-                    let response: Response = Response::new(endpoint, response);
+                    let endpoint = self.make_endpoint(endpoint);
+                    let response: Response = Response::new(&endpoint, response);
                     trace!("{:#?}", response);
 
                     if !status.is_success() {
@@ -173,21 +198,23 @@ impl<'a> Rest for RestClient<'a> {
     }
 
     async fn get(&mut self, endpoint: &str) -> Result<Response, VirshleError> {
+        let endpoint = self.make_endpoint(endpoint);
         let request = Request::builder()
-            .uri(endpoint)
+            .uri(&endpoint)
             .method("GET")
             .header("Host", "localhost")
             .body(Full::new(Bytes::new()));
 
-        self.send(endpoint, &request?).await
+        self.send(&endpoint, &request?).await
     }
 
     async fn post<T>(&mut self, endpoint: &str, body: Option<T>) -> Result<Response, VirshleError>
     where
         T: Serialize,
     {
+        let endpoint = self.make_endpoint(endpoint);
         let request = Request::builder()
-            .uri(endpoint)
+            .uri(&endpoint)
             .method("POST")
             .header("Host", "localhost")
             .header("Content-Type", "application/json");
@@ -198,15 +225,16 @@ impl<'a> Rest for RestClient<'a> {
                 serde_json::to_value(value).unwrap().to_string(),
             ))),
         };
-        self.send(endpoint, &request?).await
+        self.send(&endpoint, &request?).await
     }
 
     async fn put<T>(&mut self, endpoint: &str, body: Option<T>) -> Result<Response, VirshleError>
     where
         T: Serialize,
     {
+        let endpoint = self.make_endpoint(endpoint);
         let request = Request::builder()
-            .uri(endpoint)
+            .uri(&endpoint)
             .method("PUT")
             .header("Host", "localhost")
             .header("Content-Type", "application/json");
@@ -217,7 +245,7 @@ impl<'a> Rest for RestClient<'a> {
                 serde_json::to_value(value).unwrap().to_string(),
             ))),
         };
-        self.send(endpoint, &request?).await
+        self.send(&endpoint, &request?).await
     }
 }
 
@@ -277,6 +305,8 @@ impl<'a> From<&'a mut Connection> for RestClient<'a> {
         let cli = RestClient {
             connection: value,
             handle: None,
+            base_url: None,
+            ping_url: None,
         };
         return cli;
     }
