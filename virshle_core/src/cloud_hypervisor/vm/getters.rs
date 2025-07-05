@@ -124,7 +124,7 @@ impl Vm {
         }
     }
 
-    pub async fn get_many_by_args(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+    pub async fn get_many_by_args(args: &GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
         // Filter by account
         let vms: Vec<Vm> = if let Some(account_uuid) = &args.account_uuid {
             Vm::get_by_account(account_uuid).await?
@@ -231,6 +231,15 @@ pub struct VmInfo {
     pub state: VmState,
     pub ips: Vec<IpAddr>,
 }
+
+/// From cloud-hypervisor
+#[derive(Clone, Deserialize, Serialize)]
+pub struct VmmPingResponse {
+    pub build_version: String,
+    pub version: String,
+    pub pid: i64,
+    pub features: Vec<String>,
+}
 /*
 * Getters.
 * Get data from cloud-hypervisor on the file.
@@ -292,11 +301,23 @@ impl Vm {
 
         let mut rest = RestClient::from(&mut conn);
         let response = rest.get(endpoint).await?;
+
         let data = &response.to_string().await?;
         println!("{}", data);
 
         let data: VmInfoResponse = serde_json::from_str(&data)?;
         Ok(data)
+    }
+    /// Return structured informations from the vm hypervisor.
+    pub async fn ping_ch(&self) -> Result<(), VirshleError> {
+        let endpoint = "/api/v1/vm.info";
+
+        let mut conn = Connection::from(self);
+        conn.open().await?;
+
+        let mut rest = RestClient::from(&mut conn);
+        rest.ping_url("/api/v1/vmm.ping");
+        rest.ping().await
     }
 
     /// Return vm state and ips.
@@ -340,7 +361,7 @@ impl Vm {
         match VirshleConfig::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
                 let hostname = format!("vm-{}", &self.name);
-                let leases = KeaDhcp::get_leases_by_hostname(&hostname)?;
+                let leases = KeaDhcp::get_leases_by_hostname(&hostname).await?;
                 ips = leases.iter().map(|e| e.address).collect();
             }
             _ => {}

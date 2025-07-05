@@ -19,6 +19,8 @@
 
 mod socket;
 mod ssh;
+mod tcp;
+
 mod state;
 mod uri;
 
@@ -26,7 +28,8 @@ mod uri;
 pub use socket::UnixConnection;
 pub use ssh::SshConnection;
 pub use state::ConnectionState;
-pub use uri::{LocalUri, SshUri, Uri};
+pub use tcp::TcpConnection;
+pub use uri::{LocalUri, SshUri, TcpUri, Uri};
 
 use crate::cloud_hypervisor::Vm;
 use crate::config::Node;
@@ -43,7 +46,7 @@ use tokio::task::JoinHandle;
 
 // Stream
 use russh::{client::Msg, ChannelStream};
-use tokio::net::UnixStream;
+use tokio::net::{TcpStream, UnixStream};
 
 use serde::{Deserialize, Serialize};
 use std::future::Future;
@@ -72,6 +75,7 @@ tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send
 pub enum Stream {
     Ssh(ChannelStream<Msg>),
     Socket(UnixStream),
+    Tcp(TcpStream),
 }
 impl Streamable for ChannelStream<Msg> {}
 impl Streamable for UnixStream {}
@@ -86,6 +90,7 @@ pub trait ConnectionHandle {
 pub enum Connection {
     SshConnection(SshConnection),
     UnixConnection(UnixConnection),
+    TcpConnection(TcpConnection),
 }
 
 impl ConnectionHandle for Connection {
@@ -93,6 +98,7 @@ impl ConnectionHandle for Connection {
         match self {
             Connection::SshConnection(e) => e.open().await,
             Connection::UnixConnection(e) => e.open().await,
+            Connection::TcpConnection(e) => e.open().await,
         }
     }
     async fn close(&mut self) -> Result<(), VirshleError> {
@@ -103,6 +109,9 @@ impl ConnectionHandle for Connection {
             Connection::UnixConnection(e) => {
                 e.close().await?;
             }
+            Connection::TcpConnection(e) => {
+                e.close().await?;
+            }
         };
         Ok(())
     }
@@ -110,6 +119,7 @@ impl ConnectionHandle for Connection {
         match self {
             Connection::SshConnection(e) => e.get_state().await,
             Connection::UnixConnection(e) => e.get_state().await,
+            Connection::TcpConnection(e) => e.get_state().await,
         }
     }
 }
@@ -122,6 +132,7 @@ impl From<&Node> for Connection {
                 ssh_handle: None,
             }),
             Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
+            Uri::TcpUri(v) => Connection::TcpConnection(TcpConnection { uri: v }),
         }
     }
 }
@@ -135,6 +146,7 @@ impl From<&Vm> for Connection {
                 ssh_handle: None,
             }),
             Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
+            Uri::TcpUri(v) => Connection::TcpConnection(TcpConnection { uri: v }),
         };
         trace!("created connection for vm: {}", value.uuid);
         conn
@@ -149,6 +161,7 @@ impl From<&mut Vm> for Connection {
                 ssh_handle: None,
             }),
             Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
+            Uri::TcpUri(v) => Connection::TcpConnection(TcpConnection { uri: v }),
         };
         trace!("created connection for vm: {}", value.uuid);
         conn

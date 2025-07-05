@@ -41,7 +41,7 @@ impl Definition {
     pub async fn create_vms(&mut self) -> Result<Self, VirshleError> {
         if let Some(vms) = &mut self.vm {
             for def in vms {
-                def.create().await?;
+                def.create(None).await?;
             }
         }
         Ok(self.to_owned())
@@ -113,7 +113,7 @@ impl Template {
     pub async fn create_vms(&self) -> Result<Self, VirshleError> {
         if let Some(vms) = &self.vm {
             for def in vms {
-                Vm::from(def).create().await?;
+                Vm::from(def).create(None).await?;
             }
         }
         Ok(self.to_owned())

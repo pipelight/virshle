@@ -85,13 +85,14 @@ pub trait Rest {
         request: &Request<Full<Bytes>>,
     ) -> impl Future<Output = Result<Response, VirshleError>> + Send;
 
-    /*
-     * Send an http GET request to socket.
-     * Arguments:
-     * - path: the url enpoint (ex:"/vm/info")
-     */
+    fn ping(&mut self) -> impl Future<Output = Result<(), VirshleError>> + Send;
+
+    /// Send an http GET request to socket.
+    /// # Arguments:
+    /// - path: the url enpoint (ex:"/vm/info")
     fn get(&mut self, enpoint: &str)
         -> impl Future<Output = Result<Response, VirshleError>> + Send;
+
     /*
      * Send an http POST request to socket.
      * Arguments:
@@ -124,31 +125,7 @@ impl<'a> Rest for RestClient<'a> {
             match self.connection.open().await {
                 Ok(stream) => {
                     // Test handshake
-                    let mut handle = handshake(stream).await?;
-
-                    // A running cloud-hypervisor process can be clunky
-                    // and wait forever after a handshake so we test response
-                    // duration.
-                    // Test endpoint response
-                    let request = Request::builder()
-                        .uri(self.get_ping_url())
-                        .method("GET")
-                        .header("Host", "localhost")
-                        .body(Full::new(Bytes::new()))?;
-
-                    // Timeout reponse and return succesfully if a response is sent,
-                    // Wether it is a succesful response or an error message.
-                    let time: u64 = 1000;
-                    let response = handle.sender.send_request(request.to_owned());
-                    let response = timeout(time::Duration::from_millis(time), response)
-                        .await
-                        .map_err(|e| {
-                            LibError::builder()
-                                .msg(&e.to_string())
-                                .help(&format!("Request timeout {time}ms reached."))
-                                .build()
-                        })?;
-
+                    let handle = handshake(stream).await?;
                     self.handle = Some(handle);
                 }
                 Err(e) => return Err(e),
@@ -167,9 +144,9 @@ impl<'a> Rest for RestClient<'a> {
         self.open().await?;
 
         if let Some(handle) = &mut self.handle {
-            let send: Result<HyperResponse<Incoming>, _> =
+            let response: Result<HyperResponse<Incoming>, _> =
                 handle.sender.send_request(request.to_owned()).await;
-            match send {
+            match response {
                 Ok(response) => {
                     let status: StatusCode = response.status();
                     let endpoint = self.make_endpoint(endpoint);
@@ -195,6 +172,43 @@ impl<'a> Rest for RestClient<'a> {
                 .build();
             return Err(err.into());
         }
+    }
+
+    /// Test http enpoint responsiveness after connection is open.
+    async fn ping(&mut self) -> Result<(), VirshleError> {
+        // A running cloud-hypervisor process can be clunky
+        // and wait forever after a handshake so we test http response
+        // duration.
+
+        // Test ping endpoint response.
+        let request = Request::builder()
+            .uri(self.get_ping_url())
+            .method("GET")
+            .header("Host", "localhost")
+            .body(Full::new(Bytes::new()))?;
+
+        if let Some(handle) = &mut self.handle {
+            // Timeout reponse and return succesfully if a response is sent,
+            // Wether it is a succesful response or an error message.
+            let time: u64 = 1000;
+
+            let response = handle.sender.send_request(request.to_owned());
+            let response = timeout(time::Duration::from_millis(time), response)
+                .await
+                .map_err(|e| {
+                    LibError::builder()
+                        .msg(&e.to_string())
+                        .help(&format!("Request timeout {time}ms reached."))
+                        .build()
+                })?;
+        } else {
+            let err = LibError::builder()
+                .msg("Connection has no handler.")
+                .help("open connection first.")
+                .build();
+            return Err(err.into());
+        }
+        Ok(())
     }
 
     async fn get(&mut self, endpoint: &str) -> Result<Response, VirshleError> {
@@ -275,6 +289,29 @@ pub async fn handshake(stream: Stream) -> Result<StreamHandle, VirshleError> {
             }
         }
         Stream::Socket(v) => {
+            let v = TokioIo::new(v);
+            match http1::handshake(v).await {
+                Ok((sender, connection)) => {
+                    let handle = StreamHandle {
+                        sender,
+                        connection: spawn(async move { connection.await }),
+                    };
+                    trace!("http1 handshake succeeded");
+                    Ok(handle)
+                }
+                Err(e) => {
+                    let message = "Counldn't reach rest api (http1 handshake error)";
+                    let help = "Is a rest api running on the socket?";
+                    let err = WrapError::builder()
+                        .msg(&message)
+                        .help(&help)
+                        .origin(Error::from_err(e))
+                        .build();
+                    return Err(err.into());
+                }
+            }
+        }
+        Stream::Tcp(v) => {
             let v = TokioIo::new(v);
             match http1::handshake(v).await {
                 Ok((sender, connection)) => {

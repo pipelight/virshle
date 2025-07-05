@@ -165,7 +165,10 @@ impl Vm {
         // this means cloud-hypervisor is dead.
         // So we start a new viable process.
         let mut conn = Connection::from(self);
-        if conn.open().await.is_err() {
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/vmm.ping");
+        if rest.open().await.is_err() || rest.ping().await.is_err() {
             match attach {
                 Some(true) => {
                     let cmd = format!(
@@ -192,6 +195,7 @@ impl Vm {
                         .background()
                         .detach()
                         .run()?;
+                    info!("Launching: {}", &cmd);
                 }
             };
 
@@ -221,12 +225,19 @@ impl Vm {
      * Shut the virtual machine down.
      */
     pub async fn shutdown(&self) -> Result<(), VirshleError> {
-        let socket = &self.get_socket()?;
-        let endpoint = "/api/v1/vm.shutdown";
         let mut conn = Connection::from(self);
-
         let mut rest = RestClient::from(&mut conn);
-        let response = rest.put::<()>(endpoint, None).await?;
+        rest.base_url("/api/v1");
+        rest.open().await?;
+        rest.ping().await?;
+
+        // Soft shutdown VM.
+        let endpoint = "/vm.shutdown";
+        let response = rest.put::<()>(endpoint, None).await.ok();
+
+        // Soft shutdown vmm.
+        let endpoint = "/vmm.shutdown";
+        let response = rest.put::<()>(endpoint, None).await.ok();
 
         // Remove ch process
         self.delete_ch_proc()?;
@@ -237,11 +248,13 @@ impl Vm {
         Ok(())
     }
     pub async fn pause(&self) -> Result<(), VirshleError> {
-        let socket = &self.get_socket()?;
-        let endpoint = "/api/v1/vm.pause";
         let mut conn = Connection::from(self);
-
         let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let endpoint = "/vm.pause";
         let response = rest.put::<()>(endpoint, None).await?;
         Ok(())
     }
@@ -284,14 +297,14 @@ mod test {
         let path = path.display().to_string();
 
         let mut item = Vm::from_file(&path)?;
-        item.create().await?;
+        item.create(None).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn set_vm() -> Result<()> {
         let mut item = Vm::default();
-        item.create().await?;
+        item.create(None).await?;
         Ok(())
     }
     // #[tokio::test]

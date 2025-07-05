@@ -2,8 +2,11 @@ use crate::cloud_hypervisor::{Template, UserData, Vm, VmConfigPlus, VmTemplate};
 use crate::database;
 
 use super::VirshleConfig;
+
 // Global vars
 use super::{CONFIG_DIR, MANAGED_DIR};
+use once_cell::sync::Lazy;
+use std::sync::{Arc, Mutex};
 
 // Config
 use serde::{Deserialize, Serialize};
@@ -12,9 +15,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // Error Handling
-use log::info;
+use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
+
+pub const CONFIG: Lazy<Arc<Mutex<VirshleConfig>>> =
+    Lazy::new(|| Arc::new(Mutex::new(VirshleConfig::default())));
 
 impl VirshleConfig {
     /*
@@ -37,6 +43,9 @@ impl VirshleConfig {
      * Return configuration from default file path.
      */
     pub fn get() -> Result<Self, VirshleError> {
+        // let config = CONFIG.lock().unwrap().clone();
+        // Ok(config)
+
         #[cfg(debug_assertions)]
         let path = Self::debug_path();
 
@@ -46,7 +55,7 @@ impl VirshleConfig {
         let path = path.display().to_string();
         let config = Self::from_file(&path)?;
 
-        info!("Found config file.");
+        trace!("Found config file.");
         Ok(config)
     }
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {

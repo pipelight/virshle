@@ -1,3 +1,4 @@
+use axum::response;
 // Files
 use csv;
 use serde::{Deserialize, Serialize};
@@ -16,10 +17,12 @@ use macaddr::{MacAddr, MacAddr6};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use super::IpPool;
+use crate::connection::{Connection, ConnectionHandle, TcpConnection};
+use crate::http_request::{Rest, RestClient};
 use std::collections::HashMap;
 
 // Error handling
-use log::trace;
+use log::{error, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -28,41 +31,53 @@ pub struct KeaDhcp {
     pub pool: Option<HashMap<String, IpPool>>,
 }
 
+/*
+* Kea REST API types
+*/
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Raw6Lease {
-    address: IpAddr,
-    duid: String,
-    valid_lifetime: u64,
-    expire: u64,
-    subnet_id: u64,
-    pref_lifetime: u64,
-    lease_type: u64,
-    iaid: String,
-    prefix_len: u64,
-    fqdn_fwd: u64,
-    fqdn_rev: u64,
-    hostname: String,
-    hwaddr: String, // MacAddr
-    state: u64,
-    user_context: String,
-    hwtype: u64,
-    hwaddr_source: u64,
-    pool_id: u64,
+pub struct RestResponse {
+    arguments: RestLeasesResponse,
+    result: u64,
 }
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct RestLeasesResponse {
+    leases: Vec<RawLease>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum RawLease {
+    V4(Raw4Lease),
+    V6(Raw6Lease),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Raw4Lease {
-    address: IpAddr,
+    #[serde(rename = "ip-address")]
+    address: Ipv4Addr,
+    #[serde(rename = "hw-address")]
     hwaddr: String, // MacAddr
+    #[serde(skip)]
     client_id: String,
+    #[serde(rename = "valid-lft")]
     valid_lifetime: u64,
-    expire: u64,
-    subnet_id: u64,
-    fqdn_fwd: u64,
-    fqdn_rev: u64,
     hostname: String,
     state: u64,
-    user_context: String,
-    pool_id: u64,
+}
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct Raw6Lease {
+    #[serde(rename = "ip-address")]
+    address: Ipv6Addr,
+    #[serde(rename = "hw-address")]
+    hwaddr: String, // MacAddr
+    #[serde(skip)]
+    client_id: String,
+    #[serde(rename = "valid-lft")]
+    valid_lifetime: u64,
+    #[serde(rename = "type")]
+    _type: String,
+    hostname: String,
+    state: u64,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -71,11 +86,20 @@ pub struct Lease {
     pub hostname: String,
     hwaddr: String,
 }
+impl From<&RawLease> for Lease {
+    fn from(e: &RawLease) -> Self {
+        match e {
+            RawLease::V6(v) => v.into(),
+            RawLease::V4(v) => v.into(),
+        }
+    }
+}
 impl From<&Raw6Lease> for Lease {
     fn from(e: &Raw6Lease) -> Self {
+        let hostname = e.hostname.strip_suffix(".").unwrap().to_owned();
         Lease {
-            address: e.address,
-            hostname: e.hostname.clone(),
+            address: IpAddr::V6(e.address),
+            hostname,
             hwaddr: e.hwaddr.clone(), // hwaddr: MacAddr::V6(MacAddr6::from_str(&e.hwaddr)),
         }
     }
@@ -83,7 +107,7 @@ impl From<&Raw6Lease> for Lease {
 impl From<&Raw4Lease> for Lease {
     fn from(e: &Raw4Lease) -> Self {
         Lease {
-            address: e.address,
+            address: IpAddr::V4(e.address),
             hostname: e.hostname.clone(),
             hwaddr: e.hwaddr.clone(), // hwaddr: MacAddr::V6(MacAddr6::from_str(&e.hwaddr)),
         }
@@ -92,102 +116,131 @@ impl From<&Raw4Lease> for Lease {
 
 pub const LEASES_DIR: &'static str = "/var/lib/kea";
 
+#[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct KeaCommand {
+    command: String,
+    service: Vec<String>,
+    arguments: Option<HashMap<String, String>>,
+}
+
 impl KeaDhcp {
-    pub fn get_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+    pub async fn get_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+        let mut leases: Vec<Lease> = Self::get_ipv6_leases_by_hostname(hostname).await?;
+        leases.extend(Self::get_ipv4_leases_by_hostname(hostname).await?);
+        Ok(leases)
+    }
+    pub async fn get_ipv6_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+        let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
+        let mut rest = RestClient::from(&mut conn);
+        rest.open().await?;
 
-        let leases6: Vec<Lease> = Self::get_ipv6_leases()?
-            .into_iter()
-            .filter(|e| 
-                // kea ipv6 hostname
-                e.hostname.strip_suffix(".") == Some(hostname)
-            )
-            .collect();
-        
-        let leases4: Vec<Lease> = Self::get_ipv4_leases()?
-            .into_iter()
-            .filter(|e| 
-                    e.hostname == hostname
-            )
-            .collect();
-
-        // Get ipv4 by mac address.
-        let leases4_w_hwaddr: Vec<Lease> = Self::get_ipv4_leases()?
-            .into_iter()
-            .filter(|e| 
-                if let Some(lease6) = leases6.last() {
-                    e.hwaddr == lease6.hwaddr
-                }
-                else {
-                    false
-                }
-            )
-            .collect();
+        let cmd = KeaCommand {
+            command: "lease6-get-by-hostname".to_owned(),
+            service: vec!["dhcp6".to_owned()],
+            arguments: Some(HashMap::from([(
+                "hostname".to_owned(),
+                format!("{}.", hostname),
+            )])),
+        };
 
         let mut leases: Vec<Lease> = vec![];
-        leases.extend(leases6);
-        leases.extend(leases4);
-        leases.extend(leases4_w_hwaddr);
-        leases.dedup();
-
-        Ok(leases)
-    }
-
-    pub fn get_leases() -> Result<Vec<Lease>, VirshleError> {
-        let mut leases: Vec<Lease> = Self::get_ipv6_leases()?;
-        leases.extend(Self::get_ipv4_leases()?);
-
-        Ok(leases)
-    }
-
-    pub fn get_ipv4_leases() -> Result<Vec<Lease>, VirshleError> {
-        let path = Path::new(&LEASES_DIR);
-        let mut leases = vec![];
-        for entry in path.read_dir()? {
-            if let Ok(entry) = entry {
-                if entry.path().is_file()
-                    && entry
-                        .file_name()
-                        .to_str()
-                        .unwrap()
-                        .starts_with("dhcp4.leases")
-                {
-                    trace!("reading csv file: {}", entry.path().to_str().unwrap());
-                    let mut reader = csv::Reader::from_path(entry.path())?;
-                    for result in reader.deserialize() {
-                        let record: Raw4Lease = result?;
-                        let lease = Lease::from(&record);
-                        leases.push(lease);
-                    }
-                }
-            }
+        let response: Vec<RestResponse> =
+            rest.post("/", Some(cmd.clone())).await?.to_value().await?;
+        if let Some(inside) = response.first() {
+            leases = inside
+                .arguments
+                .leases
+                .iter()
+                .map(|e| Lease::from(e))
+                .collect();
         }
-        leases.dedup();
+
+        Ok(leases)
+    }
+    pub async fn get_ipv4_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+        let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
+        let mut rest = RestClient::from(&mut conn);
+        rest.open().await?;
+
+        let cmd = KeaCommand {
+            command: "lease4-get-by-hostname".to_owned(),
+            service: vec!["dhcp4".to_owned()],
+            arguments: Some(HashMap::from([(
+                "hostname".to_owned(),
+                format!("{}", hostname),
+            )])),
+        };
+
+        let mut leases: Vec<Lease> = vec![];
+        let response: Vec<RestResponse> =
+            rest.post("/", Some(cmd.clone())).await?.to_value().await?;
+        if let Some(inside) = response.first() {
+            leases = inside
+                .arguments
+                .leases
+                .iter()
+                .map(|e| Lease::from(e))
+                .collect();
+        }
+
         Ok(leases)
     }
 
-    pub fn get_ipv6_leases() -> Result<Vec<Lease>, VirshleError> {
-        let path = Path::new(&LEASES_DIR);
-        let mut leases = vec![];
-        for entry in path.read_dir()? {
-            if let Ok(entry) = entry {
-                if entry.path().is_file()
-                    && entry
-                        .file_name()
-                        .to_str()
-                        .unwrap()
-                        .starts_with("dhcp6.leases")
-                {
-                    trace!("reading csv file: {}", entry.path().to_str().unwrap());
-                    let mut reader = csv::Reader::from_path(entry.path())?;
-                    for result in reader.deserialize() {
-                        let record: Raw6Lease = result?;
-                        let lease = Lease::from(&record);
-                        leases.push(lease);
-                    }
-                }
-            }
+    pub async fn get_leases() -> Result<Vec<Lease>, VirshleError> {
+        let mut leases: Vec<Lease> = Self::get_ipv6_leases().await?;
+        leases.extend(Self::get_ipv4_leases().await?);
+        Ok(leases)
+    }
+
+    pub async fn get_ipv4_leases() -> Result<Vec<Lease>, VirshleError> {
+        let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
+        let mut rest = RestClient::from(&mut conn);
+        rest.open().await?;
+
+        let cmd = KeaCommand {
+            command: "lease4-get-all".to_owned(),
+            service: vec!["dhcp4".to_owned()],
+            ..Default::default()
+        };
+
+        let mut leases: Vec<Lease> = vec![];
+        let response: Vec<RestResponse> =
+            rest.post("/", Some(cmd.clone())).await?.to_value().await?;
+        if let Some(inside) = response.first() {
+            leases = inside
+                .arguments
+                .leases
+                .iter()
+                .map(|e| Lease::from(e))
+                .collect();
         }
-        leases.dedup();
+
+        Ok(leases)
+    }
+
+    pub async fn get_ipv6_leases() -> Result<Vec<Lease>, VirshleError> {
+        let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
+        let mut rest = RestClient::from(&mut conn);
+        rest.open().await?;
+
+        let cmd = KeaCommand {
+            command: "lease6-get-all".to_owned(),
+            service: vec!["dhcp6".to_owned()],
+            ..Default::default()
+        };
+
+        let mut leases: Vec<Lease> = vec![];
+        let response: Vec<RestResponse> =
+            rest.post("/", Some(cmd.clone())).await?.to_value().await?;
+        if let Some(inside) = response.first() {
+            leases = inside
+                .arguments
+                .leases
+                .iter()
+                .map(|e| Lease::from(e))
+                .collect();
+        }
+
         Ok(leases)
     }
 }
@@ -195,9 +248,22 @@ impl KeaDhcp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn read_leases() -> Result<()> {
-        let res = KeaDhcp::get_leases()?;
+
+    #[tokio::test]
+    async fn read_leases() -> Result<()> {
+        let res = KeaDhcp::get_leases().await?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+    #[tokio::test]
+    async fn read_leases4() -> Result<()> {
+        let res = KeaDhcp::get_ipv4_leases().await?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+    #[tokio::test]
+    async fn read_leases6() -> Result<()> {
+        let res = KeaDhcp::get_ipv6_leases().await?;
         println!("{:#?}", res);
         Ok(())
     }

@@ -5,7 +5,6 @@ use crate::connection::{Connection, ConnectionHandle, ConnectionState};
 use crate::display::vm::VmTable;
 use crate::http_request::{Rest, RestClient};
 
-use crate::cli::{CreateArgs, StartArgs, VmArgs};
 use crate::cloud_hypervisor::UserData;
 use crate::{Node, NodeInfo, Vm, VmInfo, VmState, VmTemplate};
 use std::str::FromStr;
@@ -33,15 +32,10 @@ pub mod template {
             rest.base_url("/api/v1");
             rest.ping_url("/api/v1/node/ping");
 
-            match rest.open().await {
-                Err(e) => {
-                    warn!("{}", e);
-                }
-                Ok(_) => {
-                    let node_templates: Vec<VmTemplate> =
-                        rest.get("/template/list").await?.to_value().await?;
-                    templates.insert(node, node_templates);
-                }
+            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
+                let node_templates: Vec<VmTemplate> =
+                    rest.get("/template/list").await?.to_value().await?;
+                templates.insert(node, node_templates);
             }
         }
         Ok(templates)
@@ -51,31 +45,41 @@ pub mod node {
     use super::*;
 
     pub async fn ping(node_name: Option<String>) -> Result<(), VirshleError> {
-        let config = VirshleConfig::get()?;
-        let node = if let Some(node_name) = &node_name {
-            config.get_node_by_name(&node_name)?
-        } else {
-            config.get_node_by_name("default")?
-        };
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name.clone()).await?;
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
         rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
 
-        match rest.open().await {
+        match rest.ping().await {
             Err(e) => {
                 error!("{}", e);
             }
             Ok(_) => {
-                info!("Node {:#?} is pingable.", &node_name);
+                info!("Node {:#?} is pingable.", &node.name);
             }
         }
-
         Ok(())
     }
 
-    pub async fn get_info(
+    pub async fn get_info(node_name: Option<String>) -> Result<NodeInfo, VirshleError> {
+        let node = Node::unwrap_or_default(node_name).await?;
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
+        Ok(res)
+    }
+
+    pub async fn get_info_all(
     ) -> Result<HashMap<Node, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
         let config = VirshleConfig::get()?;
         let nodes = config.get_nodes()?;
@@ -87,16 +91,12 @@ pub mod node {
             rest.base_url("/api/v1");
             rest.ping_url("/api/v1/node/ping");
 
-            match rest.open().await {
-                Err(e) => {
-                    error!("{}", e);
-                    node_info.insert(node, (rest.connection.get_state().await?, None));
-                }
-                Ok(_) => {
-                    let state = rest.connection.get_state().await?;
-                    let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
-                    node_info.insert(node, (state, Some(res)));
-                }
+            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
+                let state = rest.connection.get_state().await?;
+                let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
+                node_info.insert(node, (state, Some(res)));
+            } else {
+                node_info.insert(node, (rest.connection.get_state().await?, None));
             }
         }
         Ok(node_info)
@@ -106,15 +106,14 @@ pub mod vm {
     use super::*;
     use crate::cloud_hypervisor::VmConfigPlus;
 
-    use crate::api::method::vm::{GetManyVmArgs, GetVmArgs};
+    use crate::api::method::vm::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
 
     /// Get a hashmap/dict of all vms per (reachable) node.
     /// - node: the node name set in the virshle config file.
     /// - node: an optional account uuid.
     pub async fn get_all(
         node_name: Option<String>,
-        vm_state: Option<String>,
-        account_uuid: Option<String>,
+        args: Option<GetManyVmArgs>,
     ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
         // Single or Multiple node search.
         let config = VirshleConfig::get()?;
@@ -125,25 +124,53 @@ pub mod vm {
         };
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
+
         for node in nodes {
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
             rest.base_url("/api/v1");
             rest.ping_url("/api/v1/node/ping");
 
-            match rest.open().await {
-                Err(e) => {
-                    error!("{}", e);
-                }
-                Ok(_) => {
-                    let node_vms: Vec<Vm> = rest
-                        .post("/vm/all", Some((vm_state.clone(), account_uuid.clone())))
-                        .await?
-                        .to_value()
-                        .await?;
+            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
+                let node_vms: Vec<Vm> =
+                    rest.post("/vm/all", args.clone()).await?.to_value().await?;
+                vms.insert(node, node_vms);
+            }
+        }
+        Ok(vms)
+    }
 
-                    vms.insert(node, node_vms);
-                }
+    /// Bulk
+    /// Get a hashmap/dict of all vms per (reachable) node.
+    /// - node: the node name set in the virshle config file.
+    /// - node: an optional account uuid.
+    pub async fn get_info_many(
+        args: Option<GetManyVmArgs>,
+        node_name: Option<String>,
+    ) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
+        // Single or Multiple node search.
+        let config = VirshleConfig::get()?;
+        let nodes = if let Some(name) = node_name {
+            vec![config.get_node_by_name(&name)?]
+        } else {
+            config.get_nodes()?
+        };
+
+        let mut vms: HashMap<Node, Vec<VmTable>> = HashMap::new();
+
+        for node in nodes {
+            let mut conn = Connection::from(&node);
+            let mut rest = RestClient::from(&mut conn);
+            rest.base_url("/api/v1");
+            rest.ping_url("/api/v1/node/ping");
+
+            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
+                let node_vms: Vec<VmTable> = rest
+                    .post("/vm/info.many", args.clone())
+                    .await?
+                    .to_value()
+                    .await?;
+                vms.insert(node, node_vms);
             }
         }
         Ok(vms)
@@ -155,40 +182,22 @@ pub mod vm {
     /// * `args` - a struct containing node name and vm template name.
     /// * `vm_config_plus`: additional vm configuration to store in db.
     ///
-    pub async fn create(
-        args: &CreateArgs,
-        vm_config_plus: Option<VmConfigPlus>,
-    ) -> Result<Vm, VirshleError> {
-        let config = VirshleConfig::get()?;
+    pub async fn create(args: CreateVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
         // Set node to be queried
-        let node: Node;
-        if let Some(node_name) = &args.node {
-            node = config.get_node_by_name(&node_name)?;
-        } else {
-            node = Node::default();
-        }
-
-        // Create a vm from strict definition in file.
-        if let Some(file) = &args.file {
-            // let mut vm = Vm::from_file(&file)?;
-            // vm.create().await?;
-        }
+        let node = Node::unwrap_or_default(node_name).await?;
 
         // Create a vm from template.
-        if let Some(name) = &args.template {
+        if let Some(name) = &args.template_name {
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
             rest.base_url("/api/v1");
             rest.ping_url("/api/v1/node/ping");
+            rest.open().await?;
+            rest.ping().await?;
 
-            let vm: Vm = rest
-                .put("/vm/create", Some((args, vm_config_plus)))
-                .await?
-                .to_value()
-                .await?;
+            let vm: Vm = rest.put("/vm/create", Some(args)).await?.to_value().await?;
 
-            let res = format!("Created vm {:#?} on node {:#?}", vm.name, node.name);
-            info!("{}", res);
+            info!("Created vm {:#?} on node {:#?}", vm.name, node.name);
             Ok(vm)
         } else {
             Err(LibError::builder()
@@ -198,59 +207,75 @@ pub mod vm {
                 .into())
         }
     }
-    pub async fn delete(args: &VmArgs) -> Result<(), VirshleError> {
-        let config = VirshleConfig::get()?;
 
+    pub async fn delete(args: GetVmArgs, node_name: Option<String>) -> Result<(), VirshleError> {
         // Set node to be queried
-        let node: Node;
-        if let Some(node_name) = &args.node {
-            node = config.get_node_by_name(&node_name)?;
-        } else {
-            node = Node::default();
-        }
+        let node = Node::unwrap_or_default(node_name).await?;
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
         rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let vm: Vm = rest
+            .put("/vm/delete", Some(args.clone()))
+            .await?
+            .to_value()
+            .await?;
+
+        info!("Deleted vm {:#?} on node {:#?}", vm.name, node.name);
+
+        Ok(())
+    }
+    /// Bulk operation
+    /// Stop many virtual machine on a node.
+    pub async fn delete_many(
+        args: GetManyVmArgs,
+        node_name: Option<String>,
+    ) -> Result<(), VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
 
         let vm: Vec<Vm> = rest
             .put("/vm/delete", Some(args.clone()))
             .await?
             .to_value()
             .await?;
-        let vm = vm.first().unwrap();
-
-        let res = format!("Deleted vm {:#?} on node {:#?}", vm.name, node.name);
-        info!("{}", res);
 
         Ok(())
     }
     /*
      * Start a virtual machine on a node.
      */
-    pub async fn start(args: &VmArgs, user_data: Option<UserData>) -> Result<(), VirshleError> {
-        let config = VirshleConfig::get()?;
-
+    pub async fn start(
+        args: GetVmArgs,
+        user_data: Option<UserData>,
+        node_name: Option<String>,
+    ) -> Result<(), VirshleError> {
         // Set node to be queried
-        let node: Node;
-        if let Some(node_name) = &args.node {
-            node = config.get_node_by_name(&node_name)?;
-        } else {
-            node = Node::default();
-        }
+        let node = Node::unwrap_or_default(node_name).await?;
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
         rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
 
-        let vm: Vec<Vm> = rest
+        let vm: Vm = rest
             .put("/vm/start", Some((args, user_data)))
             .await?
             .to_value()
             .await?;
-        let vm = vm.first().unwrap();
 
         let res = format!("Started vm {:#?} on node {:#?}", vm.name, node.name);
         info!("{}", res);
@@ -264,11 +289,15 @@ pub mod vm {
         args: GetManyVmArgs,
         node_name: Option<String>,
     ) -> Result<(), VirshleError> {
+        // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
         rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
 
         let vm: Vec<Vm> = rest
             .put("/vm/shutdown", Some(args.clone()))
@@ -280,8 +309,6 @@ pub mod vm {
     }
     /// Stop a virtual machine on a node.
     pub async fn shutdown(args: GetVmArgs, node_name: Option<String>) -> Result<(), VirshleError> {
-        let config = VirshleConfig::get()?;
-
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -289,96 +316,79 @@ pub mod vm {
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
         rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
 
-        let vm: Vec<Vm> = rest
+        let vm: Vm = rest
             .put("/vm/shutdown", Some(args.clone()))
             .await?
             .to_value()
             .await?;
-
-        let vm = vm.first().unwrap();
 
         let res = format!("Shutdown vm {:#?} on node {:#?}", vm.name, node.name);
         info!("{}", res);
 
         Ok(())
     }
-    pub async fn get_info(args: &VmArgs) -> Result<VmInfo, VirshleError> {
-        let config = VirshleConfig::get()?;
-
+    pub async fn get_info(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<VmInfo, VirshleError> {
         // Set node to be queried
-        let node: Node;
-        if let Some(node_name) = &args.node {
-            node = config.get_node_by_name(&node_name)?;
-        } else {
-            node = Node::default();
-        }
-        if args.uuid.is_some() || args.id.is_some() || args.name.is_some() {
-            match node.open().await {
-                Err(e) => {
-                    error!("{}", e);
-                    Err(e)
-                }
-                Ok(mut conn) => {
-                    let mut rest = RestClient::from(&mut conn);
-                    rest.base_url("/api/v1");
-                    rest.ping_url("/api/v1/node/ping");
+        let node = Node::unwrap_or_default(node_name).await?;
 
-                    let res: VmInfo = rest
-                        .post(
-                            "/vm/info",
-                            Some(GetVmArgs {
-                                uuid: args.uuid,
-                                id: args.id,
-                                name: args.name.clone(),
-                            }),
-                        )
-                        .await?
-                        .to_value()
-                        .await?;
-                    conn.close();
-                    Ok(res)
-                }
-            }
-        } else {
-            let message = format!("Couldn't retrieve vm infos");
-            let help = format!("Are you sure the vm exists on this node?");
-            Err(LibError::builder().msg(&message).help(&help).build().into())
-        }
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let res: VmInfo = rest
+            .post(
+                "/vm/info",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+        Ok(res)
     }
 
-    pub async fn get_ch_info(args: Option<GetVmArgs>) -> Result<(), VirshleError> {
-        let config = VirshleConfig::get()?;
-
+    pub async fn get_ch_info(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<(), VirshleError> {
         // Set node to be queried
-        let node: Node;
-        if let Some(node_name) = &args.node {
-            node = config.get_node_by_name(&node_name)?;
-        } else {
-            node = Node::default();
-        }
-        if args.uuid.is_some() || args.id.is_some() || args.name.is_some() {
-            match node.open().await {
-                Err(e) => {
-                    error!("{}", e);
-                }
-                Ok(mut conn) => {
-                    let mut rest = RestClient::from(&mut conn);
-                    rest.base_url("/api/v1");
-                    rest.ping_url("/api/v1/node/ping");
+        let node = Node::unwrap_or_default(node_name).await?;
 
-                    let vm: Vec<Vm> = rest
-                        .post("/vm/ch/info", Some(args.clone()))
-                        .await?
-                        .to_value()
-                        .await?;
-                    conn.close();
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
 
-                    let res = format!("get info for vm: on node:");
-                    info!("{}", res);
-                }
-            };
-        }
+        let vm: Vm = rest
+            .post(
+                "/vm/ch/info",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+        conn.close();
+
+        info!("get info for vm: {} on node: {}", vm.name, node.name);
+
         Ok(())
     }
 }

@@ -73,16 +73,16 @@ impl Vm {
      * Add vm config to database.
      * Resources are not created there but rather on vm start.
      */
-    pub async fn create(&mut self) -> Result<Self, VirshleError> {
+    pub async fn create(&mut self, account_uuid: Option<Uuid>) -> Result<Self, VirshleError> {
         // Persist vm config into database
-        self.create_db_record().await?;
+        self.create_db_record(account_uuid).await?;
         Ok(self.to_owned())
     }
 
     /*
      * Create vm record and persist into database.
      */
-    async fn create_db_record(&mut self) -> Result<Self, VirshleError> {
+    async fn create_db_record(&mut self, account_uuid: Option<Uuid>) -> Result<Self, VirshleError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
         let record = database::entity::vm::ActiveModel {
             uuid: ActiveValue::Set(self.uuid.to_string()),
@@ -94,6 +94,9 @@ impl Vm {
 
             ..Default::default()
         };
+
+        // Link vm to an account
+        if let Some(account_uuid) = account_uuid {}
 
         let db = connect_db().await?;
         let res: InsertResult<vm::ActiveModel> =

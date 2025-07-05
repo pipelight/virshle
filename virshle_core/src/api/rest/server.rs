@@ -29,18 +29,6 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub struct NodeRestServer;
 impl NodeRestServer {
     pub async fn make_router() -> Result<Router, VirshleError> {
-        // Cloud-hypervisor direct calls.
-        let api_v1_ch = Router::new()
-            // Vm
-            .route(
-                "/vm.info",
-                get(async move |params| method::vm::get_ch_info(params).await),
-            )
-            .route(
-                "/vmm.ping",
-                get(async move |params| method::vm::get_ch_info(params).await),
-            );
-
         // Virshle API
         let api_v1 = Router::new()
             // Node
@@ -62,10 +50,6 @@ impl NodeRestServer {
                 put(async move |params| method::vm::create(params).await),
             )
             .route(
-                "/vm/info",
-                put(async move |params| method::vm::get_info(params).await),
-            )
-            .route(
                 "/vm/start",
                 put(async move |params| method::vm::start(params).await),
             )
@@ -78,8 +62,41 @@ impl NodeRestServer {
                 put(async move |params| method::vm::delete(params).await),
             );
 
+        // Virshle Bulk API
+        let api_v1_bulk = Router::new()
+            // Vm
+            .route(
+                "/vm/start.many",
+                put(async move |params| method::vm::start_many(params).await),
+            )
+            .route(
+                "/vm/shutdown.many",
+                put(async move |params| method::vm::shutdown_many(params).await),
+            )
+            .route(
+                "/vm/delete.many",
+                put(async move |params| method::vm::delete_many(params).await),
+            )
+            .route(
+                "/vm/info.many",
+                post(async move |params| method::vm::get_info_many(params).await),
+            );
+
+        // Cloud-hypervisor direct calls.
+        let api_v1_ch = Router::new()
+            // Vm
+            .route(
+                "/vm.info",
+                get(async move |params| method::vm::get_ch_info(params).await),
+            )
+            .route(
+                "/vmm.ping",
+                get(async move |params| method::vm::ping_ch(params).await),
+            );
+
         let app = Router::new()
             .nest("/api/v1", api_v1)
+            .nest("/api/v1", api_v1_bulk)
             .nest("/api/v1/ch", api_v1_ch)
             .layer(map_response(Self::set_header))
             .layer(TraceLayer::new_for_http());

@@ -28,12 +28,14 @@ pub enum Uri {
     LocalUri(LocalUri),
     // A connection to
     SshUri(SshUri),
+    TcpUri(TcpUri),
 }
 impl fmt::Display for Uri {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let string = match self {
             Uri::SshUri(uri) => uri.to_string(),
             Uri::LocalUri(uri) => uri.to_string(),
+            Uri::TcpUri(uri) => uri.to_string(),
         };
         write!(f, "{}", string)
     }
@@ -81,15 +83,35 @@ impl Default for LocalUri {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TcpUri {
+    pub host: String,
+    pub port: u64,
+}
+impl fmt::Display for TcpUri {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "tcp://{}:{}", self.host, self.port)
+    }
+}
+impl Default for TcpUri {
+    fn default() -> Self {
+        Self {
+            host: "localhost".to_owned(),
+            port: 80,
+        }
+    }
+}
+
 impl Uri {
     pub fn new(string: &str) -> Result<Self, VirshleError> {
         let url = Url::parse(string)?;
         match url.scheme() {
             "ssh" => Ok(Self::SshUri(SshUri::new(string)?)),
             "unix" => Ok(Self::LocalUri(LocalUri::new(string)?)),
+            "tcp" => Ok(Self::TcpUri(TcpUri::new(string)?)),
             _ => Err(LibError::builder()
                 .msg("Couldn't determine the uri scheme")
-                .help("Try ssh:// or file://")
+                .help("Try ssh://, tcp:// or file://")
                 .build()
                 .into()),
         }
@@ -98,14 +120,13 @@ impl Uri {
         let host = match self {
             Uri::SshUri(e) => e.host.to_owned(),
             Uri::LocalUri(e) => "localhost".to_owned(),
+            Uri::TcpUri(e) => e.host.to_owned(),
         };
         Ok(host)
     }
 }
 impl SshUri {
-    /*
-     * Helper to easily parse a url with lacking segments into a virshle ssh uri.
-     */
+    /// Helper to easily parse a url with lacking segments into a virshle ssh uri.
     pub fn new(url: &str) -> Result<SshUri, VirshleError> {
         let url = Url::parse(url)?;
 
@@ -131,9 +152,7 @@ impl SshUri {
     }
 }
 impl LocalUri {
-    /*
-     * Helper to easily parse a url with lacking segments into a virshle socket uri.
-     */
+    /// Helper to easily parse a url with lacking segments into a virshle socket uri.
     pub fn new(url: &str) -> Result<LocalUri, VirshleError> {
         let url = Url::parse(url)?;
         let mut uri = LocalUri::default();
@@ -144,7 +163,23 @@ impl LocalUri {
         Ok(uri)
     }
 }
+impl TcpUri {
+    /// Helper to easily parse a url with lacking segments into a virshle ssh uri.
+    pub fn new(url: &str) -> Result<TcpUri, VirshleError> {
+        let url = Url::parse(url)?;
 
+        let mut uri = TcpUri::default();
+        // Set host if some or fallback to default localhost.
+        if let Some(host) = url.host_str() {
+            uri.host = host.to_owned();
+        }
+        // Set port if some.
+        if let Some(port) = url.port() {
+            uri.port = port.into();
+        }
+        Ok(uri)
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,6 +202,17 @@ mod tests {
             host: "server".to_owned(),
             path: "/path/to/socket".to_owned(),
             port: 22,
+        });
+        let res = Uri::new(uri)?;
+        assert_eq!(url, res);
+        Ok(())
+    }
+    #[tokio::test]
+    async fn try_parse_tcp_uri() -> Result<()> {
+        let uri = "tcp://server:80";
+        let url = Uri::TcpUri(TcpUri {
+            host: "server".to_owned(),
+            port: 80,
         });
         let res = Uri::new(uri)?;
         assert_eq!(url, res);

@@ -32,13 +32,13 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 pub mod node {
     use super::*;
-    pub async fn ping() -> Result<(), VirshleError> {
-        Ok(())
-    }
     pub async fn get_info() -> Result<String, VirshleError> {
         let host = NodeInfo::get().await?;
         let info = serde_json::to_string(&host)?;
         Ok(info)
+    }
+    pub async fn ping() -> Result<(), VirshleError> {
+        Ok(())
     }
 }
 
@@ -75,32 +75,32 @@ pub mod vm {
         pub vm_state: Option<VmState>,
         pub account_uuid: Option<Uuid>,
     }
+    #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+    pub struct CreateVmArgs {
+        pub template_name: Option<String>,
+        pub account_uuid: Option<Uuid>,
+    }
+
     /// Return every VM on node.
     /// Can be filtered by state and/or user account.
     pub async fn get_all(Json(args): Json<GetManyVmArgs>) -> Result<Json<Vec<Vm>>, VirshleError> {
         Ok(Json(_get_all(args).await?))
     }
     pub async fn _get_all(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        Vm::get_many_by_args(args).await
+        Vm::get_many_by_args(&args).await
     }
 
     /// Create a VM on node.
-    pub async fn create(
-        Json((create_args, vm_config_plus)): Json<(CreateArgs, Option<VmConfigPlus>)>,
-    ) -> Result<Json<Vm>, VirshleError> {
-        Ok(Json(_create(&create_args, vm_config_plus).await?))
+    pub async fn create(Json(args): Json<CreateVmArgs>) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_create(args).await?))
     }
-    pub async fn _create(
-        create_args: &CreateArgs,
-        vm_config_plus: Option<VmConfigPlus>,
-    ) -> Result<Vm, VirshleError> {
+    pub async fn _create(args: CreateVmArgs) -> Result<Vm, VirshleError> {
         let config = VirshleConfig::get()?;
 
-        if let Some(name) = &create_args.template {
+        if let Some(name) = &args.template_name {
             let template = config.get_template(&name)?;
             let mut vm = Vm::from(&template);
-            vm.config = vm_config_plus;
-            vm.create().await?;
+            vm.create(args.account_uuid).await?;
             Ok(vm)
         } else {
             Err(LibError::builder()
@@ -122,7 +122,7 @@ pub mod vm {
         args: GetManyVmArgs,
         user_data: Option<UserData>,
     ) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_many_by_args(args).await?;
+        let mut vms = Vm::get_many_by_args(&args).await?;
         for vm in &mut vms {
             vm.start(user_data.clone(), None).await?;
         }
@@ -147,10 +147,10 @@ pub mod vm {
      * It should forward vm tty to user tty or ssh session!
      */
     pub async fn _start_attach(
-        args: &GetVmArgs,
+        args: GetVmArgs,
         user_data: Option<UserData>,
     ) -> Result<Vm, VirshleError> {
-        let mut vm = Vm::get_by_args(args).await?;
+        let mut vm = Vm::get_by_args(&args).await?;
         vm.start(user_data.clone(), Some(true)).await?;
         Ok(vm)
     }
@@ -162,7 +162,7 @@ pub mod vm {
         Ok(Json(_delete_many(args).await?))
     }
     pub async fn _delete_many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_many_by_args(args).await?;
+        let mut vms = Vm::get_many_by_args(&args).await?;
         for vm in &mut vms {
             vm.delete().await?;
         }
@@ -185,7 +185,7 @@ pub mod vm {
         Ok(Json(_shutdown_many(args).await?))
     }
     pub async fn _shutdown_many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_many_by_args(args).await?;
+        let mut vms = Vm::get_many_by_args(&args).await?;
         for vm in &mut vms {
             vm.shutdown().await?;
         }
@@ -202,49 +202,27 @@ pub mod vm {
     }
 
     /// Get summarized information about a VM.
-    pub async fn get_info(Json(args): Json<GetVmArgs>) -> Result<Json<VmInfo>, VirshleError> {
-        Ok(Json(_get_info(&args).await?))
+    pub async fn get_info_many(
+        Json(args): Json<GetManyVmArgs>,
+    ) -> Result<Json<Vec<VmTable>>, VirshleError> {
+        Ok(Json(_get_info_many(args).await?))
     }
-    pub async fn _get_info(args: &GetVmArgs) -> Result<VmInfo, VirshleError> {
-        if let Some(id) = args.id {
-            let vm = Vm::get_by_id(&id).await?;
-            let info = vm.get_info().await?;
-            Ok(info)
-        } else if let Some(name) = &args.name {
-            let vm = Vm::get_by_name(&name).await?;
-            let info = vm.get_info().await?;
-            Ok(info)
-        } else if let Some(uuid) = args.uuid {
-            let vm = Vm::get_by_uuid(&uuid).await?;
-            let info = vm.get_info().await?;
-            Ok(info)
-        } else {
-            let message = format!("Couldn't find the vm");
-            let help = format!("Are you sure the vm exists on this node?");
-            Err(LibError::builder().msg(&message).help(&help).build().into())
-        }
+    pub async fn _get_info_many(args: GetManyVmArgs) -> Result<Vec<VmTable>, VirshleError> {
+        let vms = Vm::get_many_by_args(&args).await?;
+        let table: Vec<VmTable> = VmTable::from_vec(&vms).await?;
+        Ok(table)
     }
 
     /// Get detailed information about a VM,
     /// from the underlying cloud-hypervisor process.
-    pub async fn get_ch_info(Json(params): Json<VmArgs>) -> Result<VmInfoResponse, VirshleError> {
-        if let Some(id) = params.id {
-            let vm = Vm::get_by_id(&id).await?;
-            let info = vm.get_ch_info().await?;
-            Ok(info.into())
-        } else if let Some(name) = params.name {
-            let vm = Vm::get_by_name(&name).await?;
-            let info = vm.get_ch_info().await?;
-            Ok(info)
-        } else if let Some(uuid) = params.uuid {
-            let vm = Vm::get_by_uuid(&uuid).await?;
-            let info = vm.get_ch_info().await?;
-            Ok(info)
-        } else {
-            let message = format!("Couldn't find vm.");
-            let help = format!("Are you sure the vm exists on this node?");
-            Err(LibError::builder().msg(&message).help(&help).build().into())
-        }
+    pub async fn get_ch_info(Json(args): Json<GetVmArgs>) -> Result<VmInfoResponse, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        let info = vm.get_ch_info().await?;
+        Ok(info.into())
+    }
+    pub async fn ping_ch(Json(args): Json<GetVmArgs>) -> Result<(), VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        vm.ping_ch().await
     }
 }
 

@@ -1,3 +1,5 @@
+use std::net::IpAddr;
+
 use crate::cloud_hypervisor::DiskTemplate;
 use human_bytes::human_bytes;
 
@@ -35,9 +37,10 @@ pub fn display_disks(disks: &Option<Vec<DiskTemplate>>) -> String {
     }
     res
 }
-pub fn display_ips(ips: &Vec<String>) -> String {
+pub fn display_ips(ips: &Vec<IpAddr>) -> String {
+    let ips: Vec<String> = ips.iter().map(|e| e.to_string()).collect();
     let res = ips.join("\n");
-    format!("{}\n", res)
+    format!("{}", res)
 }
 
 pub fn display_id(id: &Option<u64>) -> String {

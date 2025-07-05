@@ -77,6 +77,11 @@ impl VmTemplate {
                     e.host.green().bold()
                 ),
                 Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
+                Uri::TcpUri(e) => format!(
+                    "{name} on {}{}",
+                    e.host.green().bold(),
+                    e.port.blue().bold()
+                ),
             };
             VmTemplateTable::display_w_header(table, &header);
         }

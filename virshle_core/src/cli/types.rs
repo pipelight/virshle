@@ -11,12 +11,13 @@ pub struct Cli {
     pub commands: Commands,
     #[command(flatten)]
     pub verbose: Verbosity,
+
+    #[command(flatten)]
+    pub current_workgin_node: CurrentWorkingNode,
 }
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
-    Daemon,
-
     /// Init/Ensure system global configuration (openvswitches, directories, database).
     Init,
 
@@ -71,9 +72,6 @@ pub struct CreateArgs {
     #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
     pub template: Option<String>,
 
-    #[arg(short, long, value_name = "NODE_NAME")]
-    pub node: Option<String>,
-
     #[arg(long, value_name = "VM_CONFIG_FILEPATH")]
     pub config: Option<String>,
 }
@@ -101,8 +99,7 @@ pub struct VmArgs {
         value_name = "VM_UUID"
     )]
     pub uuid: Option<Uuid>,
-    #[arg(short, long, value_name = "NODE_NAME")]
-    pub node: Option<String>,
+
     #[arg(long, value_name = "VM_STATE")]
     pub state: Option<VmState>,
 
@@ -136,12 +133,13 @@ pub enum TemplateArgs {
 pub enum NodeArgs {
     #[default]
     Ls,
+    Ping(CurrentWorkingNode),
+    Info(CurrentWorkingNode),
     Serve,
-    Ping(WhichNode),
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct WhichNode {
+pub struct CurrentWorkingNode {
     #[arg(long, value_name = "NODE_NAME")]
-    pub name: Option<String>,
+    pub node: Option<String>,
 }

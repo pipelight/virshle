@@ -8,6 +8,7 @@ use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::net::IpAddr;
 use tabled::{
     settings::{disable::Remove, object::Columns, themes::BorderCorrection, Panel, Style},
     Table, Tabled,
@@ -30,20 +31,20 @@ pub struct VmTable {
     #[tabled(display = "display_state")]
     pub state: VmState,
     #[tabled(display = "display_ips")]
-    pub ips: Vec<String>,
+    pub ips: Vec<IpAddr>,
     pub uuid: Uuid,
 }
 
 impl VmTable {
     pub async fn from(vm: &Vm) -> Result<Self, VirshleError> {
-        let ips: Vec<String> = vm.get_ips().await?.iter().map(|e| e.to_string()).collect();
+        let tmp = vm.get_info().await?;
         let table = VmTable {
             id: vm.id,
             name: vm.name.to_owned(),
             vcpu: vm.vcpu,
             vram: vm.vram,
-            state: vm.get_state().await?,
-            ips,
+            state: tmp.state,
+            ips: tmp.ips,
             uuid: vm.uuid,
         };
         Ok(table)
@@ -82,6 +83,11 @@ impl VmTable {
                     e.host.green().bold()
                 ),
                 Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
+                Uri::TcpUri(e) => format!(
+                    "{name} on {}{}",
+                    e.host.green().bold(),
+                    e.port.blue().bold()
+                ),
             };
             VmTable::display_w_header(table, &header);
         }
