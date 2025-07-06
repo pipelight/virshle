@@ -15,6 +15,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+// Spinners
+use owo_colors::OwoColorize;
+use spinoff::{spinners, Color, Spinner};
+
 // Rest API client
 use crate::api::method::vm::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
 use crate::api::{rest::client, rest::method, NodeServer};
@@ -134,40 +138,109 @@ impl Cli {
                         }
                         _ => {
                             let args = args.vm_args;
-                            // Rest API
-                            client::vm::start(
-                                GetVmArgs {
-                                    id: args.id,
-                                    uuid: args.uuid,
-                                    name: args.name,
-                                },
-                                user_data,
-                                cw_node,
-                            )
-                            .await?;
+                            if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                                // Spinner
+                                let mut sp =
+                                    Spinner::new(spinners::Toggle5, "Starting vm...", None);
+                                // Rest API
+                                let vm = client::vm::start(
+                                    GetVmArgs {
+                                        id: args.id,
+                                        uuid: args.uuid,
+                                        name: args.name,
+                                    },
+                                    user_data,
+                                    cw_node.clone(),
+                                )
+                                .await?;
+
+                                // Spinner
+                                let node = Node::unwrap_or_default(cw_node).await?;
+                                let vm_name = format!("vm-{}", vm.name);
+                                let message = format!(
+                                    "Started {} on node {}",
+                                    vm_name.bold().blue(),
+                                    node.name.bold().green()
+                                );
+                                sp.stop_and_persist("✅", &message);
+                            } else if args.state.is_some() || args.account.is_some() {
+                                // Spinner
+                                let mut sp =
+                                    Spinner::new(spinners::Toggle5, "Starting vms...", None);
+                                let vms = client::vm::start_many(
+                                    GetManyVmArgs {
+                                        vm_state: args.state,
+                                        account_uuid: args.account,
+                                    },
+                                    cw_node.clone(),
+                                )
+                                .await?;
+                                let vms_name: Vec<String> = vms
+                                    .iter()
+                                    .map(|e| format!("vm-{}", e.name.bold().blue()))
+                                    .collect();
+                                let vms_name: String = vms_name.join("\n");
+
+                                // Spinner
+                                let node = Node::unwrap_or_default(cw_node).await?;
+                                let message = format!(
+                                    "Started [{}] on node {}",
+                                    vms_name,
+                                    node.name.bold().green()
+                                );
+                                sp.stop_and_persist("✅", &message);
+                            }
                         }
                     };
                 }
                 Crud::Stop(args) => {
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
-                        client::vm::shutdown(
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Stopping vm...", None);
+                        let vm = client::vm::shutdown(
                             GetVmArgs {
                                 id: args.id,
                                 uuid: args.uuid,
                                 name: args.name,
                             },
-                            cw_node,
+                            cw_node.clone(),
                         )
                         .await?;
+
+                        // Spinner
+                        let node = Node::unwrap_or_default(cw_node).await?;
+                        let vm_name = format!("vm-{}", vm.name);
+                        let message = format!(
+                            "Stopped {} on node {}",
+                            vm_name.bold().blue(),
+                            node.name.bold().green()
+                        );
+                        sp.stop_and_persist("✅", &message);
                     } else if args.state.is_some() || args.account.is_some() {
-                        client::vm::shutdown_many(
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Stopping vms...", None);
+                        let vms = client::vm::shutdown_many(
                             GetManyVmArgs {
                                 vm_state: args.state,
                                 account_uuid: args.account,
                             },
-                            cw_node,
+                            cw_node.clone(),
                         )
                         .await?;
+                        let vms_name: Vec<String> = vms
+                            .iter()
+                            .map(|e| format!("vm-{}", e.name.bold().blue()))
+                            .collect();
+                        let vms_name: String = vms_name.join("\n");
+
+                        // Spinner
+                        let node = Node::unwrap_or_default(cw_node).await?;
+                        let message = format!(
+                            "Stopped [{}] on node {}",
+                            vms_name,
+                            node.name.bold().green()
+                        );
+                        sp.stop_and_persist("✅", &message);
                     }
                 }
                 Crud::Ls(args) => {

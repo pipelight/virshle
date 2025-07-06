@@ -253,14 +253,12 @@ pub mod vm {
 
         Ok(())
     }
-    /*
-     * Start a virtual machine on a node.
-     */
+    /// Start a virtual machine on a node.
     pub async fn start(
         args: GetVmArgs,
         user_data: Option<UserData>,
         node_name: Option<String>,
-    ) -> Result<(), VirshleError> {
+    ) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -280,15 +278,14 @@ pub mod vm {
         let res = format!("Started vm {:#?} on node {:#?}", vm.name, node.name);
         info!("{}", res);
 
-        Ok(())
+        Ok(vm)
     }
-
     /// Bulk operation
-    /// Stop many virtual machine on a node.
-    pub async fn shutdown_many(
+    /// Start many virtual machine on a node.
+    pub async fn start_many(
         args: GetManyVmArgs,
         node_name: Option<String>,
-    ) -> Result<(), VirshleError> {
+    ) -> Result<Vec<Vm>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -299,16 +296,41 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let vm: Vec<Vm> = rest
+        let vms: Vec<Vm> = rest
+            .put("/vm/start.many", Some(args.clone()))
+            .await?
+            .to_value()
+            .await?;
+
+        Ok(vms)
+    }
+
+    /// Bulk operation
+    /// Stop many virtual machine on a node.
+    pub async fn shutdown_many(
+        args: GetManyVmArgs,
+        node_name: Option<String>,
+    ) -> Result<Vec<Vm>, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let vms: Vec<Vm> = rest
             .put("/vm/shutdown", Some(args.clone()))
             .await?
             .to_value()
             .await?;
 
-        Ok(())
+        Ok(vms)
     }
     /// Stop a virtual machine on a node.
-    pub async fn shutdown(args: GetVmArgs, node_name: Option<String>) -> Result<(), VirshleError> {
+    pub async fn shutdown(args: GetVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -328,7 +350,7 @@ pub mod vm {
         let res = format!("Shutdown vm {:#?} on node {:#?}", vm.name, node.name);
         info!("{}", res);
 
-        Ok(())
+        Ok(vm)
     }
     pub async fn get_info(
         args: GetVmArgs,

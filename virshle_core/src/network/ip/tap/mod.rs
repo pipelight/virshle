@@ -9,7 +9,7 @@ use macaddr::MacAddr6;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 // Error handling
-use log::{error, info};
+use log::{error, info, warn};
 use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
@@ -54,10 +54,9 @@ pub fn create(name: &str) -> Result<(), VirshleError> {
         let res = proc.stdin(&cmd).run()?;
 
         if let Some(stderr) = res.io.stderr {
-            let message = format!("ip command failed: {:#?}", cmd);
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            error!("{}", &message);
-            error!("{}", &help);
+            let message = format!("[network]: ip command failed.");
+            let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+            warn!("{}:{}", &message, &help);
             return Err(LibError::builder().msg(&message).help(&help).build().into());
         }
     }
@@ -92,10 +91,9 @@ pub fn create_macvtap(name: &str) -> Result<(), VirshleError> {
         let res = proc.stdin(&cmd).run()?;
 
         if let Some(stderr) = res.io.stderr {
-            let message = format!("ip command failed: {:#?}", cmd);
-            let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-            error!("{}", &message);
-            error!("{}", &help);
+            let message = format!("[network]: ip command failed.");
+            let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+            warn!("{}:{}", &message, &help);
             return Err(LibError::builder().msg(&message).help(&help).build().into());
         }
     }
@@ -114,10 +112,9 @@ pub fn delete(name: &str) -> Result<(), VirshleError> {
     let res = proc.stdin(&cmd).run()?;
 
     if let Some(stderr) = res.io.stderr {
-        let message = format!("ip command failed: {:#?}", cmd);
-        let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-        error!("{}", &message);
-        error!("{}", &help);
+        let message = format!("[network]: ip command failed.");
+        let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+        warn!("{}:{}", &message, &help);
         return Err(LibError::builder().msg(&message).help(&help).build().into());
     }
     Ok(())
@@ -132,10 +129,9 @@ pub fn set_mac(name: &str, mac: &MacAddr6) -> Result<(), VirshleError> {
     let res = proc.stdin(&cmd).run()?;
 
     if let Some(stderr) = res.io.stderr {
-        let message = format!("ip command failed: {:#?}", cmd);
-        let help = format!("{}\n{} ", stderr, &res.io.stdin.unwrap());
-        error!("{}", &message);
-        error!("{}", &help);
+        let message = format!("[network]: ip command failed.");
+        let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+        warn!("{}:{}", &message, &help);
         return Err(LibError::builder().msg(&message).help(&help).build().into());
     }
     Ok(())

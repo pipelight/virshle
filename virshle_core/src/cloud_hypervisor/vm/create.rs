@@ -33,42 +33,6 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
-    pub async fn start(
-        &mut self,
-        user_data: Option<UserData>,
-        attach: Option<bool>,
-    ) -> Result<(), VirshleError> {
-        self.create_networks()?;
-        self.start_vmm(attach).await?;
-
-        // Provision with user defined data
-        self.add_init_disk(user_data)?;
-
-        self.push_config_to_vmm().await?;
-
-        let mut conn = Connection::from(self);
-        let mut rest = RestClient::from(&mut conn);
-
-        let endpoint = "/api/v1/vm.boot";
-        let response = rest.put::<()>(endpoint, None).await?;
-
-        if response.status().is_success() {
-            let msg = &response.to_string().await?;
-            trace!("{}", &msg);
-        } else {
-            let err_msg = &response.to_string().await?;
-            error!("{}", &err_msg);
-
-            let message = "Couldn't boot vm.";
-            return Err(LibError::builder()
-                .msg(&message)
-                .help(&err_msg)
-                .build()
-                .into());
-        }
-
-        Ok(())
-    }
     /*
      * Add vm config to database.
      * Resources are not created there but rather on vm start.
@@ -110,6 +74,8 @@ impl Vm {
      * Add network ports to ovs config.
      */
     pub fn create_networks(&self) -> Result<(), VirshleError> {
+        trace!("creating networks for vm {:#?}", self.name);
+
         // Remove old networks
         self.delete_networks()?;
 

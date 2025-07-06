@@ -197,7 +197,7 @@ pub mod vm {
     }
     pub async fn _shutdown(args: GetVmArgs) -> Result<Vm, VirshleError> {
         let vm = Vm::get_by_args(&args).await?;
-        vm.shutdown().await?;
+        vm.shutdown().await.ok();
         Ok(vm)
     }
 

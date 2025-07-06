@@ -149,9 +149,46 @@ impl Default for Vm {
 }
 
 impl Vm {
-    /*
-     * Start or Restart a Vm
-     */
+    /// Start Vm
+    pub async fn start(
+        &mut self,
+        user_data: Option<UserData>,
+        attach: Option<bool>,
+    ) -> Result<(), VirshleError> {
+        info!("[start] starting vm {:#?}", self.name);
+        self.create_networks()?;
+        self.start_vmm(attach).await?;
+
+        // Provision with user defined data
+        self.add_init_disk(user_data)?;
+
+        self.push_config_to_vmm().await?;
+
+        let mut conn = Connection::from(&self.clone());
+        let mut rest = RestClient::from(&mut conn);
+
+        let endpoint = "/api/v1/vm.boot";
+        let response = rest.put::<()>(endpoint, None).await?;
+
+        if response.status().is_success() {
+            let msg = &response.to_string().await?;
+            trace!("{}", &msg);
+        } else {
+            let err_msg = &response.to_string().await?;
+            error!("{}", &err_msg);
+
+            let message = "Couldn't boot vm.";
+            return Err(LibError::builder()
+                .msg(&message)
+                .help(&err_msg)
+                .build()
+                .into());
+        }
+
+        info!("[end] started vm {:#?}", self.name);
+        Ok(())
+    }
+    /// Start or Restart a VMM.
     async fn start_vmm(&self, attach: Option<bool>) -> Result<(), VirshleError> {
         // Safeguard: remove old process and artifacts
         self.delete_ch_proc()?;
@@ -215,16 +252,15 @@ impl Vm {
             Process::new()
                 .stdin(&format!("sudo chmod 774 {}", &self.get_socket()?))
                 .run()?;
-
-            debug!("Started vm: {:#?}", cmd);
         }
         Ok(())
     }
 
-    /*
-     * Shut the virtual machine down.
-     */
+    /// Shut the virtual machine down and removes artifacts.
+    /// Should silently fail when vm is already down.
     pub async fn shutdown(&self) -> Result<(), VirshleError> {
+        info!("[start] stopping vm {:#?}", self.name);
+
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
@@ -233,21 +269,24 @@ impl Vm {
 
         // Soft shutdown VM.
         let endpoint = "/vm.shutdown";
-        let response = rest.put::<()>(endpoint, None).await.ok();
+        let response = rest.put::<()>(endpoint, None).await?;
 
         // Soft shutdown vmm.
         let endpoint = "/vmm.shutdown";
-        let response = rest.put::<()>(endpoint, None).await.ok();
+        let response = rest.put::<()>(endpoint, None).await?;
 
         // Remove ch process
         self.delete_ch_proc()?;
 
         // Remove network ports
-        self.delete_networks();
+        self.delete_networks()?;
 
+        info!("[end] stopped vm {:#?}", self.name);
         Ok(())
     }
     pub async fn pause(&self) -> Result<(), VirshleError> {
+        info!("[start] pausing vm {:#?}", self.name);
+
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
@@ -256,6 +295,8 @@ impl Vm {
 
         let endpoint = "/vm.pause";
         let response = rest.put::<()>(endpoint, None).await?;
+
+        info!("[end] paused vm {:#?}", self.name);
         Ok(())
     }
 
