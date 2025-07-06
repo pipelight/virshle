@@ -33,3 +33,4 @@ pub mod database;
 
 // Display virshle types in pretty tables.
 pub mod display;
+pub use display::VmTable;

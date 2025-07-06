@@ -20,7 +20,7 @@ use hyper::{Request, StatusCode};
 use std::fs;
 
 // Rest Api
-use crate::api::method::vm::{GetManyVmArgs, GetVmArgs};
+use crate::api::rest::{GetManyVmArgs, GetVmArgs};
 
 // Http
 use crate::connection::{Connection, ConnectionHandle, UnixConnection};

@@ -32,10 +32,14 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 pub mod node {
     use super::*;
-    pub async fn get_info() -> Result<String, VirshleError> {
-        let host = NodeInfo::get().await?;
-        let info = serde_json::to_string(&host)?;
-        Ok(info)
+
+    /// Return info on node.
+    pub async fn get_info() -> Result<Json<NodeInfo>, VirshleError> {
+        Ok(Json(_get_info().await?))
+    }
+    pub async fn _get_info() -> Result<NodeInfo, VirshleError> {
+        let res = NodeInfo::get().await?;
+        Ok(res)
     }
     pub async fn ping() -> Result<(), VirshleError> {
         Ok(())
@@ -44,41 +48,30 @@ pub mod node {
 
 pub mod template {
     use super::*;
-    pub async fn get_all() -> Result<String, VirshleError> {
+
+    /// Return all template name.
+    pub async fn get_all() -> Result<Json<Vec<VmTemplate>>, VirshleError> {
+        Ok(Json(_get_all().await?))
+    }
+    pub async fn _get_all() -> Result<Vec<VmTemplate>, VirshleError> {
         let config = VirshleConfig::get()?;
         if let Some(template) = config.template {
-            let templates = serde_json::to_string(&template.vm)?;
-            Ok(templates)
-        } else {
-            return Err(LibError::builder()
-                .msg("No template on node.")
-                .help("")
-                .build()
-                .into());
+            if let Some(vm_templates) = template.vm {
+                return Ok(vm_templates);
+            }
         }
+        Err(LibError::builder()
+            .msg("No template on node.")
+            .help("")
+            .build()
+            .into())
     }
 }
 
 pub mod vm {
     use super::*;
+    use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
     use crate::cloud_hypervisor::VmConfigPlus;
-
-    /// A strutc to query a VM from a node.
-    #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-    pub struct GetVmArgs {
-        pub id: Option<u64>,
-        pub uuid: Option<Uuid>,
-        pub name: Option<String>,
-    }
-    #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-    pub struct GetManyVmArgs {
-        pub vm_state: Option<VmState>,
-        pub account_uuid: Option<Uuid>,
-    }
-    #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-    pub struct CreateVmArgs {
-        pub template_name: Option<String>,
-    }
 
     /// Return every VM on node.
     /// Can be filtered by state and/or user account.

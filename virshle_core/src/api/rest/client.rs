@@ -34,7 +34,7 @@ pub mod template {
 
             if rest.open().await.is_ok() && rest.ping().await.is_ok() {
                 let node_templates: Vec<VmTemplate> =
-                    rest.get("/template/list").await?.to_value().await?;
+                    rest.get("/template/all").await?.to_value().await?;
                 templates.insert(node, node_templates);
             }
         }
@@ -104,9 +104,8 @@ pub mod node {
 }
 pub mod vm {
     use super::*;
+    use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
     use crate::cloud_hypervisor::VmConfigPlus;
-
-    use crate::api::method::vm::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
 
     /// Get a hashmap/dict of all vms per (reachable) node.
     /// - node: the node name set in the virshle config file.
@@ -364,7 +363,7 @@ pub mod vm {
     pub async fn get_info(
         args: GetVmArgs,
         node_name: Option<String>,
-    ) -> Result<VmInfo, VirshleError> {
+    ) -> Result<VmTable, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -375,7 +374,7 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let res: VmInfo = rest
+        let res: VmTable = rest
             .post(
                 "/vm/info",
                 Some(GetVmArgs {

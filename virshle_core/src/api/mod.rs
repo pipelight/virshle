@@ -1,8 +1,7 @@
 pub mod rest;
 
-pub use crate::cli::{CreateArgs, NodeArgs, StartArgs, TemplateArgs, VmArgs};
-
 pub use rest::{client, method, NodeRestServer};
+pub use rest::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
 
 // Socket
 use std::fs;

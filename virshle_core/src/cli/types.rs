@@ -21,7 +21,7 @@ pub enum Commands {
     /// Init/Ensure system global configuration (openvswitches, directories, database).
     Init,
 
-    /// Operations on templates
+    /// Operations on nodes
     #[command(subcommand)]
     Node(NodeArgs),
 

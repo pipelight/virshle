@@ -20,8 +20,8 @@ use owo_colors::OwoColorize;
 use spinoff::{spinners, Color, Spinner};
 
 // Rest API client
-use crate::api::method::vm::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
 use crate::api::{rest::client, rest::method, NodeServer};
+use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
 
 // Logger
 use env_logger::Builder;
