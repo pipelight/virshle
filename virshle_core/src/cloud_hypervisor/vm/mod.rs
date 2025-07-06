@@ -7,7 +7,7 @@ pub mod init;
 // Reexports
 pub use from::VmTemplate;
 pub use getters::VmInfo;
-pub use init::{InitData, SshData, UserData, VmData};
+pub use init::{InitData, UserData, VmData};
 
 use super::vmm_types::VmConfig;
 
@@ -42,9 +42,11 @@ use virshle_error::{LibError, VirshleError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Account {
-    uuid: String,
-    name: String,
+    pub uuid: String,
+    pub name: String,
+    pub public_key: String,
 }
+
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct VmConfigPlus {
     /// The account the vm is linked to.

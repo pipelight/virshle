@@ -72,8 +72,10 @@ pub struct CreateArgs {
     #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
     pub template: Option<String>,
 
-    #[arg(long, value_name = "VM_CONFIG_FILEPATH")]
-    pub config: Option<String>,
+    /// Pass user data to VM.
+    /// It links the VM to the provided account on node database
+    #[arg(short, long, value_name = "USERDATA_FILEPATH")]
+    pub user_data: Option<String>,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -100,9 +102,11 @@ pub struct VmArgs {
     )]
     pub uuid: Option<Uuid>,
 
+    /// Lookup VM by state.
     #[arg(long, value_name = "VM_STATE")]
     pub state: Option<VmState>,
 
+    /// Lookup VM by account.
     #[arg(long, value_name = "ACCOUNT_UUID")]
     pub account: Option<Uuid>,
 }
@@ -119,6 +123,8 @@ pub struct StartArgs {
     )]
     pub attach: bool,
 
+    /// Pass user data to VM.
+    /// It links the VM to the provided account on node database
     #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
 }

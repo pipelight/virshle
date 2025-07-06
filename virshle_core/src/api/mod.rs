@@ -1,7 +1,6 @@
 pub mod rest;
 
 pub use crate::cli::{CreateArgs, NodeArgs, StartArgs, TemplateArgs, VmArgs};
-pub use crate::cloud_hypervisor::{SshData, UserData};
 
 pub use rest::{client, method, NodeRestServer};
 

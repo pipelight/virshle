@@ -11,7 +11,5 @@ pub mod vmm_types;
 
 pub use definition::{Definition, Template};
 pub use disk::{Disk, DiskTemplate, InitDisk};
-pub use vm::{
-    Account, InitData, SshData, UserData, Vm, VmConfigPlus, VmData, VmInfo, VmNet, VmTemplate,
-};
+pub use vm::{Account, InitData, UserData, Vm, VmConfigPlus, VmData, VmInfo, VmNet, VmTemplate};
 pub use vmm_types::{VmConfig, VmState};
