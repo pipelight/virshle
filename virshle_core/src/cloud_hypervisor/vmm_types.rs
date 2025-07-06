@@ -132,6 +132,7 @@ pub enum VhostMode {
 
 #[derive(Default, Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum VmState {
+    // cloud-hypervisor
     #[default]
     NotCreated,
     Created,

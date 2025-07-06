@@ -1,3 +1,4 @@
+use super::account::Account;
 use super::{Disk, NetType, Vm, VmNet};
 use crate::ovs::OvsPort;
 
@@ -11,7 +12,7 @@ use std::path::Path;
 //Database
 use crate::database;
 use crate::database::connect_db;
-use crate::database::entity::{prelude::*, *};
+use crate::database::entity::{prelude, *};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sea_orm::{
     prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult, IntoActiveModel,
@@ -33,39 +34,50 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
-    /*
-     * Add vm config to database.
-     * Resources are not created there but rather on vm start.
-     */
-    pub async fn create(&mut self, account_uuid: Option<Uuid>) -> Result<Self, VirshleError> {
+    /// Add vm config to database.
+    /// Resources are not created there but rather on vm start.
+    pub async fn create(&mut self, user_data: Option<UserData>) -> Result<Self, VirshleError> {
         // Persist vm config into database
-        self.create_db_record(account_uuid).await?;
+        self.create_db_record(user_data).await?;
         Ok(self.to_owned())
     }
 
-    /*
-     * Create vm record and persist into database.
-     */
-    async fn create_db_record(&mut self, account_uuid: Option<Uuid>) -> Result<Self, VirshleError> {
+    /// Create vm record and persist into database.
+    async fn create_db_record(
+        &mut self,
+        user_data: Option<UserData>,
+    ) -> Result<Self, VirshleError> {
+        let db = connect_db().await?;
+
+        // Vm record
         let now: NaiveDateTime = Utc::now().naive_utc();
-        let record = database::entity::vm::ActiveModel {
+        let vm = database::entity::vm::ActiveModel {
             uuid: ActiveValue::Set(self.uuid.to_string()),
             name: ActiveValue::Set(self.name.clone()),
             definition: ActiveValue::Set(serde_json::to_value(&self)?),
-
             created_at: ActiveValue::Set(now),
             updated_at: ActiveValue::Set(now),
-
             ..Default::default()
         };
 
-        // Link vm to an account
-        if let Some(account_uuid) = account_uuid {}
+        let vm_insert_result: InsertResult<vm::ActiveModel> =
+            database::prelude::Vm::insert(vm.clone()).exec(&db).await?;
+        self.id = Some(vm_insert_result.last_insert_id as u64);
 
-        let db = connect_db().await?;
-        let res: InsertResult<vm::ActiveModel> =
-            database::prelude::Vm::insert(record).exec(&db).await?;
-        self.id = Some(res.last_insert_id as u64);
+        // Link Vm record to Account record
+        if let Some(user_data) = user_data {
+            if let Some(mut account) = user_data.account {
+                let account = Account::get_or_create(&mut account).await?;
+                // Junction table record
+                let junction_record = database::entity::account_vm::ActiveModel {
+                    account_id: ActiveValue::Set(account.id.unwrap()),
+                    vm_id: ActiveValue::Set(self.id.unwrap() as i32),
+                };
+                database::prelude::AccountVm::insert(junction_record)
+                    .exec(&db)
+                    .await?;
+            }
+        }
 
         Ok(self.to_owned())
     }

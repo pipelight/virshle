@@ -1,3 +1,4 @@
+pub mod account;
 pub mod create;
 pub mod delete;
 pub mod from;
@@ -5,6 +6,7 @@ pub mod getters;
 pub mod init;
 
 // Reexports
+pub use account::Account;
 pub use from::VmTemplate;
 pub use getters::VmInfo;
 pub use init::{InitData, UserData, VmData};
@@ -32,20 +34,10 @@ use uuid::Uuid;
 use crate::connection::{Connection, ConnectionHandle, UnixConnection};
 use crate::http_request::{Rest, RestClient};
 
-//Database
-use crate::database::entity::{prelude::*, *};
-
 // Error Handling
 use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-pub struct Account {
-    pub uuid: String,
-    pub name: String,
-    pub public_key: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct VmConfigPlus {

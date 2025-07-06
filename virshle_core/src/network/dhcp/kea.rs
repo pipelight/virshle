@@ -122,6 +122,12 @@ pub struct KeaCommand {
     service: Vec<String>,
     arguments: Option<HashMap<String, String>>,
 }
+#[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct KeaBulkCommand {
+    command: String,
+    service: Vec<String>,
+    arguments: Option<HashMap<String, HashMap<String, String>>>,
+}
 
 impl KeaDhcp {
     pub async fn get_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
@@ -242,6 +248,55 @@ impl KeaDhcp {
         }
 
         Ok(leases)
+    }
+    pub async fn delete_leases(vm_name: &str) -> Result<(), VirshleError> {
+        Self::delete_ipv4_leases(vm_name).await?;
+        Self::delete_ipv6_leases(vm_name).await?;
+        Ok(())
+    }
+    pub async fn delete_ipv6_leases(vm_name: &str) -> Result<(), VirshleError> {
+        let hostname = format!("vm-{}", vm_name);
+
+        let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
+        let mut rest = RestClient::from(&mut conn);
+        rest.open().await?;
+
+        let mut ipv6_map: HashMap<String, String> = HashMap::new();
+        let ipv6_leases = Self::get_ipv6_leases_by_hostname(&hostname).await?;
+        for lease in ipv6_leases {
+            ipv6_map.insert("ip-address".to_owned(), lease.address.to_string());
+        }
+
+        let cmd = KeaBulkCommand {
+            command: "lease6-bulk-apply".to_owned(),
+            service: vec!["dhcp6".to_owned()],
+            arguments: Some(HashMap::from([("delete_leases".to_owned(), ipv6_map)])),
+        };
+
+        rest.post("/", Some(cmd.clone())).await?;
+        Ok(())
+    }
+    pub async fn delete_ipv4_leases(vm_name: &str) -> Result<(), VirshleError> {
+        let hostname = format!("vm-{}", vm_name);
+
+        let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
+        let mut rest = RestClient::from(&mut conn);
+        rest.open().await?;
+
+        let mut ipv6_map: HashMap<String, String> = HashMap::new();
+        let ipv6_leases = Self::get_ipv6_leases_by_hostname(&hostname).await?;
+        for lease in ipv6_leases {
+            ipv6_map.insert("ip-address".to_owned(), lease.address.to_string());
+        }
+
+        let cmd = KeaBulkCommand {
+            command: "lease4-bulk-apply".to_owned(),
+            service: vec!["dhcp4".to_owned()],
+            arguments: Some(HashMap::from([("delete_leases".to_owned(), ipv6_map)])),
+        };
+
+        rest.post("/", Some(cmd.clone())).await?;
+        Ok(())
     }
 }
 

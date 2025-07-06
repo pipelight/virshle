@@ -95,15 +95,31 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
+                    // Spinner
+                    let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
+                    let mut user_data = None;
+                    if let Some(user_data_filepath) = args.user_data {
+                        user_data = Some(UserData::from_file(&user_data_filepath)?);
+                    }
                     // Create a vm from template.
-                    client::vm::create(
+                    let vm = client::vm::create(
                         CreateVmArgs {
                             template_name: args.template,
-                            account_uuid: None,
                         },
-                        None,
+                        cw_node.clone(),
+                        user_data,
                     )
                     .await?;
+
+                    // Spinner
+                    let node = Node::unwrap_or_default(cw_node).await?;
+                    let vm_name = format!("vm-{}", vm.name);
+                    let message = format!(
+                        "Created {} on node {}",
+                        vm_name.bold().blue(),
+                        node.name.bold().green()
+                    );
+                    sp.stop_and_persist("✅", &message);
                 }
                 Crud::Info(args) => {
                     if let Some(name) = args.name {
@@ -149,8 +165,8 @@ impl Cli {
                                         uuid: args.uuid,
                                         name: args.name,
                                     },
-                                    user_data,
                                     cw_node.clone(),
+                                    user_data,
                                 )
                                 .await?;
 
@@ -173,6 +189,7 @@ impl Cli {
                                         account_uuid: args.account,
                                     },
                                     cw_node.clone(),
+                                    user_data,
                                 )
                                 .await?;
                                 let vms_name: Vec<String> = vms

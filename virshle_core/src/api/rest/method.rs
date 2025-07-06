@@ -78,7 +78,6 @@ pub mod vm {
     #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
     pub struct CreateVmArgs {
         pub template_name: Option<String>,
-        pub account_uuid: Option<Uuid>,
     }
 
     /// Return every VM on node.
@@ -91,16 +90,21 @@ pub mod vm {
     }
 
     /// Create a VM on node.
-    pub async fn create(Json(args): Json<CreateVmArgs>) -> Result<Json<Vm>, VirshleError> {
-        Ok(Json(_create(args).await?))
+    pub async fn create(
+        Json((args, user_data)): Json<(CreateVmArgs, Option<UserData>)>,
+    ) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_create(args, user_data).await?))
     }
-    pub async fn _create(args: CreateVmArgs) -> Result<Vm, VirshleError> {
+    pub async fn _create(
+        args: CreateVmArgs,
+        user_data: Option<UserData>,
+    ) -> Result<Vm, VirshleError> {
         let config = VirshleConfig::get()?;
 
         if let Some(name) = &args.template_name {
             let template = config.get_template(&name)?;
             let mut vm = Vm::from(&template);
-            vm.create(args.account_uuid).await?;
+            vm.create(user_data).await?;
             Ok(vm)
         } else {
             Err(LibError::builder()

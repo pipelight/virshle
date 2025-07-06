@@ -112,8 +112,8 @@ pub mod vm {
     /// - node: the node name set in the virshle config file.
     /// - node: an optional account uuid.
     pub async fn get_all(
-        node_name: Option<String>,
         args: Option<GetManyVmArgs>,
+        node_name: Option<String>,
     ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
         // Single or Multiple node search.
         let config = VirshleConfig::get()?;
@@ -182,7 +182,11 @@ pub mod vm {
     /// * `args` - a struct containing node name and vm template name.
     /// * `vm_config_plus`: additional vm configuration to store in db.
     ///
-    pub async fn create(args: CreateVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
+    pub async fn create(
+        args: CreateVmArgs,
+        node_name: Option<String>,
+        user_data: Option<UserData>,
+    ) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -195,7 +199,11 @@ pub mod vm {
             rest.open().await?;
             rest.ping().await?;
 
-            let vm: Vm = rest.put("/vm/create", Some(args)).await?.to_value().await?;
+            let vm: Vm = rest
+                .put("/vm/create", Some((args, user_data)))
+                .await?
+                .to_value()
+                .await?;
 
             info!("Created vm {:#?} on node {:#?}", vm.name, node.name);
             Ok(vm)
@@ -256,8 +264,8 @@ pub mod vm {
     /// Start a virtual machine on a node.
     pub async fn start(
         args: GetVmArgs,
-        user_data: Option<UserData>,
         node_name: Option<String>,
+        user_data: Option<UserData>,
     ) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
@@ -285,6 +293,7 @@ pub mod vm {
     pub async fn start_many(
         args: GetManyVmArgs,
         node_name: Option<String>,
+        user_data: Option<UserData>,
     ) -> Result<Vec<Vm>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
@@ -297,7 +306,7 @@ pub mod vm {
         rest.ping().await?;
 
         let vms: Vec<Vm> = rest
-            .put("/vm/start.many", Some(args.clone()))
+            .put("/vm/start.many", Some((args.clone(), user_data.clone())))
             .await?
             .to_value()
             .await?;

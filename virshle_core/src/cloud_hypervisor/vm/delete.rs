@@ -1,5 +1,6 @@
 use super::{Disk, NetType, Vm, VmNet};
 use crate::config::{VirshleConfig, MANAGED_DIR};
+use crate::network::dhcp::{DhcpType, FakeDhcp, KeaDhcp};
 
 // Process
 use pipelight_exec::{Finder, Process};
@@ -25,10 +26,8 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
-    /*
-     * Remove a vm definition from database.
-     * And delete vm resources and process.
-     */
+    /// Remove a vm definition from database.
+    /// And delete vm resources and process.
     pub async fn delete(&self) -> Result<Self, VirshleError> {
         // Remove process and artifacts.
         self.delete_ch_proc()?;
@@ -43,31 +42,39 @@ impl Vm {
         Ok(self.to_owned())
     }
 
-    /*
-     * Remove vm record from database.
-     */
+    /// Remove vm record from database.
     pub async fn delete_db_record(&self) -> Result<Self, VirshleError> {
         let db = connect_db().await?;
-        let record = database::prelude::Vm::find()
+        let vm_record = database::prelude::Vm::find()
             .filter(database::entity::vm::Column::Name.eq(&self.name))
             .one(&db)
             .await?;
-        if let Some(record) = &record {
-            database::prelude::Vm::delete(record.clone().into_active_model())
+
+        if let Some(vm_record) = &vm_record {
+            database::prelude::Vm::delete(vm_record.clone().into_active_model())
                 .exec(&db)
                 .await?;
 
-            // Delete assiociated leases
-            database::prelude::Lease::delete_many()
-                .filter(database::entity::lease::Column::VmId.eq(record.id))
+            // Delete assiociated leases.
+            match VirshleConfig::get()?.dhcp {
+                Some(DhcpType::Fake(fake)) => {
+                    FakeDhcp::delete_leases(vm_record.id);
+                }
+                Some(DhcpType::Kea(kea)) => {
+                    KeaDhcp::delete_leases(&self.name);
+                }
+                _ => {}
+            }
+            // Delete AccountVm junction records.
+            database::prelude::AccountVm::delete_many()
+                .filter(account_vm::Column::VmId.eq(vm_record.id))
                 .exec(&db)
                 .await?;
         }
         Ok(self.to_owned())
     }
-    /*
-     * Remove vm disks file from filesystem.
-     */
+
+    /// Remove vm disks file from filesystem.
     pub fn delete_disks(&self) -> Result<Vec<Disk>, VirshleError> {
         for disk in &self.disk {
             let path = Path::new(&disk.path);
@@ -77,9 +84,8 @@ impl Vm {
         }
         Ok(self.disk.to_owned())
     }
-    /*
-     * Remove network from filesystem (and ovs configuration).
-     */
+
+    /// Remove network from filesystem (and ovs configuration).
     pub fn delete_networks(&self) -> Result<(), VirshleError> {
         if let Some(networks) = &self.net {
             for net in networks {
@@ -112,10 +118,8 @@ impl Vm {
         }
         Ok(())
     }
-    /*
-     * Remove running vm hypervisor process if any
-     * and assiociated socket.
-     */
+    /// Remove running vm hypervisor process if any
+    /// and assiociated socket.
     pub fn delete_ch_proc(&self) -> Result<(), VirshleError> {
         let finder = Finder::new()
             .seed("cloud-hypervisor")
@@ -146,10 +150,8 @@ impl Vm {
 
         Ok(())
     }
-    /*
-     * Remove vm working directory and dependencies filetree.
-     * Usually at : `/var/lib/virshle/vm/{vm_uuid}`.
-     */
+    /// Remove vm working directory and dependencies filetree.
+    /// Usually at : `/var/lib/virshle/vm/{vm_uuid}`.
     pub fn delete_filetree(&self) -> Result<(), VirshleError> {
         let directory = self.get_dir()?;
         let path = Path::new(&directory);

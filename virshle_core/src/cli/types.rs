@@ -106,7 +106,7 @@ pub struct VmArgs {
     #[arg(long, value_name = "VM_STATE")]
     pub state: Option<VmState>,
 
-    /// Lookup VM by account.
+    /// Lookup VM by account_uuid.
     #[arg(long, value_name = "ACCOUNT_UUID")]
     pub account: Option<Uuid>,
 }

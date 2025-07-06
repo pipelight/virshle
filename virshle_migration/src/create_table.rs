@@ -64,6 +64,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+
         // Junction table Account_Vm
         manager
             .create_table(
@@ -78,7 +79,7 @@ impl MigrationTrait for Migration {
                     .col(integer(AccountVm::AccountId))
                     .foreign_key(
                         ForeignKey::create()
-                            .name("account_uuid")
+                            .name("account_id")
                             .from(AccountVm::Table, AccountVm::AccountId)
                             .to(Account::Table, Account::Id),
                     )

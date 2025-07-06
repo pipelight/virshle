@@ -28,6 +28,17 @@ pub struct FakeDhcp {
     pub pool: HashMap<String, IpPool>,
 }
 
+impl FakeDhcp {
+    pub async fn delete_leases(vm_id: i32) -> Result<(), VirshleError> {
+        let db = connect_db().await?;
+        database::prelude::Lease::delete_many()
+            .filter(database::entity::lease::Column::VmId.eq(vm_id))
+            .exec(&db)
+            .await?;
+        Ok(())
+    }
+}
+
 pub struct FakeDhcpLease {
     id: u64,
     vm_id: u64,

@@ -1,3 +1,4 @@
+use super::account::Account;
 use super::Vm;
 use crate::cloud_hypervisor::{Disk, InitDisk};
 use crate::network::utils::uuid_to_mac;
@@ -45,17 +46,6 @@ pub struct UserData {
     pub account: Option<Account>,
     pub ssh: Option<Ssh>,
     pub network: Option<Ip>,
-}
-
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct Account {
-    pub user: AccountUser,
-}
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct AccountUser {
-    pub name: String,
-    pub uuid: Uuid,
-    pub public_key: String,
 }
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct Ssh {
@@ -145,10 +135,11 @@ impl InitData {
 
             // Add ssh authorized_keys
             if let Some(account) = &user_data.account {
-                let username = account.user.name.clone();
-                let key = account.user.public_key.clone();
-                p_config += &unindent(&format!(
-                    r#"
+                if let Some(user) = &account.user {
+                    let username = user.name.clone();
+                    let key = user.public_key.clone();
+                    p_config += &unindent(&format!(
+                        r#"
                     [[pipelines.steps]]
                     name = "set ipv6"
                     commands = [
@@ -158,7 +149,8 @@ impl InitData {
                         "echo \"{key}\n\" >> /etc/ssh/authorized_keys.d/{username}"
                     ]
                     "#
-                ));
+                    ));
+                }
             } else if let Some(ssh) = &user_data.ssh {
                 for user in &ssh.user {
                     let username = user.name.clone();
