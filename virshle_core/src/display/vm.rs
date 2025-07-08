@@ -1,4 +1,4 @@
-use super::utils::{display_id, display_ips, display_vram};
+use super::utils::{display_account_uuid, display_id, display_ips, display_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
 use crate::config::Node;
 use crate::connection::Uri;
@@ -20,7 +20,7 @@ use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::VirshleError;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct VmTable {
     #[tabled(display = "display_id")]
     pub id: Option<u64>,
@@ -33,6 +33,8 @@ pub struct VmTable {
     #[tabled(display = "display_ips")]
     pub ips: Vec<IpAddr>,
     pub uuid: Uuid,
+    #[tabled(display = "display_account_uuid")]
+    pub account_uuid: Option<Uuid>,
 }
 
 impl VmTable {
@@ -46,6 +48,7 @@ impl VmTable {
             state: tmp.state,
             ips: tmp.ips,
             uuid: vm.uuid,
+            account_uuid: tmp.account_uuid,
         };
         Ok(table)
     }
@@ -148,6 +151,7 @@ mod test {
                 state: VmState::Created,
                 uuid: Uuid::new_v4(),
                 ips: vec![],
+                ..Default::default()
             },
             VmTable {
                 id: None,
@@ -157,6 +161,7 @@ mod test {
                 state: VmState::Running,
                 uuid: Uuid::new_v4(),
                 ips: vec![],
+                ..Default::default()
             },
         ];
 

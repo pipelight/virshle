@@ -51,23 +51,24 @@ impl Vm {
             .await?;
 
         if let Some(vm_record) = &vm_record {
-            database::prelude::Vm::delete(vm_record.clone().into_active_model())
+            // Delete AccountVm junction records.
+            database::prelude::AccountVm::delete_many()
+                .filter(account_vm::Column::VmId.eq(vm_record.id))
                 .exec(&db)
                 .await?;
 
             // Delete assiociated leases.
             match VirshleConfig::get()?.dhcp {
                 Some(DhcpType::Fake(fake)) => {
-                    FakeDhcp::delete_leases(vm_record.id);
+                    FakeDhcp::delete_leases(vm_record.id).await?;
                 }
                 Some(DhcpType::Kea(kea)) => {
-                    KeaDhcp::delete_leases(&self.name);
+                    KeaDhcp::delete_leases(&self.name).await?;
                 }
                 _ => {}
             }
-            // Delete AccountVm junction records.
-            database::prelude::AccountVm::delete_many()
-                .filter(account_vm::Column::VmId.eq(vm_record.id))
+            // Delete Vm
+            database::prelude::Vm::delete(vm_record.clone().into_active_model())
                 .exec(&db)
                 .await?;
         }

@@ -1,4 +1,4 @@
-use super::account::Account;
+pub use super::account::{Account, AccountUser};
 use super::Vm;
 use crate::cloud_hypervisor::{Disk, InitDisk};
 use crate::network::utils::uuid_to_mac;

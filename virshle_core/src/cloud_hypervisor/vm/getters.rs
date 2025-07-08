@@ -1,6 +1,8 @@
 use super::{Vm, VmNet};
 use crate::display::VmTable;
 
+use uuid::Uuid;
+
 use serde::{Deserialize, Serialize};
 use tabled::{Table, Tabled};
 
@@ -36,7 +38,7 @@ use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertRe
 use crate::config::MANAGED_DIR;
 
 // Error Handling
-use log::{debug, info, trace, warn};
+use log::{debug, error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -58,11 +60,13 @@ impl Vm {
                     v
                 }
                 Err(e) => {
+                    let message = "Couldn't convert database record to valid resources";
                     let err = WrapError::builder()
-                        .msg("Couldn't convert database record to valid resources")
+                        .msg(message)
                         .help("")
                         .origin(VirshleError::from(e).into())
                         .build();
+                    error!("{}", message);
                     return Err(err.into());
                 }
             };
@@ -85,7 +89,7 @@ impl Vm {
         let db = connect_db().await?;
 
         let account: Option<database::entity::account::Model> = database::prelude::Account::find()
-            .filter(database::entity::account::Column::Uuid.eq(*account_uuid))
+            .filter(database::entity::account::Column::Uuid.eq(account_uuid.to_string()))
             .one(&db)
             .await?;
 
@@ -106,11 +110,13 @@ impl Vm {
                         v
                     }
                     Err(e) => {
+                        let message = "Couldn't convert database record to valid resources";
                         let err = WrapError::builder()
-                            .msg("Couldn't convert database record to valid resources")
+                            .msg(message)
                             .help("")
                             .origin(VirshleError::from(e).into())
                             .build();
+                        error!("{}", message);
                         return Err(err.into());
                     }
                 };
@@ -230,6 +236,7 @@ impl Vm {
 pub struct VmInfo {
     pub state: VmState,
     pub ips: Vec<IpAddr>,
+    pub account_uuid: Option<Uuid>,
 }
 
 /// From cloud-hypervisor
@@ -325,6 +332,7 @@ impl Vm {
         let res = VmInfo {
             state: self.get_state().await?,
             ips: self.get_ips().await?,
+            account_uuid: self.get_account_uuid().await.ok(),
         };
         Ok(res)
     }
@@ -367,6 +375,26 @@ impl Vm {
             _ => {}
         };
         Ok(ips)
+    }
+    pub async fn get_account_uuid(&self) -> Result<Uuid, VirshleError> {
+        let db = connect_db().await?;
+        let vm_record: Option<database::entity::vm::Model> = database::prelude::Vm::find()
+            .filter(database::entity::vm::Column::Uuid.eq(self.uuid.to_string()))
+            .order_by_asc(database::entity::vm::Column::CreatedAt)
+            .one(&db)
+            .await?;
+
+        if let Some(vm_record) = vm_record {
+            let account = vm_record.find_related(prelude::Account).one(&db).await?;
+            if let Some(account) = account {
+                return Ok(Uuid::parse_str(&account.uuid)?);
+            }
+        }
+        let err = LibError::builder()
+            .msg("Couldn't find any associated account for this vm.")
+            .help("")
+            .build();
+        Err(err.into())
     }
 }
 

@@ -10,6 +10,7 @@ use axum::{
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 
+use log::error;
 use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
@@ -182,9 +183,12 @@ pub struct VirshleErrorResponse {
 }
 impl IntoResponse for VirshleError {
     fn into_response(self) -> Response<Body> {
+        let message = self.to_string();
+        error!("{}", message);
+
         let status = StatusCode::INTERNAL_SERVER_ERROR;
         let mut err = VirshleErrorResponse {
-            message: self.to_string(),
+            message,
             help: "".to_owned(),
         };
         if let Some(origin) = self.diagnostic_source() {

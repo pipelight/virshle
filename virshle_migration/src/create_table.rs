@@ -60,7 +60,7 @@ impl MigrationTrait for Migration {
                     .table(Account::Table)
                     .if_not_exists()
                     .col(pk_auto(Account::Id))
-                    .col(uuid_uniq(Account::Uuid))
+                    .col(string_uniq(Account::Uuid))
                     .to_owned(),
             )
             .await?;

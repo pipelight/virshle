@@ -1,4 +1,5 @@
 use std::net::IpAddr;
+use uuid::Uuid;
 
 use crate::cloud_hypervisor::DiskTemplate;
 use human_bytes::human_bytes;
@@ -48,5 +49,13 @@ pub fn display_id(id: &Option<u64>) -> String {
         format!("{}", id)
     } else {
         return "".to_owned();
+    }
+}
+
+pub fn display_account_uuid(uuid: &Option<Uuid>) -> String {
+    if let Some(uuid) = uuid {
+        format!("{}", uuid)
+    } else {
+        format!("")
     }
 }

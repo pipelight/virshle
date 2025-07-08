@@ -190,7 +190,11 @@ pub mod vm {
         let node = Node::unwrap_or_default(node_name).await?;
 
         // Create a vm from template.
-        if let Some(name) = &args.template_name {
+        if let Some(template_name) = args.template_name.clone() {
+            info!(
+                "[start] creating new vm from template {:#?} on node {:#?}",
+                template_name, node.name
+            );
             let mut conn = Connection::from(&node);
             let mut rest = RestClient::from(&mut conn);
             rest.base_url("/api/v1");
@@ -204,7 +208,10 @@ pub mod vm {
                 .to_value()
                 .await?;
 
-            info!("Created vm {:#?} on node {:#?}", vm.name, node.name);
+            info!(
+                "[end] created vm {:#?} from template {:#?} on node {:#?}",
+                vm.name, template_name, node.name
+            );
             Ok(vm)
         } else {
             Err(LibError::builder()
@@ -219,6 +226,8 @@ pub mod vm {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
+        info!("[start] deleting a vm on node {:#?}", node.name);
+
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
@@ -232,7 +241,7 @@ pub mod vm {
             .to_value()
             .await?;
 
-        info!("Deleted vm {:#?} on node {:#?}", vm.name, node.name);
+        info!("[end] deleted vm {:#?} on node {:#?}", vm.name, node.name);
 
         Ok(())
     }
@@ -244,6 +253,7 @@ pub mod vm {
     ) -> Result<(), VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] deleting many vms on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -252,11 +262,18 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let vm: Vec<Vm> = rest
-            .put("/vm/delete", Some(args.clone()))
+        let vms: Vec<Vm> = rest
+            .put("/vm/delete.many", Some(args.clone()))
             .await?
             .to_value()
             .await?;
+
+        let vms_name = vms
+            .iter()
+            .map(|e| e.name.to_owned())
+            .collect::<Vec<String>>()
+            .join(",");
+        info!("[end] deleted vms:\n[{vms_name}] on node {:#?}", node.name);
 
         Ok(())
     }
@@ -268,6 +285,7 @@ pub mod vm {
     ) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] starting a vm on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -282,8 +300,7 @@ pub mod vm {
             .to_value()
             .await?;
 
-        let res = format!("Started vm {:#?} on node {:#?}", vm.name, node.name);
-        info!("{}", res);
+        info!("[end] started vm {:#?} on node {:#?}", vm.name, node.name);
 
         Ok(vm)
     }
@@ -296,6 +313,7 @@ pub mod vm {
     ) -> Result<Vec<Vm>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] starting many vms on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -310,6 +328,13 @@ pub mod vm {
             .to_value()
             .await?;
 
+        let vms_name = vms
+            .iter()
+            .map(|e| e.name.to_owned())
+            .collect::<Vec<String>>()
+            .join(",");
+        info!("[end] started vms:\n[{vms_name}] on node {:#?}", node.name);
+
         Ok(vms)
     }
 
@@ -321,6 +346,7 @@ pub mod vm {
     ) -> Result<Vec<Vm>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] shutting down many vms on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -335,12 +361,23 @@ pub mod vm {
             .to_value()
             .await?;
 
+        let vms_name = vms
+            .iter()
+            .map(|e| e.name.to_owned())
+            .collect::<Vec<String>>()
+            .join(",");
+        info!(
+            "[end] shutted down vms:\n[{vms_name}] on node {:#?}",
+            node.name
+        );
+
         Ok(vms)
     }
     /// Stop a virtual machine on a node.
     pub async fn shutdown(args: GetVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] shutting down a vm on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -355,8 +392,10 @@ pub mod vm {
             .to_value()
             .await?;
 
-        let res = format!("Shutdown vm {:#?} on node {:#?}", vm.name, node.name);
-        info!("{}", res);
+        info!(
+            "[end] shutted down vm {:#?} on node {:#?}",
+            vm.name, node.name
+        );
 
         Ok(vm)
     }
@@ -366,6 +405,7 @@ pub mod vm {
     ) -> Result<VmTable, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching info for on a vm on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -374,7 +414,7 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let res: VmTable = rest
+        let vm: VmTable = rest
             .post(
                 "/vm/info",
                 Some(GetVmArgs {
@@ -386,7 +426,13 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
-        Ok(res)
+
+        info!(
+            "[end] fetched info on vm {:#?} on node {:#?}",
+            vm.name, node.name
+        );
+
+        Ok(vm)
     }
 
     pub async fn get_ch_info(
@@ -395,6 +441,10 @@ pub mod vm {
     ) -> Result<(), VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
+        info!(
+            "[start] fetching CH info for on a vm on node {:#?}",
+            node.name
+        );
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -417,7 +467,10 @@ pub mod vm {
             .await?;
         conn.close();
 
-        info!("get info for vm: {} on node: {}", vm.name, node.name);
+        info!(
+            "[end] fetched CH info on vm {:#?} on node {:#?}",
+            vm.name, node.name
+        );
 
         Ok(())
     }

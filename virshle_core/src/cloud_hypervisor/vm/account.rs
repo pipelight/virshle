@@ -32,7 +32,7 @@ impl Account {
      */
     async fn create_db_record(account: &mut Account) -> Result<Self, VirshleError> {
         let record = database::entity::account::ActiveModel {
-            uuid: ActiveValue::Set(account.uuid),
+            uuid: ActiveValue::Set(account.uuid.to_string()),
             ..Default::default()
         };
 
@@ -61,27 +61,32 @@ impl Account {
         Ok(self.to_owned())
     }
     pub async fn get_or_create(&mut self) -> Result<Self, VirshleError> {
-        match Self::get_by_uuid(self).await {
-            Ok(v) => Ok(v),
+        info!("[start] retrieve existing account");
+        match Self::get_by_uuid(&self.uuid).await {
+            Ok(v) => {
+                info!("[end] found existing account");
+                *self = v;
+                Ok(self.to_owned())
+            }
             Err(e) => Self::create_db_record(self).await,
         }
     }
-    pub async fn get_by_uuid(account: &Account) -> Result<Self, VirshleError> {
+    pub async fn get_by_uuid(uuid: &Uuid) -> Result<Self, VirshleError> {
         // Retrieve from database
         let db = connect_db().await.unwrap();
         let record = database::prelude::Account::find()
-            .filter(database::entity::account::Column::Uuid.eq(account.uuid))
+            .filter(database::entity::account::Column::Uuid.eq(uuid.to_string()))
             .one(&db)
             .await?;
 
         match record {
             Some(record) => Ok(Self {
                 id: Some(record.id),
-                uuid: record.uuid,
+                uuid: Uuid::parse_str(&record.uuid)?,
                 ..Default::default()
             }),
             None => {
-                let message = format!("Couldn't find an account with uuid: {}", account.uuid);
+                let message = format!("Couldn't find an account with uuid: {}", uuid);
                 let help = "Are you sure this account exist?";
                 return Err(LibError::builder().msg(&message).help(help).build().into());
             }

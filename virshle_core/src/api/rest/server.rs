@@ -111,12 +111,9 @@ impl NodeRestServer {
         response
     }
 
-    /*
-     * Run REST api only.
-     */
+    /// Run REST api.
     pub async fn run() -> Result<(), VirshleError> {
         let app = NodeRestServer::make_router().await?;
-
         let listener = NodeServer::make_socket().await?;
         axum::serve(listener, app).await?;
         Ok(())

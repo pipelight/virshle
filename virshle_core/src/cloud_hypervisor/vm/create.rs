@@ -49,25 +49,25 @@ impl Vm {
     ) -> Result<Self, VirshleError> {
         let db = connect_db().await?;
 
-        // Vm record
-        let now: NaiveDateTime = Utc::now().naive_utc();
-        let vm = database::entity::vm::ActiveModel {
-            uuid: ActiveValue::Set(self.uuid.to_string()),
-            name: ActiveValue::Set(self.name.clone()),
-            definition: ActiveValue::Set(serde_json::to_value(&self)?),
-            created_at: ActiveValue::Set(now),
-            updated_at: ActiveValue::Set(now),
-            ..Default::default()
-        };
-
-        let vm_insert_result: InsertResult<vm::ActiveModel> =
-            database::prelude::Vm::insert(vm.clone()).exec(&db).await?;
-        self.id = Some(vm_insert_result.last_insert_id as u64);
-
-        // Link Vm record to Account record
         if let Some(user_data) = user_data {
             if let Some(mut account) = user_data.account {
-                let account = Account::get_or_create(&mut account).await?;
+                // Account
+                Account::get_or_create(&mut account).await?;
+                // Vm record
+                let now: NaiveDateTime = Utc::now().naive_utc();
+                let vm = database::entity::vm::ActiveModel {
+                    uuid: ActiveValue::Set(self.uuid.to_string()),
+                    name: ActiveValue::Set(self.name.clone()),
+                    definition: ActiveValue::Set(serde_json::to_value(&self)?),
+                    created_at: ActiveValue::Set(now),
+                    updated_at: ActiveValue::Set(now),
+                    ..Default::default()
+                };
+
+                let vm_insert_result: InsertResult<vm::ActiveModel> =
+                    database::prelude::Vm::insert(vm.clone()).exec(&db).await?;
+                self.id = Some(vm_insert_result.last_insert_id as u64);
+
                 // Junction table record
                 let junction_record = database::entity::account_vm::ActiveModel {
                     account_id: ActiveValue::Set(account.id.unwrap()),
@@ -77,6 +77,21 @@ impl Vm {
                     .exec(&db)
                     .await?;
             }
+        } else {
+            // Vm record
+            let now: NaiveDateTime = Utc::now().naive_utc();
+            let vm = database::entity::vm::ActiveModel {
+                uuid: ActiveValue::Set(self.uuid.to_string()),
+                name: ActiveValue::Set(self.name.clone()),
+                definition: ActiveValue::Set(serde_json::to_value(&self)?),
+                created_at: ActiveValue::Set(now),
+                updated_at: ActiveValue::Set(now),
+                ..Default::default()
+            };
+
+            let vm_insert_result: InsertResult<vm::ActiveModel> =
+                database::prelude::Vm::insert(vm.clone()).exec(&db).await?;
+            self.id = Some(vm_insert_result.last_insert_id as u64);
         }
 
         Ok(self.to_owned())
