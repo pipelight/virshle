@@ -5,7 +5,7 @@ use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
 use crate::{
     cloud_hypervisor::{Definition, UserData, Vm, VmState, VmTemplate},
-    config::{Node, VirshleConfig},
+    config::{HostCpu, HostDisk, HostRam, Node, VirshleConfig},
 };
 use std::str::FromStr;
 use uuid::Uuid;
@@ -56,9 +56,17 @@ impl Cli {
              * Operations on local and remote node
              */
             Commands::Node(args) => match args {
-                NodeArgs::Ls => {
+                NodeArgs::Ls(args) => {
                     let res = client::node::get_info_all().await?;
-                    Node::display(res).await?;
+                    if args.disk {
+                        HostDisk::display(res).await?;
+                    } else if args.ram {
+                        HostRam::display(res).await?;
+                    } else if args.cpu {
+                        HostCpu::display(res).await?;
+                    } else {
+                        Node::display(res).await?;
+                    }
                 }
                 NodeArgs::Ping(args) => {
                     let res = client::node::ping(args.node).await?;

@@ -4,7 +4,10 @@ pub mod load;
 pub mod node;
 
 // Reexport
-pub use node::{Node, NodeInfo};
+pub use node::{
+    info::{HostCpu, HostDisk, HostRam},
+    Node, NodeInfo,
+};
 
 use crate::api::NodeServer;
 use crate::cloud_hypervisor::{Template, Vm, VmTemplate};

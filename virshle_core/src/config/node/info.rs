@@ -56,6 +56,18 @@ pub struct HostRam {
     // The ram allocated to VMs
     pub reserved: u64,
 }
+impl HostRam {
+    /*
+     * Get the amount of cpu that is reserved for VMs
+     * wheter they are running, and using it or not.
+     * (from vm definitions in the node database)
+     */
+    pub async fn get_reserved() -> Result<u64, VirshleError> {
+        let vms = Vm::get_all().await?;
+        let n_cpus: u64 = vms.iter().map(|e| e.vram).sum();
+        Ok(n_cpus)
+    }
+}
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct HostCpu {
@@ -88,7 +100,7 @@ impl HostInfo {
         let ram = HostRam {
             total: s.total_memory(),
             free: s.free_memory(),
-            reserved: 0,
+            reserved: HostRam::get_reserved().await?,
         };
         // Cpu
         let average_usage = s
@@ -118,10 +130,10 @@ impl HostInfo {
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct HostDisk {
-    pub total: u64,
-    pub free: u64,
+    pub size: u64,
+    pub used: u64,
+    pub available: u64,
     // The disk space reserved for Vm storage.
-    pub reserved: u64,
 }
 
 impl HostDisk {
@@ -139,11 +151,10 @@ impl HostDisk {
                 .collect();
             let mount_point = &disk.mount_point().to_str().unwrap().to_owned();
             if ancestors.contains(mount_point) {
-                println!("{:#?}", disk.name());
                 let disk_info = HostDisk {
-                    total: disk.total_space(),
-                    free: disk.available_space(),
-                    reserved: disk.total_space() - disk.available_space(),
+                    size: disk.total_space(),
+                    available: disk.available_space(),
+                    used: disk.total_space() - disk.available_space(),
                 };
                 return Ok(disk_info);
             }

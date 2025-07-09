@@ -1,5 +1,5 @@
 mod best;
-mod info;
+pub mod info;
 pub use info::NodeInfo;
 
 use crate::api::NodeServer;

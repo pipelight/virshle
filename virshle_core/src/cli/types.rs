@@ -163,10 +163,35 @@ pub enum TemplateArgs {
 pub enum NodeArgs {
     /// Init/Ensure system global configuration (openvswitches, directories, database).
     Init(InitArgs),
-    Ls,
+    Ls(NodeLsArgs),
     Ping(CurrentWorkingNode),
     Info(CurrentWorkingNode),
     Serve,
+}
+
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
+pub struct NodeLsArgs {
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub disk: bool,
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub cpu: bool,
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub ram: bool,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
