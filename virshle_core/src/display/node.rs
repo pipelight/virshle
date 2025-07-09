@@ -1,7 +1,9 @@
 use crate::config::{HostCpu, HostDisk, HostRam, Node, NodeInfo};
 use crate::connection::{ConnectionState, Uri};
 
-use super::utils::{display_id, display_ips, display_some_num, display_some_vram};
+use super::utils::{
+    display_id, display_ips, display_percentage, display_some_num, display_some_vram, display_vram,
+};
 use crate::cloud_hypervisor::{Vm, VmState};
 
 use human_bytes::human_bytes;
@@ -20,13 +22,14 @@ use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::VirshleError;
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
 pub struct CpuTable {
     pub name: String,
     number: u64,
     usage: u64,
     reserved: u64,
-    precentage_reserved: u64,
+    #[tabled(display = "display_percentage")]
+    percentage_reserved: f64,
 }
 impl HostCpu {
     pub async fn display(
@@ -52,7 +55,7 @@ impl CpuTable {
                 number: e.number,
                 usage: e.usage,
                 reserved: e.reserved,
-                precentage_reserved: e.reserved / e.number * 100,
+                percentage_reserved: (e.reserved as f64 / e.number as f64 * 100.0).round() as f64,
             };
         } else {
             table = CpuTable {
@@ -60,7 +63,7 @@ impl CpuTable {
                 number: 0,
                 usage: 0,
                 reserved: 0,
-                precentage_reserved: 0,
+                percentage_reserved: 0 as f64,
             };
         }
         Ok(table)
@@ -84,15 +87,21 @@ impl CpuTable {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
 pub struct RamTable {
     pub name: String,
+    #[tabled(display = "display_vram")]
     total: u64,
+    #[tabled(display = "display_vram")]
     used: u64,
+    #[tabled(display = "display_vram")]
     free: u64,
+    #[tabled(display = "display_vram")]
     reserved: u64,
-    precentage_reserved: u64,
-    precentage_used: u64,
+    #[tabled(display = "display_percentage")]
+    percentage_reserved: f64,
+    #[tabled(display = "display_percentage")]
+    percentage_used: f64,
 }
 impl HostRam {
     pub async fn display(
@@ -119,8 +128,9 @@ impl RamTable {
                 used: e.total - e.free,
                 free: e.free,
                 reserved: e.reserved,
-                precentage_used: (e.total - e.free) / e.total * 100,
-                precentage_reserved: e.reserved / e.total * 100,
+                percentage_reserved: ((e.reserved as f64 / e.total as f64) * 100.0).round() as f64,
+                percentage_used: (((e.total as f64 - e.free as f64) / e.total as f64) * 100.0)
+                    .round() as f64,
             };
         } else {
             table = RamTable {
@@ -129,8 +139,8 @@ impl RamTable {
                 used: 0,
                 free: 0,
                 reserved: 0,
-                precentage_used: 0,
-                precentage_reserved: 0,
+                percentage_reserved: 0 as f64,
+                percentage_used: 0 as f64,
             };
         }
         Ok(table)
@@ -154,13 +164,17 @@ impl RamTable {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
 pub struct DiskTable {
     pub name: String,
+    #[tabled(display = "display_vram")]
     size: u64,
+    #[tabled(display = "display_vram")]
     used: u64,
+    #[tabled(display = "display_vram")]
     available: u64,
-    precentage_used: u64,
+    #[tabled(display = "display_percentage")]
+    percentage_used: f64,
 }
 impl HostDisk {
     pub async fn display(
@@ -186,7 +200,7 @@ impl DiskTable {
                 size: e.size,
                 used: e.used,
                 available: e.available,
-                precentage_used: e.used / e.size * 100,
+                percentage_used: (e.used as f64 / e.size as f64 * 100.0).round() as f64,
             };
         } else {
             table = DiskTable {
@@ -194,7 +208,7 @@ impl DiskTable {
                 size: 0,
                 used: 0,
                 available: 0,
-                precentage_used: 0,
+                percentage_used: 0 as f64,
             };
         }
         Ok(table)

@@ -64,8 +64,8 @@ impl HostRam {
      */
     pub async fn get_reserved() -> Result<u64, VirshleError> {
         let vms = Vm::get_all().await?;
-        let n_cpus: u64 = vms.iter().map(|e| e.vram).sum();
-        Ok(n_cpus)
+        let total_ram: u64 = vms.iter().map(|e| e.vram * u64::pow(1024, 3)).sum();
+        Ok(total_ram)
     }
 }
 

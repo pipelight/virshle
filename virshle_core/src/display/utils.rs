@@ -1,6 +1,8 @@
 use std::net::IpAddr;
 use uuid::Uuid;
 
+use crossterm::{execute, style::Stylize, terminal::size};
+
 use crate::cloud_hypervisor::DiskTemplate;
 use human_bytes::human_bytes;
 
@@ -23,7 +25,7 @@ pub fn display_some_num(num: &Option<u64>) -> String {
 
 // Convert cloud-hypervisor ram from MiB.
 pub fn display_vram(vram: &u64) -> String {
-    let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
+    let res = human_bytes((vram.to_owned()) as f64);
     format!("{}", res)
 }
 pub fn display_disks(disks: &Option<Vec<DiskTemplate>>) -> String {
@@ -57,5 +59,16 @@ pub fn display_account_uuid(uuid: &Option<Uuid>) -> String {
         format!("{}", uuid)
     } else {
         format!("")
+    }
+}
+pub fn display_percentage(percentage: &f64) -> String {
+    let (cols, _) = size().unwrap();
+    match cols >= 20 {
+        true => {
+            format!("{}%", percentage)
+        }
+        false => {
+            format!("{}%", percentage)
+        }
     }
 }
