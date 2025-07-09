@@ -18,9 +18,6 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
-    /// Init/Ensure system global configuration (openvswitches, directories, database).
-    Init,
-
     /// Operations on nodes
     #[command(subcommand)]
     Node(NodeArgs),
@@ -61,6 +58,33 @@ pub enum Crud {
 
     #[command(hide = true)]
     Update(CreateArgs),
+}
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct InitArgs {
+    /// Initialize everything
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub all: Option<bool>,
+    /// Best effort to configure host network.
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub net: Option<bool>,
+    /// Best effort to migrate old database or create fresh.
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub db: Option<bool>,
+    /// Create directories on host.
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub dir: Option<bool>,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -135,9 +159,10 @@ pub enum TemplateArgs {
     Ls,
 }
 
-#[derive(Default, Debug, Subcommand, Clone, Eq, PartialEq)]
+#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum NodeArgs {
-    #[default]
+    /// Init/Ensure system global configuration (openvswitches, directories, database).
+    Init(InitArgs),
     Ls,
     Ping(CurrentWorkingNode),
     Info(CurrentWorkingNode),

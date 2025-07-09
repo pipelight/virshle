@@ -17,6 +17,5 @@ pkgs.mkShell {
       \"name\": \"virshle_db\",
       \"type\": \"sqlite\",
       \"url\": \"/var/lib/virshle/virshle.sqlite?mode=rwc\"
-    }
-  ]";
+    }]";
 }

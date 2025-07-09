@@ -53,14 +53,6 @@ impl Cli {
 
         match cli.commands {
             /*
-             * Create the required virshle working directories.
-             * Add network ovs entries.
-             * Activate network interfaces.
-             */
-            Commands::Init => {
-                VirshleConfig::init().await?;
-            }
-            /*
              * Operations on local and remote node
              */
             Commands::Node(args) => match args {
@@ -79,6 +71,26 @@ impl Cli {
                  */
                 NodeArgs::Serve => {
                     NodeServer::run().await?;
+                }
+                /*
+                 * Create the required virshle working directories.
+                 * Add network ovs entries.
+                 * Activate network interfaces.
+                 */
+                NodeArgs::Init(args) => {
+                    if args.all == Some(true) {
+                        VirshleConfig::ensure_all().await?;
+                    } else {
+                        if args.db == Some(true) {
+                            VirshleConfig::ensure_database().await?;
+                        }
+                        if args.net == Some(true) {
+                            VirshleConfig::ensure_network().await?;
+                        }
+                        if args.dir == Some(true) {
+                            VirshleConfig::ensure_directories().await?;
+                        }
+                    }
                 }
             },
             /*

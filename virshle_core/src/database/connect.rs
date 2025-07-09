@@ -32,13 +32,21 @@ pub async fn connect_db() -> Result<DatabaseConnection, VirshleError> {
         Ok(db) => Ok(db),
     }
 }
-/*
-* Create a fresh database and ovewrite the old one.
-*/
+/// Create a fresh database and ovewrite the old one.
 pub async fn fresh_db() -> Result<DatabaseConnection, VirshleError> {
     let db = Database::connect(&get_db_url()?).await?;
     Migrator::fresh(&db).await?;
     Ok(db)
+}
+
+pub async fn connect_or_fresh_db() -> Result<DatabaseConnection, VirshleError> {
+    match connect_db().await {
+        Ok(db) => Ok(db),
+        Err(e) => {
+            let db = fresh_db().await?;
+            Ok(db)
+        }
+    }
 }
 
 #[cfg(test)]

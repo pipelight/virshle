@@ -19,14 +19,13 @@ url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 #########################
 # Testing Templates: 
 # for testing vm
-
 [[template.vm]]
 name = "xs-offline"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.xxs.efi.img"
 size = "50G"
 
 [[template.vm]]
@@ -35,7 +34,7 @@ vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.xxs.efi.img"
 size = "50G"
 [[template.vm.net]]
 name = "main"
@@ -47,12 +46,11 @@ vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.xxs.efi.img"
 size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.mac_v_tap]
-
 
 [[template.vm]]
 name = "xs-dpdk"
@@ -60,11 +58,23 @@ vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.xxs.efi.img"
 size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.vhost]
+
+[[template.vm]]
+name = "xxs"
+vcpu = 1
+vram = 2
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.xxs.efi.img"
+size = "50G"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
 
 #########################
 # Templates: 
@@ -76,7 +86,7 @@ vcpu = 1
 vram = 2
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.xs.efi.img"
 size = "50G"
 [[template.vm.net]]
 name = "main"
@@ -88,7 +98,7 @@ vcpu = 2
 vram = 4
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.s.efi.img"
 size = "80G"
 [[template.vm.net]]
 name = "main"
@@ -100,7 +110,7 @@ vcpu = 4
 vram = 8
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.efi.img"
+path = "~/Iso/nixos.m.efi.img"
 size = "100G"
 [[template.vm.net]]
 name = "main"

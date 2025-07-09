@@ -10,4 +10,4 @@ pub use entity::*;
 
 // Reexports
 // pub use crud::*;
-pub use connect::{connect_db, fresh_db};
+pub use connect::{connect_db, connect_or_fresh_db, fresh_db};

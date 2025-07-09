@@ -31,6 +31,8 @@ pub struct NodeTable {
     pub cpu: Option<u64>,
     #[tabled(display = "display_some_vram")]
     pub ram: Option<u64>,
+    #[tabled(display = "display_some_vram")]
+    pub disk: Option<u64>,
 }
 
 impl NodeTable {
@@ -42,6 +44,7 @@ impl NodeTable {
                 name: node.name.to_owned(),
                 cpu: Some(node_info.host_info.cpu.number),
                 ram: Some(node_info.host_info.ram.total),
+                disk: Some(node_info.host_info.disk.total),
                 vm: Some(node_info.virshle_info.num_vm),
                 state: state.to_owned(),
             };
@@ -50,6 +53,7 @@ impl NodeTable {
                 name: node.name.to_owned(),
                 cpu: None,
                 ram: None,
+                disk: None,
                 vm: None,
                 state: state.to_owned(),
             };
@@ -124,15 +128,17 @@ mod test {
                 name: "node_1".to_owned(),
                 cpu: None,
                 ram: None,
-                state: ConnectionState::Down,
+                disk: None,
                 vm: None,
+                state: ConnectionState::Down,
             },
             NodeTable {
                 name: "node_2".to_owned(),
                 cpu: Some(16),
                 ram: Some(30 * u64::pow(1024, 4)),
-                state: ConnectionState::DaemonUp,
+                disk: None,
                 vm: Some(2),
+                state: ConnectionState::DaemonUp,
             },
         ];
 

@@ -1,5 +1,8 @@
 use crate::Vm;
-use sysinfo::System;
+use sysinfo::{Disks, System};
+
+use crate::config::MANAGED_DIR;
+use std::path::Path;
 
 use crate::connection::ConnectionState;
 use serde::{Deserialize, Serialize};
@@ -23,9 +26,6 @@ impl NodeInfo {
             virshle_info,
         })
     }
-    // pub async fn () -> Result<Self, VirshleError> {
-    //
-    // }
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
@@ -46,6 +46,7 @@ pub struct HostInfo {
     // Stored as Bytes.
     pub ram: HostRam,
     pub cpu: HostCpu,
+    pub disk: HostDisk,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
@@ -97,14 +98,60 @@ impl HostInfo {
             .reduce(|acc, x| acc + x)
             .unwrap()
             / (s.cpus().len() as f32);
-
         let cpu = HostCpu {
             number: s.cpus().len() as u64,
             usage: average_usage as u64,
             reserved: HostCpu::get_reserved().await?,
         };
 
-        Ok(HostInfo { name, ram, cpu })
+        // Disk
+        let disk = HostDisk::get()?;
+
+        Ok(HostInfo {
+            name,
+            ram,
+            cpu,
+            disk,
+        })
+    }
+}
+
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+pub struct HostDisk {
+    pub total: u64,
+    pub free: u64,
+    // The disk space reserved for Vm storage.
+    pub reserved: u64,
+}
+
+impl HostDisk {
+    pub fn get() -> Result<Self, VirshleError> {
+        let managed_path = Path::new(&MANAGED_DIR).canonicalize().unwrap();
+
+        let disks = Disks::new_with_refreshed_list();
+        let disks = disks.list();
+
+        // let disks = read_fs_list().unwrap();
+        for disk in disks {
+            let ancestors: Vec<String> = managed_path
+                .ancestors()
+                .map(|e| e.to_str().unwrap().to_owned())
+                .collect();
+            let mount_point = &disk.mount_point().to_str().unwrap().to_owned();
+            if ancestors.contains(mount_point) {
+                println!("{:#?}", disk.name());
+                let disk_info = HostDisk {
+                    total: disk.total_space(),
+                    free: disk.available_space(),
+                    reserved: disk.total_space() - disk.available_space(),
+                };
+                return Ok(disk_info);
+            }
+        }
+        let message = format!("Couldn't find the disk used by vmm.");
+        let help = format!("Are you sure this path exists?");
+        let err = LibError::builder().msg(&message).help(&help).build();
+        Err(err.into())
     }
 }
 
@@ -116,6 +163,12 @@ mod tests {
     async fn test_get_info() -> Result<()> {
         let host = HostInfo::get().await?;
         println!("{:?}", host);
+        Ok(())
+    }
+
+    #[test]
+    fn test_df() -> Result<()> {
+        HostDisk::get()?;
         Ok(())
     }
 }

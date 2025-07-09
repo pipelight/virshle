@@ -12,6 +12,8 @@ use crate::database;
 use crate::network::dhcp::DhcpType;
 use crate::network::ovs;
 
+use owo_colors::OwoColorize;
+
 // Global vars
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
@@ -49,10 +51,37 @@ impl Default for VirshleConfig {
     }
 }
 impl VirshleConfig {
-    /*
-     * Clean orphan vm files if vm not in database.
-     */
-    pub async fn _clean_filetree() -> Result<(), VirshleError> {
+    /// Ensure virshle resources:
+    ///   - a clean working directory and database.
+    ///   - an initial configuration.
+    ///   - a dedicated network virtual switch.
+    pub async fn ensure_all() -> Result<(), VirshleError> {
+        Self::ensure_directories();
+        Self::ensure_database();
+        Self::ensure_network();
+
+        Self::_clean_directories();
+        Ok(())
+    }
+    /// Ensure virshle working directories exists.
+    pub async fn ensure_directories() -> Result<(), VirshleError> {
+        // Create storage/config directories
+        let directories = [
+            MANAGED_DIR.to_owned(),
+            MANAGED_DIR.to_owned() + "/vm",
+            CONFIG_DIR.to_owned(),
+        ];
+        for directory in directories {
+            let path = Path::new(&directory);
+            if !path.exists() {
+                fs::create_dir_all(&directory)?;
+            }
+        }
+        info!("{} created virshle filetree.", "[init]".yellow(),);
+        Ok(())
+    }
+    /// Clean orphan vm files if vm not in database.
+    pub async fn _clean_directories() -> Result<(), VirshleError> {
         let vms = Vm::get_all().await?;
         let uuids: Vec<String> = vms.iter().map(|e| e.uuid.to_string()).collect();
 
@@ -70,39 +99,17 @@ impl VirshleConfig {
         debug!("Cleaned virshle filetree.");
         Ok(())
     }
-    /*
-     * Ensure virshle working directories.
-     */
-    pub fn ensure_filetree() -> Result<(), VirshleError> {
-        // Create storage/config directories
-        let directories = [
-            MANAGED_DIR.to_owned(),
-            MANAGED_DIR.to_owned() + "/vm",
-            CONFIG_DIR.to_owned(),
-        ];
-        for directory in directories {
-            let path = Path::new(&directory);
-            if !path.exists() {
-                fs::create_dir_all(&directory)?;
-            }
-        }
-        info!("Created virshle filetree.");
+    pub async fn ensure_network() -> Result<(), VirshleError> {
+        ovs::ensure_switches().await?;
+        info!(
+            "{} created virshle ovs network configuration.",
+            "[init]".yellow(),
+        );
         Ok(())
     }
-    /*
-     * Ensure virshle resources:
-     *   - a clean working directory and database.
-     *   - an initial configuration.
-     *   - a dedicated network virtual switch.
-     */
-    pub async fn init() -> Result<(), VirshleError> {
-        Self::ensure_filetree();
-        // Ensure vm database
-        database::connect_db().await?;
-        // Remove vm files that do not match any db entry
-        Self::_clean_filetree().await?;
-        // Ensure host and vm switches configuration
-        ovs::ensure_switches().await?;
+    pub async fn ensure_database() -> Result<(), VirshleError> {
+        database::connect_or_fresh_db().await?;
+        info!("{} ensured virshle database.", "[init]".yellow(),);
         Ok(())
     }
 }
