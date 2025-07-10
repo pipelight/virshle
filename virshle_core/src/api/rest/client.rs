@@ -22,9 +22,7 @@ pub mod template {
     use super::*;
 
     pub async fn get_all() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
-        let config = VirshleConfig::get()?;
-        let nodes = config.get_nodes()?;
-
+        let nodes = Node::get_all()?;
         let mut templates: HashMap<Node, Vec<VmTemplate>> = HashMap::new();
         for node in nodes {
             let mut conn = Connection::from(&node);
@@ -81,9 +79,7 @@ pub mod node {
 
     pub async fn get_info_all(
     ) -> Result<HashMap<Node, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
-        let config = VirshleConfig::get()?;
-        let nodes = config.get_nodes()?;
-
+        let nodes = Node::get_all()?;
         let mut node_info: HashMap<Node, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
         for node in nodes {
             let mut conn = Connection::from(&node);
@@ -117,9 +113,9 @@ pub mod vm {
         // Single or Multiple node search.
         let config = VirshleConfig::get()?;
         let nodes = if let Some(name) = node_name {
-            vec![config.get_node_by_name(&name)?]
+            vec![Node::get_by_name(&name)?]
         } else {
-            config.get_nodes()?
+            Node::get_all()?
         };
 
         let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
@@ -150,9 +146,9 @@ pub mod vm {
         // Single or Multiple node search.
         let config = VirshleConfig::get()?;
         let nodes = if let Some(name) = node_name {
-            vec![config.get_node_by_name(&name)?]
+            vec![Node::get_by_name(&name)?]
         } else {
-            config.get_nodes()?
+            Node::get_all()?
         };
 
         let mut vms: HashMap<Node, Vec<VmTable>> = HashMap::new();

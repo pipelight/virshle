@@ -85,6 +85,14 @@ impl From<&Disk> for DiskConfig {
         }
     }
 }
+
+#[derive(Default, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct BalloonConfig {
+    pub size: Option<u64>,
+    pub deflate_on_oom: Option<bool>,
+    pub free_page_reporting: Option<bool>,
+}
+
 // Disk efi bootloader
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct PayloadConfig {
@@ -175,6 +183,7 @@ pub struct VmConfig {
     pub payload: Option<PayloadConfig>,
     pub console: Option<ConsoleConfig>,
     pub serial: Option<ConsoleConfig>,
+    pub balloon: Option<BalloonConfig>,
 
     #[serde(flatten)]
     other: serde_json::Value,
@@ -206,10 +215,18 @@ impl VmConfig {
             ..Default::default()
         };
 
+        // Memory management
+        let balloon = BalloonConfig {
+            size: Some(e.vram / 2),
+            deflate_on_oom: Some(true),
+            free_page_reporting: Some(true),
+        };
+        config.balloon = Some(balloon);
+
         // Add bootloader
         let payload = PayloadConfig {
             kernel: Some("/run/cloud-hypervisor/hypervisor-fw".to_owned()),
-            cmdline: Some("earlyprintk=ttyS0 console=ttyS0 root=/dev/vda1 rw".to_owned()),
+            cmdline: Some("earlyprintk=ttyS0 console=hvc0 root=/dev/vda1 rw".to_owned()),
         };
         config.payload = Some(payload);
 

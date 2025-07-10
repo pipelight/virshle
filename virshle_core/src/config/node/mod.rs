@@ -55,9 +55,8 @@ impl Node {
 
 impl Node {
     pub async fn unwrap_or_default(node_name: Option<String>) -> Result<Node, VirshleError> {
-        let config = VirshleConfig::get()?;
         let node = match node_name {
-            Some(node_name) => match config.get_node_by_name(&node_name) {
+            Some(node_name) => match Node::get_by_name(&node_name) {
                 Ok(node) => node,
                 Err(_) => Node::default(),
             },
@@ -88,5 +87,39 @@ impl Node {
                 return Err(err.into());
             }
         };
+    }
+}
+impl Node {
+    /// Returns nodes defined in configuration,
+    /// plus the default local node.
+    pub fn get_all() -> Result<Vec<Node>, VirshleError> {
+        let config = VirshleConfig::get()?;
+        let nodes: Vec<Node> = match &config.node {
+            Some(node) => node.to_owned(),
+            None => vec![Node::default()],
+        };
+        Ok(nodes)
+    }
+    /// Returns node with name.
+    pub fn get_by_name(name: &str) -> Result<Node, VirshleError> {
+        let nodes: Vec<Node> = Node::get_all()?;
+        let filtered_nodes: Vec<Node> = nodes
+            .iter()
+            .filter(|e| e.name == name)
+            .map(|e| e.to_owned())
+            .collect();
+
+        let node = filtered_nodes.first();
+        match node {
+            Some(node) => Ok(node.to_owned()),
+            None => {
+                let node_names: Vec<String> = nodes.iter().map(|e| e.name.to_owned()).collect();
+                let node_names: String = node_names.join("\t\n");
+                let message = format!("couldn't find node with name: {:#?}", name);
+                let help = format!("Available nodes are: \n");
+                let err = LibError::builder().msg(&message).help(&help).build();
+                return Err(err.into());
+            }
+        }
     }
 }

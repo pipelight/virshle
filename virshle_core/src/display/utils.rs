@@ -12,37 +12,34 @@ use human_bytes::human_bytes;
 // Convert from B.
 pub fn display_some_bytes(bytes: &Option<u64>) -> String {
     if let Some(bytes) = bytes {
-        let res = human_bytes(bytes.to_owned() as f64);
-        format!("{}", res)
+        display_bytes(&bytes)
     } else {
         format!("")
     }
 }
-// Convert from B.
 pub fn display_bytes(vram: &u64) -> String {
     let res = human_bytes((vram.to_owned()) as f64);
     format!("{}", res)
 }
+
 // Convert host ram from B.
-pub fn display_ram(vram: &u64) -> String {
-    let res = human_bytes((vram.to_owned()) as f64);
-    format!("{}", res)
-}
-// Convert sysinfo ram from Bytes.
-pub fn display_some_ram(vram: &Option<u64>) -> String {
-    if let Some(vram) = vram {
-        let res = human_bytes(vram.to_owned() as f64);
-        format!("{}", res)
+pub fn display_some_ram(ram: &Option<u64>) -> String {
+    if let Some(ram) = ram {
+        display_ram(&ram)
     } else {
         format!("")
     }
 }
+pub fn display_ram(ram: &u64) -> String {
+    let res = human_bytes((ram.to_owned()) as f64);
+    format!("{}", res)
+}
+
 // Convert cloud-hypervisor ram from MiB.
 pub fn display_vram(vram: &u64) -> String {
     let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
     format!("{}", res)
 }
-
 pub fn display_some_num(num: &Option<u64>) -> String {
     if let Some(num) = num {
         format!("{}", num)
@@ -67,7 +64,7 @@ pub fn display_disks(disks: &Option<Vec<DiskInfo>>) -> String {
                 let mut size = human_bytes(size.to_owned() as f64);
                 size = size.replace(" ", "");
 
-                let oneline = format!("{} -> {} ({size})", e.name, e.path);
+                let oneline = format!("{} -> {} ({size:.1})", e.name, e.path);
                 summary.push(oneline);
             } else {
                 let oneline = format!("{} -> {}", e.name, e.path);
@@ -91,7 +88,6 @@ pub fn display_id(id: &Option<u64>) -> String {
         return "".to_owned();
     }
 }
-
 pub fn display_account_uuid(uuid: &Option<Uuid>) -> String {
     if let Some(uuid) = uuid {
         format!("{}", uuid)
@@ -107,22 +103,29 @@ pub fn make_progress_bar(percentage: &f64, max: Option<f64>) -> String {
     let progress = match cols >= 20 {
         true => {
             let bar_total_size = cols as f64 / 10.0;
-            let n_chars = (bar_total_size * percentage / max).round();
-            let n_empty_chars = (bar_total_size * (max - percentage) / max).round();
+            let n_chars = (bar_total_size * percentage / max).ceil();
+            let n_empty_chars = (bar_total_size * (max - percentage) / max).ceil();
             let adv = "#".repeat(n_chars as usize);
             let nadv = " ".repeat(n_empty_chars as usize);
 
-            let progress = format!("[{adv}{nadv}] {percentage}%");
+            let progress = format!("[{adv}{nadv}] {percentage:.1}%");
             progress
         }
         false => {
-            let progress = format!("[{percentage}%");
+            let progress = format!("[{percentage:.1}%");
             progress
         }
     };
     progress
 }
 
+pub fn display_some_percentage_used(percentage: &Option<f64>) -> String {
+    if let Some(percentage) = percentage {
+        display_percentage_used(&percentage)
+    } else {
+        "".to_owned()
+    }
+}
 pub fn display_percentage_used(percentage: &f64) -> String {
     let progress = make_progress_bar(percentage, None);
 
@@ -137,6 +140,13 @@ pub fn display_percentage_used(percentage: &f64) -> String {
     }
 }
 
+pub fn display_some_disk_percentage_reserved(percentage: &Option<f64>) -> String {
+    if let Some(percentage) = percentage {
+        display_disk_percentage_reserved(&percentage)
+    } else {
+        "".to_owned()
+    }
+}
 pub fn display_disk_percentage_reserved(percentage: &f64) -> String {
     let max = MAX_DISK_RESERVATION;
     let progress = make_progress_bar(percentage, Some(max));
@@ -149,6 +159,13 @@ pub fn display_disk_percentage_reserved(percentage: &f64) -> String {
         format!("{}", progress.red())
     } else {
         format!("{}", progress)
+    }
+}
+pub fn display_some_cpu_percentage_reserved(percentage: &Option<f64>) -> String {
+    if let Some(percentage) = percentage {
+        display_cpu_percentage_reserved(&percentage)
+    } else {
+        "".to_owned()
     }
 }
 pub fn display_cpu_percentage_reserved(percentage: &f64) -> String {
@@ -166,6 +183,13 @@ pub fn display_cpu_percentage_reserved(percentage: &f64) -> String {
     }
 }
 
+pub fn display_some_ram_percentage_reserved(percentage: &Option<f64>) -> String {
+    if let Some(percentage) = percentage {
+        display_cpu_percentage_reserved(&percentage)
+    } else {
+        "".to_owned()
+    }
+}
 pub fn display_ram_percentage_reserved(percentage: &f64) -> String {
     let max = MAX_RAM_RESERVATION;
     let progress = make_progress_bar(percentage, Some(max));

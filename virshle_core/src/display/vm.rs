@@ -10,7 +10,10 @@ use std::collections::HashMap;
 use std::fmt;
 use std::net::IpAddr;
 use tabled::{
-    settings::{disable::Remove, object::Columns, themes::BorderCorrection, Panel, Style},
+    settings::{
+        disable::Remove, location::ByColumnName, object::Columns, themes::BorderCorrection, Panel,
+        Style,
+    },
     Table, Tabled,
 };
 use uuid::Uuid;
@@ -99,32 +102,23 @@ impl VmTable {
     }
     pub fn display_w_header(items: Vec<Self>, header: &str) -> Result<(), VirshleError> {
         println!("\n{}", header);
-        let mut res = Table::new(&items);
-        if log_enabled!(Level::Info) {
-            res.with(Style::rounded());
-        } else if log_enabled!(Level::Warn) {
-            res.with(Style::rounded());
-            res.with(Remove::column(Columns::last()));
-        } else {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
-        }
-        println!("{}", res);
+        Self::display(items);
         Ok(())
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Info) {
-            res.with(Style::rounded());
+        if log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
+        } else if log_enabled!(Level::Info) {
+            res.with(Remove::column(ByColumnName::new("account_uuid")));
         } else if log_enabled!(Level::Warn) {
-            res.with(Style::rounded());
-            res.with(Remove::column(Columns::last()));
-        } else {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
+            res.with(Remove::column(ByColumnName::new("uuid")));
+            res.with(Remove::column(ByColumnName::new("account_uuid")));
+        } else if log_enabled!(Level::Error) {
+            res.with(Remove::column(ByColumnName::new("ips")));
+            res.with(Remove::column(ByColumnName::new("uuid")));
+            res.with(Remove::column(ByColumnName::new("account_uuid")));
         }
+        res.with(Style::rounded());
         println!("{}", res);
         Ok(())
     }

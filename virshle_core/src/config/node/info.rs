@@ -28,7 +28,7 @@ impl NodeInfo {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct VirshleInfo {
     // Number of vm on node.
     pub num_vm: u64,
@@ -40,7 +40,7 @@ impl VirshleInfo {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]
 pub struct HostInfo {
     pub name: String,
     // Stored as Bytes.
@@ -49,7 +49,7 @@ pub struct HostInfo {
     pub disk: HostDisk,
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]
 pub struct HostRam {
     pub total: u64,
     pub free: u64,
@@ -67,21 +67,54 @@ impl HostRam {
         let total_ram: u64 = vms.iter().map(|e| e.vram * u64::pow(1024, 3)).sum();
         Ok(total_ram)
     }
+    pub async fn get() -> Result<Self, VirshleError> {
+        let mut s = System::new_all();
+        s.refresh_memory();
+        // Ram
+        let ram = HostRam {
+            total: s.total_memory(),
+            free: s.free_memory(),
+            reserved: Self::get_reserved().await?,
+        };
+        Ok(ram)
+    }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]
 pub struct HostCpu {
     pub number: u64,
-    pub usage: u64,
+    pub usage: f64,
     // The number of cpu reserved for VMs.
     pub reserved: u64,
 }
 impl HostCpu {
-    /*
-     * Get the amount of cpu that is reserved for VMs
-     * wheter they are running, and using it or not.
-     * (from vm definitions in the node database)
-     */
+    /// Get the amount of cpu that is reserved for VMs
+    /// wheter they are running, and using it or not.
+    /// (from vm definitions in the node database)
+    pub async fn get() -> Result<Self, VirshleError> {
+        let mut s = System::new_all();
+        s.refresh_cpu_all();
+
+        let cpu = HostCpu {
+            number: s.cpus().len() as u64,
+            usage: Self::get_usage().await?,
+            reserved: HostCpu::get_reserved().await?,
+        };
+        Ok(cpu)
+    }
+    pub async fn get_usage() -> Result<f64, VirshleError> {
+        let mut s = System::new_all();
+        s.refresh_cpu_all();
+        // Need to update twice because of usage computation.
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        s.refresh_cpu_all();
+
+        // Cpu
+        let total_usage: f64 = s.cpus().iter().map(|e| e.cpu_usage() as f64).sum();
+        let n_cpus = s.cpus().len() as f64;
+        let average_usage = total_usage / n_cpus;
+        Ok(average_usage)
+    }
     pub async fn get_reserved() -> Result<u64, VirshleError> {
         let vms = Vm::get_all().await?;
         let n_cpus: u64 = vms.iter().map(|e| e.vcpu).sum();
@@ -91,44 +124,17 @@ impl HostCpu {
 
 impl HostInfo {
     pub async fn get() -> Result<Self, VirshleError> {
-        let mut s = System::new_all();
-        s.refresh_memory();
-        s.refresh_cpu_all();
-
         let name = System::host_name().unwrap_or("unknown".to_owned());
-        // Ram
-        let ram = HostRam {
-            total: s.total_memory(),
-            free: s.free_memory(),
-            reserved: HostRam::get_reserved().await?,
-        };
-        // Cpu
-        let average_usage = s
-            .cpus()
-            .iter()
-            .map(|e| e.cpu_usage())
-            .reduce(|acc, x| acc + x)
-            .unwrap()
-            / (s.cpus().len() as f32);
-        let cpu = HostCpu {
-            number: s.cpus().len() as u64,
-            usage: average_usage as u64,
-            reserved: HostCpu::get_reserved().await?,
-        };
-
-        // Disk
-        let disk = HostDisk::get().await?;
-
         Ok(HostInfo {
             name,
-            ram,
-            cpu,
-            disk,
+            ram: HostRam::get().await?,
+            cpu: HostCpu::get().await?,
+            disk: HostDisk::get().await?,
         })
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]
 pub struct HostDisk {
     pub size: u64,
     pub used: u64,
@@ -184,13 +190,19 @@ mod tests {
     #[tokio::test]
     async fn test_get_info() -> Result<()> {
         let host = HostInfo::get().await?;
-        println!("{:?}", host);
+        println!("{:#?}", host);
         Ok(())
     }
 
     #[tokio::test]
     async fn test_df() -> Result<()> {
         HostDisk::get().await?;
+        Ok(())
+    }
+    #[tokio::test]
+    async fn test_cpu() -> Result<()> {
+        let cpu = HostCpu::get().await?;
+        println!("{:#?}", cpu);
         Ok(())
     }
 }

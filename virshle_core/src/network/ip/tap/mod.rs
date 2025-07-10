@@ -55,7 +55,7 @@ pub fn create(name: &str) -> Result<(), VirshleError> {
 
         if let Some(stderr) = res.io.stderr {
             let message = format!("[network]: ip command failed.");
-            let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+            let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr.trim());
             warn!("{}:{}", &message, &help);
             return Err(LibError::builder().msg(&message).help(&help).build().into());
         }
@@ -92,7 +92,7 @@ pub fn create_macvtap(name: &str) -> Result<(), VirshleError> {
 
         if let Some(stderr) = res.io.stderr {
             let message = format!("[network]: ip command failed.");
-            let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+            let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr.trim());
             warn!("{}:{}", &message, &help);
             return Err(LibError::builder().msg(&message).help(&help).build().into());
         }
@@ -113,7 +113,7 @@ pub fn delete(name: &str) -> Result<(), VirshleError> {
 
     if let Some(stderr) = res.io.stderr {
         let message = format!("[network]: ip command failed.");
-        let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+        let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr.trim());
         warn!("{}:{}", &message, &help);
         return Err(LibError::builder().msg(&message).help(&help).build().into());
     }
@@ -130,7 +130,7 @@ pub fn set_mac(name: &str, mac: &MacAddr6) -> Result<(), VirshleError> {
 
     if let Some(stderr) = res.io.stderr {
         let message = format!("[network]: ip command failed.");
-        let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr);
+        let help = format!("{} -> {} ", &res.io.stdin.unwrap().trim(), stderr.trim());
         warn!("{}:{}", &message, &help);
         return Err(LibError::builder().msg(&message).help(&help).build().into());
     }

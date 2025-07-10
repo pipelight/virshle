@@ -1,14 +1,7 @@
 use crate::config::{HostCpu, HostDisk, HostRam, Node, NodeInfo};
 use crate::connection::{ConnectionState, Uri};
 
-use super::utils::{
-    display_bytes, display_id, display_ips, display_ram, display_some_num, display_some_ram,
-    display_vram,
-};
-use super::utils::{
-    display_cpu_percentage_reserved, display_disk_percentage_reserved, display_percentage_used,
-    display_ram_percentage_reserved,
-};
+use super::utils::*;
 use crate::cloud_hypervisor::{Vm, VmState};
 
 use human_bytes::human_bytes;
@@ -17,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use tabled::{
-    settings::{disable::Remove, object::Columns, themes::BorderCorrection, Panel, Style},
+    settings::{
+        disable::Remove, location::ByColumnName, object::Columns, themes::BorderCorrection, Panel,
+        Style,
+    },
     Table, Tabled,
 };
 use uuid::Uuid;
@@ -27,14 +23,17 @@ use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::VirshleError;
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq, Tabled)]
 pub struct CpuTable {
     pub name: String,
-    number: u64,
-    usage: u64,
-    reserved: u64,
-    #[tabled(display = "display_percentage_used")]
-    percentage_reserved: f64,
+    #[tabled(display = "display_some_num")]
+    number: Option<u64>,
+    #[tabled(display = "display_some_num")]
+    reserved: Option<u64>,
+    #[tabled(display = "display_some_percentage_used")]
+    percentage_reserved: Option<f64>,
+    #[tabled(display = "display_some_percentage_used")]
+    usage: Option<f64>,
 }
 impl HostCpu {
     pub async fn display(
@@ -45,6 +44,7 @@ impl HostCpu {
             let e = CpuTable::from(&item).await?;
             table.push(e);
         }
+        table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
         CpuTable::display(table)?;
         Ok(())
     }
@@ -57,56 +57,52 @@ impl CpuTable {
             let e = node_info.host_info.cpu.clone();
             table = CpuTable {
                 name: node.name.clone(),
-                number: e.number,
-                usage: e.usage,
-                reserved: e.reserved,
-                percentage_reserved: (e.reserved as f64 / e.number as f64 * 100.0).round(),
+                number: Some(e.number),
+                usage: Some(e.usage),
+                reserved: Some(e.reserved),
+                percentage_reserved: Some(e.reserved as f64 / e.number as f64 * 100.0),
             };
         } else {
             table = CpuTable {
                 name: node.name.clone(),
-                number: 0,
-                usage: 0,
-                reserved: 0,
-                percentage_reserved: 0 as f64,
+                number: None,
+                usage: None,
+                reserved: None,
+                percentage_reserved: None,
             };
         }
         Ok(table)
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Info) {
-            res.with(Style::rounded());
+        if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
         } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
-        } else {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
+            res.with(Remove::column(ByColumnName::new("usage")));
+        } else if log_enabled!(Level::Error) {
+            res.with(Remove::column(ByColumnName::new("usage")));
+            res.with(Remove::column(ByColumnName::new("reserved")));
         }
+        res.with(Style::rounded());
         println!("{}", res);
         Ok(())
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq, Tabled)]
 pub struct RamTable {
     pub name: String,
-    #[tabled(display = "display_bytes")]
-    total: u64,
-    #[tabled(display = "display_bytes")]
-    used: u64,
-    #[tabled(display = "display_bytes")]
-    free: u64,
-    #[tabled(display = "display_bytes")]
-    reserved: u64,
-    #[tabled(display = "display_ram_percentage_reserved")]
-    percentage_reserved: f64,
-    #[tabled(display = "display_percentage_used")]
-    percentage_used: f64,
+    #[tabled(display = "display_some_bytes")]
+    total: Option<u64>,
+    #[tabled(display = "display_some_bytes")]
+    used: Option<u64>,
+    #[tabled(display = "display_some_bytes")]
+    free: Option<u64>,
+    #[tabled(display = "display_some_bytes")]
+    reserved: Option<u64>,
+    #[tabled(display = "display_some_ram_percentage_reserved")]
+    percentage_reserved: Option<f64>,
+    #[tabled(display = "display_some_percentage_used")]
+    percentage_used: Option<f64>,
 }
 impl HostRam {
     pub async fn display(
@@ -117,6 +113,7 @@ impl HostRam {
             let e = RamTable::from(&item).await?;
             table.push(e);
         }
+        table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
         RamTable::display(table)?;
         Ok(())
     }
@@ -129,39 +126,38 @@ impl RamTable {
             let e = node_info.host_info.ram.clone();
             table = RamTable {
                 name: node.name.clone(),
-                total: e.total,
-                used: e.total - e.free,
-                free: e.free,
-                reserved: e.reserved,
-                percentage_reserved: ((e.reserved as f64 / e.total as f64) * 100.0).round(),
-                percentage_used: (((e.total as f64 - e.free as f64) / e.total as f64) * 100.0)
-                    .round(),
+                total: Some(e.total),
+                used: Some(e.total - e.free),
+                free: Some(e.free),
+                reserved: Some(e.reserved),
+                percentage_reserved: Some((e.reserved as f64 / e.total as f64) * 100.0),
+                percentage_used: Some(((e.total as f64 - e.free as f64) / e.total as f64) * 100.0),
             };
         } else {
             table = RamTable {
                 name: node.name.clone(),
-                total: 0,
-                used: 0,
-                free: 0,
-                reserved: 0,
-                percentage_reserved: 0 as f64,
-                percentage_used: 0 as f64,
+                total: None,
+                used: None,
+                free: None,
+                reserved: None,
+                percentage_reserved: None,
+                percentage_used: None,
             };
         }
         Ok(table)
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Info) {
+        if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
             res.with(Style::rounded());
         } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
-        } else {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
+            res.with(Remove::column(ByColumnName::new("free")));
+            res.with(Remove::column(ByColumnName::new("used")));
+        } else if log_enabled!(Level::Error) {
+            res.with(Remove::column(ByColumnName::new("free")));
+            res.with(Remove::column(ByColumnName::new("used")));
+            res.with(Remove::column(ByColumnName::new("total")));
+            res.with(Remove::column(ByColumnName::new("reserved")));
             res.with(Style::rounded());
         }
         println!("{}", res);
@@ -169,21 +165,21 @@ impl RamTable {
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq, Tabled)]
 pub struct HostDiskTable {
     pub name: String,
-    #[tabled(display = "display_bytes")]
-    size: u64,
-    #[tabled(display = "display_bytes")]
-    used: u64,
-    #[tabled(display = "display_bytes")]
-    available: u64,
-    #[tabled(display = "display_bytes")]
-    reserved: u64,
-    #[tabled(display = "display_percentage_used")]
-    percentage_used: f64,
-    #[tabled(display = "display_disk_percentage_reserved")]
-    percentage_reserved: f64,
+    #[tabled(display = "display_some_bytes")]
+    size: Option<u64>,
+    #[tabled(display = "display_some_bytes")]
+    used: Option<u64>,
+    #[tabled(display = "display_some_bytes")]
+    available: Option<u64>,
+    #[tabled(display = "display_some_bytes")]
+    reserved: Option<u64>,
+    #[tabled(display = "display_some_percentage_used")]
+    percentage_used: Option<f64>,
+    #[tabled(display = "display_some_disk_percentage_reserved")]
+    percentage_reserved: Option<f64>,
 }
 impl HostDisk {
     pub async fn display(
@@ -194,6 +190,7 @@ impl HostDisk {
             let e = HostDiskTable::from(&item).await?;
             table.push(e);
         }
+        table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
         HostDiskTable::display(table)?;
         Ok(())
     }
@@ -206,47 +203,46 @@ impl HostDiskTable {
             let e = node_info.host_info.disk.clone();
             table = HostDiskTable {
                 name: node.name.to_owned(),
-                size: e.size,
-                used: e.used,
-                available: e.available,
-                reserved: e.reserved,
+                size: Some(e.size),
+                used: Some(e.used),
+                available: Some(e.available),
+                reserved: Some(e.reserved),
 
-                percentage_used: (e.used as f64 / e.size as f64 * 100.0).round(),
-                percentage_reserved: (e.reserved as f64 / e.size as f64 * 100.0).round(),
+                percentage_used: Some(e.used as f64 / e.size as f64 * 100.0),
+                percentage_reserved: Some(e.reserved as f64 / e.size as f64 * 100.0),
             };
         } else {
             table = HostDiskTable {
                 name: node.name.to_owned(),
-                size: 0,
-                used: 0,
-                available: 0,
-                reserved: 0,
-                percentage_used: 0.0,
-                percentage_reserved: 0.0,
+                size: None,
+                used: None,
+                available: None,
+                reserved: None,
+                percentage_used: None,
+                percentage_reserved: None,
             };
         }
         Ok(table)
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Info) {
-            res.with(Style::rounded());
-        } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
-        } else {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
+        if log_enabled!(Level::Warn)
+            || log_enabled!(Level::Info)
+            || log_enabled!(Level::Debug)
+            || log_enabled!(Level::Trace)
+        {
+        } else if log_enabled!(Level::Error) {
+            res.with(Remove::column(ByColumnName::new("used")));
+            res.with(Remove::column(ByColumnName::new("reserved")));
+            res.with(Remove::column(ByColumnName::new("available")));
         }
+        res.with(Style::rounded());
         println!("{}", res);
         Ok(())
     }
 }
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Tabled)]
 pub struct NodeTable {
     pub name: String,
     #[tabled(display = "display_state")]
@@ -265,10 +261,12 @@ impl Node {
         items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
+
         for item in items {
             let e = NodeTable::from(&item).await?;
             table.push(e);
         }
+        table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
         NodeTable::display(table)?;
         Ok(())
     }
@@ -303,18 +301,19 @@ impl NodeTable {
 impl NodeTable {
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Info) {
+        if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
             res.with(Style::rounded());
         } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
-        } else {
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Remove::column(Columns::last()));
-            res.with(Style::rounded());
+            res.with(Remove::column(ByColumnName::new("ram")));
+            res.with(Remove::column(ByColumnName::new("cpu")));
+            res.with(Remove::column(ByColumnName::new("disk")));
+        } else if log_enabled!(Level::Error) {
+            res.with(Remove::column(ByColumnName::new("vm")));
+            res.with(Remove::column(ByColumnName::new("ram")));
+            res.with(Remove::column(ByColumnName::new("cpu")));
+            res.with(Remove::column(ByColumnName::new("disk")));
         }
+        res.with(Style::rounded());
         println!("{}", res);
         Ok(())
     }
