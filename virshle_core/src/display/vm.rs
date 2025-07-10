@@ -1,4 +1,4 @@
-use super::utils::{display_account_uuid, display_id, display_ips, display_vram};
+use super::utils::{display_account_uuid, display_id, display_ips, display_ram, display_vram};
 use crate::cloud_hypervisor::{Vm, VmState};
 use crate::config::Node;
 use crate::connection::Uri;

@@ -1,5 +1,5 @@
 use super::utils::{display_disks, display_ips, display_vram};
-use crate::cloud_hypervisor::{DiskTemplate, VmTemplate};
+use crate::cloud_hypervisor::{DiskInfo, DiskTemplate, VmTemplate};
 use crate::config::Node;
 use crate::connection::Uri;
 
@@ -17,23 +17,28 @@ use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::VirshleError;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
 pub struct VmTemplateTable {
     pub name: String,
     pub vcpu: u64,
     #[tabled(display = "display_vram")]
     pub vram: u64,
     #[tabled(display = "display_disks")]
-    pub disk: Option<Vec<DiskTemplate>>,
+    pub disk: Option<Vec<DiskInfo>>,
 }
 
 impl VmTemplateTable {
-    async fn from(vm: &VmTemplate) -> Result<Self, VirshleError> {
+    pub fn from(vm: &VmTemplate) -> Result<Self, VirshleError> {
+        let disks: Option<Vec<DiskInfo>> = vm.disk.clone().map(|e| {
+            e.iter()
+                .map(|e| DiskInfo::from_template(&e).unwrap())
+                .collect()
+        });
         let table = VmTemplateTable {
             name: vm.name.to_owned(),
             vcpu: vm.vcpu,
             vram: vm.vram,
-            disk: vm.disk.to_owned(),
+            disk: disks,
         };
         Ok(table)
     }
@@ -61,7 +66,7 @@ impl VmTemplate {
         for (node, vms) in items {
             let mut vms_table: Vec<VmTemplateTable> = vec![];
             for vm in vms {
-                let e = VmTemplateTable::from(&vm).await?;
+                let e = VmTemplateTable::from(&vm)?;
                 vms_table.push(e);
             }
             tables.insert(node, vms_table);
@@ -91,7 +96,7 @@ impl VmTemplate {
     pub async fn display(items: Vec<Self>) -> Result<()> {
         let mut table: Vec<VmTemplateTable> = vec![];
         for e in items {
-            table.push(VmTemplateTable::from(&e).await?);
+            table.push(VmTemplateTable::from(&e)?);
         }
 
         // Default sort templates by vram size

@@ -1,4 +1,4 @@
-use super::{Vm, VmConfigPlus, VmNet};
+use super::{Vm, VmConfigPlus, VmNet, VmTemplate};
 use crate::cloud_hypervisor::{Disk, DiskTemplate};
 
 // Pretty print
@@ -37,21 +37,6 @@ impl From<vm::Model> for Vm {
     }
 }
 
-/*
-* A partial Vm definition, with optional disk, network...
-* All those usually mandatory fields will be handled by virshle with
-* autoconfigured default.
-*/
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct VmTemplate {
-    pub name: String,
-    pub vcpu: u64,
-    pub vram: u64,
-    pub uuid: Option<Uuid>,
-    pub disk: Option<Vec<DiskTemplate>>,
-    pub net: Option<Vec<VmNet>>,
-    pub config: Option<VmConfigPlus>,
-}
 impl From<&VmTemplate> for Vm {
     fn from(e: &VmTemplate) -> Self {
         let mut vm = Vm {

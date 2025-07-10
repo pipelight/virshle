@@ -1,3 +1,8 @@
+mod info;
+mod utils;
+pub use info::DiskInfo;
+pub use utils::reverse_human_bytes;
+
 // Struct
 use super::vm::{InitData, UserData, Vm, VmData};
 
@@ -23,7 +28,6 @@ use virshle_error::{LibError, VirshleError};
 pub struct DiskTemplate {
     pub name: String,
     pub path: String,
-    pub size: Option<String>,
     pub readonly: Option<bool>,
 }
 
@@ -32,6 +36,22 @@ pub struct Disk {
     pub name: String,
     pub path: String,
     pub readonly: Option<bool>,
+}
+impl Disk {
+    pub fn get_size(&self) -> Result<u64, VirshleError> {
+        let path = Path::new(&self.path);
+        if path.exists() && path.is_file() {
+            let metadata = fs::metadata(path)?;
+            let size = metadata.len();
+            Ok(size)
+        } else {
+            Err(LibError::builder()
+                .msg("Counldn't get disk file size.")
+                .help("Disk doesn't exist or is unreachable")
+                .build()
+                .into())
+        }
+    }
 }
 
 impl From<&DiskTemplate> for Disk {
@@ -43,6 +63,24 @@ impl From<&DiskTemplate> for Disk {
         }
     }
 }
+impl DiskTemplate {
+    pub fn get_size(&self) -> Result<u64, VirshleError> {
+        let source = shellexpand::tilde(&self.path).to_string();
+        let path = Path::new(&source);
+        if path.exists() && path.is_file() {
+            let metadata = fs::metadata(path)?;
+            let size = metadata.len();
+            Ok(size)
+        } else {
+            Err(LibError::builder()
+                .msg("Counldn't get disk file size.")
+                .help("Disk doesn't exist or is unreachable")
+                .build()
+                .into())
+        }
+    }
+}
+
 /*
 * An ephemeral disk that is mounted/unmounted to vm on boot.
 * to provision with custom user datas.

@@ -1,12 +1,12 @@
 mod node;
-mod utils;
-mod vm_template;
+pub mod utils;
+pub mod vm_template;
 // mod secret;
 pub mod vm;
 
 // Reexport
-pub use utils::display_vram;
 pub use vm::VmTable;
+pub use vm_template::VmTemplateTable;
 
 // use crate::resources::Vm;
 

@@ -1,4 +1,4 @@
-use super::{Vm, VmNet};
+use super::{Vm, VmNet, VmTemplate};
 use crate::display::VmTable;
 
 use uuid::Uuid;
@@ -41,6 +41,13 @@ use crate::config::MANAGED_DIR;
 use log::{debug, error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
+
+impl VmTemplate {
+    pub async fn get_all() -> Result<Vec<VmTemplate>, VirshleError> {
+        let config = VirshleConfig::get()?;
+        config.get_templates()
+    }
+}
 
 impl Vm {
     pub async fn get_all() -> Result<Vec<Vm>, VirshleError> {

@@ -40,6 +40,14 @@ impl NodeRestServer {
                 "/template/all",
                 get(async || method::template::get_all().await),
             )
+            .route(
+                "/template/info.many",
+                get(async || method::template::get_info_many().await),
+            )
+            .route(
+                "/template/reclaim",
+                get(async move |params| method::template::reclaim(params).await),
+            )
             // Vm
             .route(
                 "/vm/all",

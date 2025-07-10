@@ -1,19 +1,21 @@
 #########################
-# Instance (This host credentials)
-
-name = "deku"
-uuid = "0a87a428-8753-40bb-93a1-aabd19e6c1c4"
-
-#########################
 # Nodes
 
-# [[node]]
-# name = "rpi4b"
-# url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
+# Instance (This host credentials)
+[[node]]
+name = "local"
+url = "unix:///var/lib/virshle/virshle.sock"
+weight = 20
 
 [[node]]
 name = "local-ssh"
 url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
+weight = 0
+
+[[node]]
+name = "rpi4b"
+url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
+weight = 10
 
 
 #########################
@@ -26,7 +28,6 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
-size = "50G"
 
 [[template.vm]]
 name = "xs-tap"
@@ -35,7 +36,6 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
-size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -47,7 +47,6 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
-size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.mac_v_tap]
@@ -59,10 +58,11 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
-size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.vhost]
+
+#########################
 
 [[template.vm]]
 name = "xxs"
@@ -71,7 +71,6 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
-size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -87,7 +86,6 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xs.efi.img"
-size = "50G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -99,7 +97,6 @@ vram = 4
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.s.efi.img"
-size = "80G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -111,7 +108,6 @@ vram = 8
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.m.efi.img"
-size = "100G"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]

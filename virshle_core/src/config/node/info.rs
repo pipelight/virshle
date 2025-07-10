@@ -117,7 +117,7 @@ impl HostInfo {
         };
 
         // Disk
-        let disk = HostDisk::get()?;
+        let disk = HostDisk::get().await?;
 
         Ok(HostInfo {
             name,
@@ -133,11 +133,12 @@ pub struct HostDisk {
     pub size: u64,
     pub used: u64,
     pub available: u64,
+    pub reserved: u64,
     // The disk space reserved for Vm storage.
 }
 
 impl HostDisk {
-    pub fn get() -> Result<Self, VirshleError> {
+    pub async fn get() -> Result<Self, VirshleError> {
         let managed_path = Path::new(&MANAGED_DIR).canonicalize().unwrap();
 
         let disks = Disks::new_with_refreshed_list();
@@ -155,6 +156,7 @@ impl HostDisk {
                     size: disk.total_space(),
                     available: disk.available_space(),
                     used: disk.total_space() - disk.available_space(),
+                    reserved: Self::get_reserved().await?,
                 };
                 return Ok(disk_info);
             }
@@ -163,6 +165,15 @@ impl HostDisk {
         let help = format!("Are you sure this path exists?");
         let err = LibError::builder().msg(&message).help(&help).build();
         Err(err.into())
+    }
+
+    pub async fn get_reserved() -> Result<u64, VirshleError> {
+        let vms = Vm::get_all().await?;
+        let n_cpus: u64 = vms
+            .iter()
+            .map(|e| e.disk.iter().map(|d| d.get_size().unwrap()).sum::<u64>())
+            .sum();
+        Ok(n_cpus)
     }
 }
 
@@ -177,9 +188,9 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn test_df() -> Result<()> {
-        HostDisk::get()?;
+    #[tokio::test]
+    async fn test_df() -> Result<()> {
+        HostDisk::get().await?;
         Ok(())
     }
 }

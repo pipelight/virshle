@@ -4,12 +4,13 @@ pub mod delete;
 pub mod from;
 pub mod getters;
 pub mod init;
+pub mod template;
 
 // Reexports
 pub use account::Account;
-pub use from::VmTemplate;
 pub use getters::VmInfo;
 pub use init::{InitData, UserData, VmData};
+pub use template::VmTemplate;
 
 use super::vmm_types::VmConfig;
 

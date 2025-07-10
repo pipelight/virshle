@@ -1,13 +1,35 @@
+use owo_colors::OwoColorize;
 use std::net::IpAddr;
 use uuid::Uuid;
 
+use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
+
 use crossterm::{execute, style::Stylize, terminal::size};
 
-use crate::cloud_hypervisor::DiskTemplate;
+use crate::cloud_hypervisor::DiskInfo;
 use human_bytes::human_bytes;
 
+// Convert from B.
+pub fn display_some_bytes(bytes: &Option<u64>) -> String {
+    if let Some(bytes) = bytes {
+        let res = human_bytes(bytes.to_owned() as f64);
+        format!("{}", res)
+    } else {
+        format!("")
+    }
+}
+// Convert from B.
+pub fn display_bytes(vram: &u64) -> String {
+    let res = human_bytes((vram.to_owned()) as f64);
+    format!("{}", res)
+}
+// Convert host ram from B.
+pub fn display_ram(vram: &u64) -> String {
+    let res = human_bytes((vram.to_owned()) as f64);
+    format!("{}", res)
+}
 // Convert sysinfo ram from Bytes.
-pub fn display_some_vram(vram: &Option<u64>) -> String {
+pub fn display_some_ram(vram: &Option<u64>) -> String {
     if let Some(vram) = vram {
         let res = human_bytes(vram.to_owned() as f64);
         format!("{}", res)
@@ -15,6 +37,12 @@ pub fn display_some_vram(vram: &Option<u64>) -> String {
         format!("")
     }
 }
+// Convert cloud-hypervisor ram from MiB.
+pub fn display_vram(vram: &u64) -> String {
+    let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
+    format!("{}", res)
+}
+
 pub fn display_some_num(num: &Option<u64>) -> String {
     if let Some(num) = num {
         format!("{}", num)
@@ -22,21 +50,31 @@ pub fn display_some_num(num: &Option<u64>) -> String {
         format!("")
     }
 }
-
-// Convert cloud-hypervisor ram from MiB.
-pub fn display_vram(vram: &u64) -> String {
-    let res = human_bytes((vram.to_owned()) as f64);
-    format!("{}", res)
+pub fn display_some_bool(b: &Option<bool>) -> String {
+    if let Some(b) = b {
+        format!("{}", b)
+    } else {
+        format!("")
+    }
 }
-pub fn display_disks(disks: &Option<Vec<DiskTemplate>>) -> String {
+
+pub fn display_disks(disks: &Option<Vec<DiskInfo>>) -> String {
     let mut res = "".to_owned();
     if let Some(disks) = disks {
-        let strs: Vec<String> = disks
-            .iter()
-            .map(|e| format!("{} -> {}", e.name, e.path))
-            .collect();
+        let mut summary: Vec<String> = vec![];
+        for e in disks {
+            if let Some(size) = e.size {
+                let mut size = human_bytes(size.to_owned() as f64);
+                size = size.replace(" ", "");
 
-        res = strs.join("\n");
+                let oneline = format!("{} -> {} ({size})", e.name, e.path);
+                summary.push(oneline);
+            } else {
+                let oneline = format!("{} -> {}", e.name, e.path);
+                summary.push(oneline);
+            }
+        }
+        res = summary.join("\n");
     }
     res
 }
@@ -61,14 +99,84 @@ pub fn display_account_uuid(uuid: &Option<Uuid>) -> String {
         format!("")
     }
 }
-pub fn display_percentage(percentage: &f64) -> String {
+
+pub fn make_progress_bar(percentage: &f64, max: Option<f64>) -> String {
     let (cols, _) = size().unwrap();
-    match cols >= 20 {
+    let max = max.unwrap_or(100.0);
+
+    let progress = match cols >= 20 {
         true => {
-            format!("{}%", percentage)
+            let bar_total_size = cols as f64 / 10.0;
+            let n_chars = (bar_total_size * percentage / max).round();
+            let n_empty_chars = (bar_total_size * (max - percentage) / max).round();
+            let adv = "#".repeat(n_chars as usize);
+            let nadv = " ".repeat(n_empty_chars as usize);
+
+            let progress = format!("[{adv}{nadv}] {percentage}%");
+            progress
         }
         false => {
-            format!("{}%", percentage)
+            let progress = format!("[{percentage}%");
+            progress
         }
+    };
+    progress
+}
+
+pub fn display_percentage_used(percentage: &f64) -> String {
+    let progress = make_progress_bar(percentage, None);
+
+    if percentage < &20_f64 {
+        format!("{}", progress.green())
+    } else if percentage < &80_f64 {
+        format!("{}", progress.yellow())
+    } else if percentage > &80_f64 {
+        format!("{}", progress.red())
+    } else {
+        format!("{}", progress)
+    }
+}
+
+pub fn display_disk_percentage_reserved(percentage: &f64) -> String {
+    let max = MAX_DISK_RESERVATION;
+    let progress = make_progress_bar(percentage, Some(max));
+
+    if percentage < &80_f64 {
+        format!("{}", progress.green())
+    } else if percentage < &100_f64 {
+        format!("{}", progress.yellow())
+    } else if percentage > &80_f64 {
+        format!("{}", progress.red())
+    } else {
+        format!("{}", progress)
+    }
+}
+pub fn display_cpu_percentage_reserved(percentage: &f64) -> String {
+    let max = MAX_CPU_RESERVATION;
+    let progress = make_progress_bar(percentage, Some(max));
+
+    if percentage < &80_f64 {
+        format!("{}", progress.green())
+    } else if percentage < &100_f64 {
+        format!("{}", progress.yellow())
+    } else if percentage > &80_f64 {
+        format!("{}", progress.red())
+    } else {
+        format!("{}", progress)
+    }
+}
+
+pub fn display_ram_percentage_reserved(percentage: &f64) -> String {
+    let max = MAX_RAM_RESERVATION;
+    let progress = make_progress_bar(percentage, Some(max));
+
+    if percentage < &80_f64 {
+        format!("{}", progress.green())
+    } else if percentage < &100_f64 {
+        format!("{}", progress.yellow())
+    } else if percentage > &80_f64 {
+        format!("{}", progress.red())
+    } else {
+        format!("{}", progress)
     }
 }

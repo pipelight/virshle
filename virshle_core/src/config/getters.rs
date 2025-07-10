@@ -12,25 +12,24 @@ use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
 impl VirshleConfig {
-    pub fn get_vm_templates(&self) -> Result<HashMap<String, VmTemplate>, VirshleError> {
-        let mut hashmap = HashMap::new();
+    pub fn get_templates(&self) -> Result<Vec<VmTemplate>, VirshleError> {
         if let Some(template) = &self.template {
             if let Some(vm) = &template.vm {
-                hashmap = vm.iter().map(|e| (e.name.clone(), e.to_owned())).collect();
+                return Ok(vm.to_owned());
             }
         }
-        Ok(hashmap)
+        Ok(vec![])
     }
     pub fn get_template(&self, name: &str) -> Result<VmTemplate, VirshleError> {
-        let templates = self.get_vm_templates()?;
-        let res = templates.get(name);
+        let templates = self.get_templates()?;
+        let res = templates.iter().find(|e| e.name == name);
         match res {
             Some(res) => Ok(res.to_owned()),
             None => {
                 let message = format!("Couldn't find template {:#?}", name);
                 let templates_name = templates
                     .iter()
-                    .map(|e| e.0.to_owned())
+                    .map(|e| e.name.to_owned())
                     .collect::<Vec<String>>()
                     .join(",");
                 let help = format!("Available templates are:\n[{templates_name}]");
@@ -44,10 +43,10 @@ impl VirshleConfig {
      * plus the default local node.
      */
     pub fn get_nodes(&self) -> Result<Vec<Node>, VirshleError> {
-        let mut nodes: Vec<Node> = vec![Node::default()];
-        if let Some(node) = &self.node {
-            nodes.extend(node.to_owned());
-        }
+        let nodes: Vec<Node> = match &self.node {
+            Some(node) => node.to_owned(),
+            None => vec![Node::default()],
+        };
         Ok(nodes)
     }
     /*

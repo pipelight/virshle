@@ -2,7 +2,12 @@ use crate::config::{HostCpu, HostDisk, HostRam, Node, NodeInfo};
 use crate::connection::{ConnectionState, Uri};
 
 use super::utils::{
-    display_id, display_ips, display_percentage, display_some_num, display_some_vram, display_vram,
+    display_bytes, display_id, display_ips, display_ram, display_some_num, display_some_ram,
+    display_vram,
+};
+use super::utils::{
+    display_cpu_percentage_reserved, display_disk_percentage_reserved, display_percentage_used,
+    display_ram_percentage_reserved,
 };
 use crate::cloud_hypervisor::{Vm, VmState};
 
@@ -28,7 +33,7 @@ pub struct CpuTable {
     number: u64,
     usage: u64,
     reserved: u64,
-    #[tabled(display = "display_percentage")]
+    #[tabled(display = "display_percentage_used")]
     percentage_reserved: f64,
 }
 impl HostCpu {
@@ -55,7 +60,7 @@ impl CpuTable {
                 number: e.number,
                 usage: e.usage,
                 reserved: e.reserved,
-                percentage_reserved: (e.reserved as f64 / e.number as f64 * 100.0).round() as f64,
+                percentage_reserved: (e.reserved as f64 / e.number as f64 * 100.0).round(),
             };
         } else {
             table = CpuTable {
@@ -90,17 +95,17 @@ impl CpuTable {
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
 pub struct RamTable {
     pub name: String,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     total: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     used: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     free: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     reserved: u64,
-    #[tabled(display = "display_percentage")]
+    #[tabled(display = "display_ram_percentage_reserved")]
     percentage_reserved: f64,
-    #[tabled(display = "display_percentage")]
+    #[tabled(display = "display_percentage_used")]
     percentage_used: f64,
 }
 impl HostRam {
@@ -128,9 +133,9 @@ impl RamTable {
                 used: e.total - e.free,
                 free: e.free,
                 reserved: e.reserved,
-                percentage_reserved: ((e.reserved as f64 / e.total as f64) * 100.0).round() as f64,
+                percentage_reserved: ((e.reserved as f64 / e.total as f64) * 100.0).round(),
                 percentage_used: (((e.total as f64 - e.free as f64) / e.total as f64) * 100.0)
-                    .round() as f64,
+                    .round(),
             };
         } else {
             table = RamTable {
@@ -165,50 +170,59 @@ impl RamTable {
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
-pub struct DiskTable {
+pub struct HostDiskTable {
     pub name: String,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     size: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     used: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display = "display_bytes")]
     available: u64,
-    #[tabled(display = "display_percentage")]
+    #[tabled(display = "display_bytes")]
+    reserved: u64,
+    #[tabled(display = "display_percentage_used")]
     percentage_used: f64,
+    #[tabled(display = "display_disk_percentage_reserved")]
+    percentage_reserved: f64,
 }
 impl HostDisk {
     pub async fn display(
         items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
-        let mut table: Vec<DiskTable> = vec![];
+        let mut table: Vec<HostDiskTable> = vec![];
         for item in items {
-            let e = DiskTable::from(&item).await?;
+            let e = HostDiskTable::from(&item).await?;
             table.push(e);
         }
-        DiskTable::display(table)?;
+        HostDiskTable::display(table)?;
         Ok(())
     }
 }
-impl DiskTable {
+impl HostDiskTable {
     async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
         if let Some(node_info) = node_info {
             let e = node_info.host_info.disk.clone();
-            table = DiskTable {
+            table = HostDiskTable {
                 name: node.name.to_owned(),
                 size: e.size,
                 used: e.used,
                 available: e.available,
-                percentage_used: (e.used as f64 / e.size as f64 * 100.0).round() as f64,
+                reserved: e.reserved,
+
+                percentage_used: (e.used as f64 / e.size as f64 * 100.0).round(),
+                percentage_reserved: (e.reserved as f64 / e.size as f64 * 100.0).round(),
             };
         } else {
-            table = DiskTable {
+            table = HostDiskTable {
                 name: node.name.to_owned(),
                 size: 0,
                 used: 0,
                 available: 0,
-                percentage_used: 0 as f64,
+                reserved: 0,
+                percentage_used: 0.0,
+                percentage_reserved: 0.0,
             };
         }
         Ok(table)
@@ -241,9 +255,9 @@ pub struct NodeTable {
     pub vm: Option<u64>,
     #[tabled(display = "display_some_num")]
     pub cpu: Option<u64>,
-    #[tabled(display = "display_some_vram")]
+    #[tabled(display = "display_some_ram")]
     pub ram: Option<u64>,
-    #[tabled(display = "display_some_vram")]
+    #[tabled(display = "display_some_ram")]
     pub disk: Option<u64>,
 }
 impl Node {
@@ -346,7 +360,7 @@ mod test {
             NodeTable {
                 name: "node_2".to_owned(),
                 cpu: Some(16),
-                ram: Some(30 * u64::pow(1024, 4)),
+                ram: Some(30 * u64::pow(1024, 3)),
                 disk: None,
                 vm: Some(2),
                 state: ConnectionState::DaemonUp,

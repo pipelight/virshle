@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 // Node
 use crate::config::NodeInfo;
 
-use crate::display::vm::VmTable;
+use crate::display::{VmTable, VmTemplateTable};
 // Hypervisor
 use crate::cli::{CreateArgs, VmArgs};
 use crate::cloud_hypervisor::{
@@ -48,6 +48,29 @@ pub mod node {
 
 pub mod template {
     use super::*;
+    use crate::api::CreateVmArgs;
+
+    /// Ask node if a vm can be created from template.
+    pub async fn reclaim(Json(args): Json<CreateVmArgs>) -> Result<Json<()>, VirshleError> {
+        Ok(Json(_reclaim(args).await?))
+    }
+    pub async fn _reclaim(args: CreateVmArgs) -> Result<(), VirshleError> {
+        Ok(())
+    }
+
+    /// Get summarized information about a VM.
+    pub async fn get_info_many() -> Result<Json<Vec<VmTemplateTable>>, VirshleError> {
+        Ok(Json(_get_info_many().await?))
+    }
+    pub async fn _get_info_many() -> Result<Vec<VmTemplateTable>, VirshleError> {
+        let vm_templates = VmTemplate::get_all().await?;
+        let mut info = vec![];
+        for e in vm_templates {
+            let table = VmTemplateTable::from(&e)?;
+            info.push(table)
+        }
+        Ok(info)
+    }
 
     /// Return all template name.
     pub async fn get_all() -> Result<Json<Vec<VmTemplate>>, VirshleError> {
