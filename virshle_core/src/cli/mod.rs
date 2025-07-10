@@ -5,7 +5,7 @@ use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
 use crate::{
     cloud_hypervisor::{Definition, UserData, Vm, VmState, VmTemplate},
-    config::{HostCpu, HostDisk, HostRam, Node, VirshleConfig},
+    config::{HostCpu, HostDisk, HostRam, Node, NodeInfo, VirshleConfig},
 };
 use std::str::FromStr;
 use uuid::Uuid;
@@ -48,31 +48,47 @@ impl Cli {
         std::env::set_var("VIRSHLE_LOG", value);
         Builder::from_env("VIRSHLE_LOG").init();
 
-        // Set working node
-        let cw_node = cli.current_workgin_node.node;
-
         match cli.commands {
             /*
              * Operations on local and remote node
              */
             Commands::Node(args) => match args {
                 NodeArgs::Ls(args) => {
-                    let res = client::node::get_info_all().await?;
-                    if args.disk {
-                        HostDisk::display(res).await?;
-                    } else if args.ram {
-                        HostRam::display(res).await?;
-                    } else if args.cpu {
-                        HostCpu::display(res).await?;
+                    let node = args.current_workgin_node.node;
+                    if node.is_some() {
+                        let res = client::node::get_info(node).await?;
+                        if args.disk {
+                            HostDisk::display(&res).await?;
+                        } else if args.ram {
+                            HostRam::display(&res).await?;
+                        } else if args.cpu {
+                            HostCpu::display(&res).await?;
+                        } else if args.all {
+                            HostDisk::display(&res.clone()).await?;
+                            HostRam::display(&res.clone()).await?;
+                            HostCpu::display(&res.clone()).await?;
+                        } else {
+                            Node::display(&res).await?;
+                        }
                     } else {
-                        Node::display(res).await?;
+                        let res = client::node::get_info_all().await?;
+                        if args.disk {
+                            HostDisk::display_many(res).await?;
+                        } else if args.ram {
+                            HostRam::display_many(res).await?;
+                        } else if args.cpu {
+                            HostCpu::display_many(res).await?;
+                        } else if args.all {
+                            HostDisk::display_many(res.clone()).await?;
+                            HostRam::display_many(res.clone()).await?;
+                            HostCpu::display_many(res.clone()).await?;
+                        } else {
+                            Node::display_many(res).await?;
+                        }
                     }
                 }
                 NodeArgs::Ping(args) => {
                     let res = client::node::ping(args.node).await?;
-                }
-                NodeArgs::Info(args) => {
-                    let res = client::node::get_info(args.node).await?;
                 }
                 /*
                  * Serve the node rest API and wait for http requests.
@@ -115,6 +131,8 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
+                    // Set working node
+                    let cw_node = args.current_workgin_node.node;
                     // Spinner
                     let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
                     let mut user_data = None;
@@ -153,6 +171,8 @@ impl Cli {
                     }
                 }
                 Crud::Start(args) => {
+                    // Set working node
+                    let cw_node = args.vm_args.current_workgin_node.node.clone();
                     let user_data: Option<UserData> = match args.user_data {
                         Some(path) => Some(UserData::from_file(&path)?),
                         None => None,
@@ -231,6 +251,8 @@ impl Cli {
                     };
                 }
                 Crud::Stop(args) => {
+                    // Set working node
+                    let cw_node = args.current_workgin_node.node;
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Stopping vm...", None);
@@ -281,6 +303,7 @@ impl Cli {
                     }
                 }
                 Crud::Ls(args) => {
+                    let cw_node = args.current_workgin_node.node;
                     let table = client::vm::get_info_many(
                         Some(GetManyVmArgs {
                             vm_state: args.state,
@@ -292,6 +315,7 @@ impl Cli {
                     VmTable::display_by_nodes(table).await?;
                 }
                 Crud::Rm(args) => {
+                    let cw_node = args.current_workgin_node.node;
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         client::vm::delete(
                             GetVmArgs {

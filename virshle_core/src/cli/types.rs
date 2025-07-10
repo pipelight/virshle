@@ -11,9 +11,12 @@ pub struct Cli {
     pub commands: Commands,
     #[command(flatten)]
     pub verbose: Verbosity,
+}
 
-    #[command(flatten)]
-    pub current_workgin_node: CurrentWorkingNode,
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct CurrentWorkingNode {
+    #[arg(long, value_name = "NODE_NAME")]
+    pub node: Option<String>,
 }
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
@@ -100,6 +103,9 @@ pub struct CreateArgs {
     /// It links the VM to the provided account on node database
     #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
+
+    #[command(flatten)]
+    pub current_workgin_node: CurrentWorkingNode,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -133,12 +139,13 @@ pub struct VmArgs {
     /// Lookup VM by account_uuid.
     #[arg(long, value_name = "ACCOUNT_UUID")]
     pub account: Option<Uuid>,
+
+    #[command(flatten)]
+    pub current_workgin_node: CurrentWorkingNode,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
 pub struct StartArgs {
-    #[command(flatten)]
-    pub vm_args: VmArgs,
     #[arg(
         long,
         num_args(0..=1),
@@ -151,6 +158,9 @@ pub struct StartArgs {
     /// It links the VM to the provided account on node database
     #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
+
+    #[command(flatten)]
+    pub vm_args: VmArgs,
 }
 
 #[derive(Default, Debug, Subcommand, Clone, Eq, PartialEq)]
@@ -165,7 +175,6 @@ pub enum NodeArgs {
     Init(InitArgs),
     Ls(NodeLsArgs),
     Ping(CurrentWorkingNode),
-    Info(CurrentWorkingNode),
     Serve,
 }
 
@@ -192,10 +201,14 @@ pub struct NodeLsArgs {
         default_missing_value = "true"
     )]
     pub ram: bool,
-}
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub all: bool,
 
-#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct CurrentWorkingNode {
-    #[arg(long, value_name = "NODE_NAME")]
-    pub node: Option<String>,
+    #[command(flatten)]
+    pub current_workgin_node: CurrentWorkingNode,
 }

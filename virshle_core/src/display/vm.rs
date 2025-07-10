@@ -76,25 +76,11 @@ pub fn display_state(state: &VmState) -> String {
     };
     format!("{}", res)
 }
-
 impl VmTable {
     pub async fn display_by_nodes(items: HashMap<Node, Vec<Self>>) -> Result<(), VirshleError> {
         // Display vm by nodes with table header
         for (node, table) in items {
-            let name = node.name.bright_purple().bold().to_string();
-            let header: String = match Uri::new(&node.url)? {
-                Uri::SshUri(e) => format!(
-                    "{name} on {}@{}",
-                    e.user.yellow().bold(),
-                    e.host.green().bold()
-                ),
-                Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
-                Uri::TcpUri(e) => format!(
-                    "{name} on {}{}",
-                    e.host.green().bold(),
-                    e.port.blue().bold()
-                ),
-            };
+            let header = node.get_header()?;
             VmTable::display_w_header(table, &header);
         }
 

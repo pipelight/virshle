@@ -33,7 +33,7 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub mod node {
     use super::*;
 
-    /// Return info on node.
+    /// Return info on specified node.
     pub async fn get_info() -> Result<Json<NodeInfo>, VirshleError> {
         Ok(Json(_get_info().await?))
     }

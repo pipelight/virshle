@@ -36,9 +36,12 @@ pub struct CpuTable {
     usage: Option<f64>,
 }
 impl HostCpu {
-    pub async fn display(
+    pub async fn display_many(
         items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
+        let header = "cpu".blue();
+        println!("{}", header);
+
         let mut table: Vec<CpuTable> = vec![];
         for item in items {
             let e = CpuTable::from(&item).await?;
@@ -48,7 +51,21 @@ impl HostCpu {
         CpuTable::display(table)?;
         Ok(())
     }
+    pub async fn display(
+        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+    ) -> Result<(), VirshleError> {
+        let section = "cpu".blue();
+        let node = item.0.get_header()?;
+        println!("{section} for {node}");
+
+        let mut table: Vec<CpuTable> = vec![];
+        let e = CpuTable::from(&item).await?;
+        table.push(e);
+        CpuTable::display(table)?;
+        Ok(())
+    }
 }
+
 impl CpuTable {
     async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
@@ -105,15 +122,31 @@ pub struct RamTable {
     percentage_used: Option<f64>,
 }
 impl HostRam {
-    pub async fn display(
+    pub async fn display_many(
         items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
+        let header = "ram".blue();
+        println!("{}", header);
+
         let mut table: Vec<RamTable> = vec![];
         for item in items {
             let e = RamTable::from(&item).await?;
             table.push(e);
         }
         table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
+        RamTable::display(table)?;
+        Ok(())
+    }
+    pub async fn display(
+        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+    ) -> Result<(), VirshleError> {
+        let section = "ram".blue();
+        let node = item.0.get_header()?;
+        println!("{section} for {node}");
+
+        let mut table: Vec<RamTable> = vec![];
+        let e = RamTable::from(&item).await?;
+        table.push(e);
         RamTable::display(table)?;
         Ok(())
     }
@@ -146,10 +179,10 @@ impl RamTable {
         }
         Ok(table)
     }
+
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
         if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
-            res.with(Style::rounded());
         } else if log_enabled!(Level::Warn) {
             res.with(Remove::column(ByColumnName::new("free")));
             res.with(Remove::column(ByColumnName::new("used")));
@@ -158,8 +191,8 @@ impl RamTable {
             res.with(Remove::column(ByColumnName::new("used")));
             res.with(Remove::column(ByColumnName::new("total")));
             res.with(Remove::column(ByColumnName::new("reserved")));
-            res.with(Style::rounded());
         }
+        res.with(Style::rounded());
         println!("{}", res);
         Ok(())
     }
@@ -182,21 +215,37 @@ pub struct HostDiskTable {
     percentage_reserved: Option<f64>,
 }
 impl HostDisk {
-    pub async fn display(
+    pub async fn display_many(
         items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
+        let header = "disk".blue();
+        println!("{}", header);
+
         let mut table: Vec<HostDiskTable> = vec![];
         for item in items {
-            let e = HostDiskTable::from(&item).await?;
+            let e = HostDiskTable::from(&item)?;
             table.push(e);
         }
         table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
         HostDiskTable::display(table)?;
         Ok(())
     }
+    pub async fn display(
+        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+    ) -> Result<(), VirshleError> {
+        let section = "disk".blue();
+        let node = item.0.get_header()?;
+        println!("{section} for {node}");
+
+        let mut table: Vec<HostDiskTable> = vec![];
+        let e = HostDiskTable::from(item)?;
+        table.push(e);
+        HostDiskTable::display(table)?;
+        Ok(())
+    }
 }
 impl HostDiskTable {
-    async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
+    fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
         if let Some(node_info) = node_info {
@@ -257,23 +306,31 @@ pub struct NodeTable {
     pub disk: Option<u64>,
 }
 impl Node {
-    pub async fn display(
+    pub async fn display_many(
         items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
-
         for item in items {
-            let e = NodeTable::from(&item).await?;
+            let e = NodeTable::from(&item)?;
             table.push(e);
         }
         table.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
         NodeTable::display(table)?;
         Ok(())
     }
+    pub async fn display(
+        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+    ) -> Result<(), VirshleError> {
+        let mut table: Vec<NodeTable> = vec![];
+        let e = NodeTable::from(&item)?;
+        table.push(e);
+        NodeTable::display(table)?;
+        Ok(())
+    }
 }
 
 impl NodeTable {
-    async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
+    fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
         if let Some(node_info) = node_info {
@@ -299,10 +356,14 @@ impl NodeTable {
     }
 }
 impl NodeTable {
+    pub fn display_w_header(items: Vec<Self>, header: &str) -> Result<(), VirshleError> {
+        println!("\n{}", header);
+        Self::display(items);
+        Ok(())
+    }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
         if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
-            res.with(Style::rounded());
         } else if log_enabled!(Level::Warn) {
             res.with(Remove::column(ByColumnName::new("ram")));
             res.with(Remove::column(ByColumnName::new("cpu")));
@@ -324,13 +385,10 @@ pub fn display_state(state: &ConnectionState) -> String {
     let res = match state {
         // Success
         ConnectionState::DaemonUp => format!("{} Running", icon).green().to_string(),
-
         // Uninitialized
         ConnectionState::Down => format!("{} Down", icon).white().to_string(),
-
         // Warning: small error
         ConnectionState::SshAuthError => format!("{} SshAuthError", icon).yellow().to_string(),
-
         // Error
         ConnectionState::SocketNotFound => format!("{} SocketNotFound", icon).red().to_string(),
         ConnectionState::DaemonDown => format!("{} DaemonDown", icon).red().to_string(),
@@ -365,7 +423,6 @@ mod test {
                 state: ConnectionState::DaemonUp,
             },
         ];
-
         println!("");
         NodeTable::display(nodes)?;
         Ok(())

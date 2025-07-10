@@ -63,7 +63,9 @@ pub mod node {
         Ok(())
     }
 
-    pub async fn get_info(node_name: Option<String>) -> Result<NodeInfo, VirshleError> {
+    pub async fn get_info(
+        node_name: Option<String>,
+    ) -> Result<(Node, (ConnectionState, Option<NodeInfo>)), VirshleError> {
         let node = Node::unwrap_or_default(node_name).await?;
 
         let mut conn = Connection::from(&node);
@@ -73,7 +75,10 @@ pub mod node {
         rest.open().await?;
         rest.ping().await?;
 
-        let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
+        let state = rest.connection.get_state().await?;
+        let info: Option<NodeInfo> = rest.get("/node/info").await?.to_value().await.ok();
+        let res = (node, (state, info));
+
         Ok(res)
     }
 

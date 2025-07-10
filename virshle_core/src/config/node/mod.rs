@@ -2,6 +2,8 @@ mod best;
 pub mod info;
 pub use info::NodeInfo;
 
+use owo_colors::OwoColorize;
+
 use crate::api::NodeServer;
 use crate::connection::{Connection, ConnectionHandle, Uri};
 use crate::http_request::{Rest, RestClient};
@@ -90,6 +92,23 @@ impl Node {
     }
 }
 impl Node {
+    pub fn get_header(&self) -> Result<String, VirshleError> {
+        let name = self.name.bright_purple().bold().to_string();
+        let header: String = match Uri::new(&self.url)? {
+            Uri::SshUri(e) => format!(
+                "{name} on {}@{}",
+                e.user.yellow().bold(),
+                e.host.green().bold()
+            ),
+            Uri::LocalUri(e) => format!("{name} on {}", "localhost".green().bold()),
+            Uri::TcpUri(e) => format!(
+                "{name} on {}{}",
+                e.host.green().bold(),
+                e.port.blue().bold()
+            ),
+        };
+        Ok(header)
+    }
     /// Returns nodes defined in configuration,
     /// plus the default local node.
     pub fn get_all() -> Result<Vec<Node>, VirshleError> {
@@ -114,9 +133,9 @@ impl Node {
             Some(node) => Ok(node.to_owned()),
             None => {
                 let node_names: Vec<String> = nodes.iter().map(|e| e.name.to_owned()).collect();
-                let node_names: String = node_names.join("\t\n");
+                let node_names: String = node_names.join(",");
                 let message = format!("couldn't find node with name: {:#?}", name);
-                let help = format!("Available nodes are: \n");
+                let help = format!("Available nodes are:\n[{node_names}]");
                 let err = LibError::builder().msg(&message).help(&help).build();
                 return Err(err.into());
             }
