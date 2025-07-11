@@ -48,6 +48,17 @@ pub struct HostInfo {
     pub cpu: HostCpu,
     pub disk: HostDisk,
 }
+impl HostInfo {
+    pub async fn get() -> Result<Self, VirshleError> {
+        let name = System::host_name().unwrap_or("unknown".to_owned());
+        Ok(HostInfo {
+            name,
+            ram: HostRam::get().await?,
+            cpu: HostCpu::get().await?,
+            disk: HostDisk::get().await?,
+        })
+    }
+}
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]
 pub struct HostRam {
@@ -123,18 +134,6 @@ impl HostCpu {
         let vms = Vm::get_all().await?;
         let n_cpus: u64 = vms.iter().map(|e| e.vcpu).sum();
         Ok(n_cpus)
-    }
-}
-
-impl HostInfo {
-    pub async fn get() -> Result<Self, VirshleError> {
-        let name = System::host_name().unwrap_or("unknown".to_owned());
-        Ok(HostInfo {
-            name,
-            ram: HostRam::get().await?,
-            cpu: HostCpu::get().await?,
-            disk: HostDisk::get().await?,
-        })
     }
 }
 
