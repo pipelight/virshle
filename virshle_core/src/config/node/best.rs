@@ -1,6 +1,7 @@
 use super::Node;
 
 // Error Handling
+use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
 use log::{info, warn};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};

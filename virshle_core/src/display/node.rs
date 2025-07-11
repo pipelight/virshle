@@ -115,7 +115,7 @@ pub struct RamTable {
     #[tabled(display("display_some_bytes"))]
     total: Option<u64>,
     #[tabled(display("display_some_bytes"))]
-    free: Option<u64>,
+    available: Option<u64>,
     #[tabled(
         rename = "%reserved",
         display("Self::display_some_ram_percentage_reserved")
@@ -123,7 +123,7 @@ pub struct RamTable {
     percentage_reserved: Option<f64>,
     #[tabled(display("Self::display_some_ram_reserved", &self.percentage_reserved))]
     reserved: Option<u64>,
-    #[tabled(rename = "%used", display("display_some_percentage_used"))]
+    #[tabled(rename = "%used", display("Self::display_some_ram_percentage_used"))]
     percentage_used: Option<f64>,
     #[tabled(display("Self::display_some_ram_used", &self.percentage_used))]
     used: Option<u64>,
@@ -167,18 +167,18 @@ impl RamTable {
             table = RamTable {
                 name: node.name.clone(),
                 total: Some(e.total),
-                used: Some(e.total - e.free),
-                free: Some(e.free),
+                used: Some(e.used),
+                available: Some(e.available),
                 reserved: Some(e.reserved),
                 percentage_reserved: Some((e.reserved as f64 / e.total as f64) * 100.0),
-                percentage_used: Some(((e.total as f64 - e.free as f64) / e.total as f64) * 100.0),
+                percentage_used: Some((e.used as f64 / e.total as f64) * 100.0),
             };
         } else {
             table = RamTable {
                 name: node.name.clone(),
                 total: None,
                 used: None,
-                free: None,
+                available: None,
                 reserved: None,
                 percentage_reserved: None,
                 percentage_used: None,
@@ -191,9 +191,9 @@ impl RamTable {
         let mut res = Table::new(&items);
         if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
         } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(ByColumnName::new("free")));
+            res.with(Remove::column(ByColumnName::new("available")));
         } else if log_enabled!(Level::Error) {
-            res.with(Remove::column(ByColumnName::new("free")));
+            res.with(Remove::column(ByColumnName::new("available")));
             res.with(Remove::column(ByColumnName::new("percentage_used")));
             res.with(Remove::column(ByColumnName::new("percentage_reserved")));
         }
@@ -219,7 +219,7 @@ pub struct HostDiskTable {
     percentage_reserved: Option<f64>,
     #[tabled(display("Self::display_some_disk_reserved", &self.percentage_reserved))]
     reserved: Option<u64>,
-    #[tabled(rename = "%used", display = "display_some_percentage_used")]
+    #[tabled(rename = "%used", display("Self::display_some_disk_percentage_used"))]
     percentage_used: Option<f64>,
     #[tabled(display("Self::display_some_disk_used", &self.percentage_used))]
     used: Option<u64>,

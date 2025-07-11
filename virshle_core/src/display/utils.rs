@@ -106,7 +106,7 @@ pub fn make_progress_bar(percentage: &f64, max: Option<f64>) -> String {
         true => {
             let bar_total_size = cols as f64 / 10.0;
             let n_chars = (bar_total_size * percentage / max).ceil();
-            let n_empty_chars = (bar_total_size * (max - percentage) / max).ceil();
+            let n_empty_chars = ((bar_total_size) * (max - percentage) / max).ceil();
             let adv = "#".repeat(n_chars as usize);
             let nadv = " ".repeat(n_empty_chars as usize);
 
@@ -204,6 +204,18 @@ impl RamTable {
             format!("")
         }
     }
+    pub fn display_some_ram_percentage_used(percentage: &Option<f64>) -> String {
+        if let Some(percentage) = percentage {
+            Self::display_ram_percentage_used(&percentage)
+        } else {
+            "".to_owned()
+        }
+    }
+    pub fn display_ram_percentage_used(percentage: &f64) -> String {
+        let max = MAX_RAM_RESERVATION;
+        let progress = make_progress_bar(percentage, None);
+        Self::add_color_used(&progress, percentage)
+    }
     pub fn display_some_ram_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {
             let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
@@ -252,6 +264,18 @@ impl HostDiskTable {
         } else {
             format!("")
         }
+    }
+    pub fn display_some_disk_percentage_used(percentage: &Option<f64>) -> String {
+        if let Some(percentage) = percentage {
+            Self::display_disk_percentage_used(&percentage)
+        } else {
+            "".to_owned()
+        }
+    }
+    pub fn display_disk_percentage_used(percentage: &f64) -> String {
+        let max = MAX_DISK_RESERVATION;
+        let progress = make_progress_bar(percentage, Some(max));
+        Self::add_color_used(&progress, percentage)
     }
     pub fn display_some_disk_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {

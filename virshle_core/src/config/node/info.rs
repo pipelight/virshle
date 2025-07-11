@@ -53,6 +53,8 @@ pub struct HostInfo {
 pub struct HostRam {
     pub total: u64,
     pub free: u64,
+    pub used: u64,
+    pub available: u64,
     // The ram allocated to VMs
     pub reserved: u64,
 }
@@ -74,6 +76,8 @@ impl HostRam {
         let ram = HostRam {
             total: s.total_memory(),
             free: s.free_memory(),
+            available: s.available_memory(),
+            used: s.used_memory(),
             reserved: Self::get_reserved().await?,
         };
         Ok(ram)
