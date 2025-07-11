@@ -57,19 +57,37 @@ pub fn display_some_bool(b: &Option<bool>) -> String {
     }
 }
 
-pub fn display_disks(disks: &Option<Vec<DiskInfo>>) -> String {
+pub fn display_some_disks(disks: &Option<Vec<DiskInfo>>) -> String {
     let mut res = "".to_owned();
     if let Some(disks) = disks {
         let mut summary: Vec<String> = vec![];
         for e in disks {
             if let Some(size) = e.size {
-                let mut size = human_bytes(size.to_owned() as f64);
-                size = size.replace(" ", "");
+                let size = human_bytes(size.to_owned() as f64);
 
-                let oneline = format!("{} -> {} ({size:.1})", e.name, e.path);
+                let oneline = format!("{} -> {} ({size})", e.name, e.path);
                 summary.push(oneline);
             } else {
                 let oneline = format!("{} -> {}", e.name, e.path);
+                summary.push(oneline);
+            }
+        }
+        res = summary.join("\n");
+    }
+    res
+}
+pub fn display_some_disks_short(disks: &Option<Vec<DiskInfo>>) -> String {
+    let mut res = "".to_owned();
+    if let Some(disks) = disks {
+        let mut summary: Vec<String> = vec![];
+        for e in disks {
+            if let Some(size) = e.size {
+                let size = human_bytes(size.to_owned() as f64);
+
+                let oneline = format!("{} ({size})", e.name);
+                summary.push(oneline);
+            } else {
+                let oneline = format!("{}", e.name,);
                 summary.push(oneline);
             }
         }
@@ -277,6 +295,7 @@ impl HostDiskTable {
         let progress = make_progress_bar(percentage, Some(max));
         Self::add_color_used(&progress, percentage)
     }
+
     pub fn display_some_disk_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {
             let num = human_bytes(num.unwrap().to_owned() as f64).to_string();

@@ -9,7 +9,7 @@ use log::{log_enabled, Level};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::VirshleError;
 
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Tabled)]
+#[derive(Default, Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Tabled)]
 pub struct DiskInfo {
     pub name: String,
     pub path: String,
@@ -20,6 +20,14 @@ pub struct DiskInfo {
 }
 
 impl DiskInfo {
+    pub fn from_vec(e: &Vec<Disk>) -> Result<Vec<Self>, VirshleError> {
+        let mut res = vec![];
+        for disk in e {
+            let info = DiskInfo::from(&disk)?;
+            res.push(info);
+        }
+        Ok(res)
+    }
     pub fn from(e: &Disk) -> Result<Self, VirshleError> {
         let info = DiskInfo {
             name: e.name.clone(),

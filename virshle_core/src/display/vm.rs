@@ -1,5 +1,5 @@
-use super::utils::{display_account_uuid, display_id, display_ips, display_ram, display_vram};
-use crate::cloud_hypervisor::{Vm, VmState};
+use super::utils::*;
+use crate::cloud_hypervisor::{DiskInfo, Vm, VmState};
 use crate::config::Node;
 use crate::connection::Uri;
 
@@ -25,18 +25,20 @@ use virshle_error::VirshleError;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct VmTable {
-    #[tabled(display = "display_id")]
+    #[tabled(display("display_id"))]
     pub id: Option<u64>,
     pub name: String,
     pub vcpu: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display("display_vram"))]
     pub vram: u64,
-    #[tabled(display = "display_state")]
+    #[tabled(display("display_state"))]
     pub state: VmState,
-    #[tabled(display = "display_ips")]
+    #[tabled(display("display_ips"))]
     pub ips: Vec<IpAddr>,
+    #[tabled(display("display_some_disks_short"))]
+    pub disk: Option<Vec<DiskInfo>>,
     pub uuid: Uuid,
-    #[tabled(display = "display_account_uuid")]
+    #[tabled(display("display_account_uuid"))]
     pub account_uuid: Option<Uuid>,
 }
 
@@ -50,6 +52,7 @@ impl VmTable {
             vram: vm.vram,
             state: tmp.state,
             ips: tmp.ips,
+            disk: Some(DiskInfo::from_vec(&vm.disk)?),
             uuid: vm.uuid,
             account_uuid: tmp.account_uuid,
         };
@@ -99,10 +102,12 @@ impl VmTable {
         } else if log_enabled!(Level::Warn) {
             res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("account_uuid")));
+            res.with(Remove::column(ByColumnName::new("disk")));
         } else if log_enabled!(Level::Error) {
             res.with(Remove::column(ByColumnName::new("ips")));
             res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("account_uuid")));
+            res.with(Remove::column(ByColumnName::new("disk")));
         }
         res.with(Style::rounded());
         println!("{}", res);

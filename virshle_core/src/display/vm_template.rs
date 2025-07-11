@@ -1,4 +1,4 @@
-use super::utils::{display_disks, display_ips, display_vram};
+use super::utils::*;
 use crate::cloud_hypervisor::{DiskInfo, DiskTemplate, VmTemplate};
 use crate::config::Node;
 use crate::connection::Uri;
@@ -21,9 +21,9 @@ use virshle_error::VirshleError;
 pub struct VmTemplateTable {
     pub name: String,
     pub vcpu: u64,
-    #[tabled(display = "display_vram")]
+    #[tabled(display("display_vram"))]
     pub vram: u64,
-    #[tabled(display = "display_disks")]
+    #[tabled(display("display_some_disks"))]
     pub disk: Option<Vec<DiskInfo>>,
 }
 
