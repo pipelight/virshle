@@ -2,6 +2,8 @@ use crate::Vm;
 use sysinfo::{Disks, System};
 
 use crate::config::MANAGED_DIR;
+use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
+
 use std::path::Path;
 
 use crate::connection::ConnectionState;
@@ -25,6 +27,21 @@ impl NodeInfo {
             host_info,
             virshle_info,
         })
+    }
+    // Return node saturation index.
+    pub async fn get_saturation_index(&self) -> Result<f64, VirshleError> {
+        let info = &self.host_info;
+
+        let weight_disk = 10.0;
+        let weight_ram = 7.0;
+        let weight_cpu = 4.0;
+
+        let index = (info.disk.saturation_index().await? * weight_disk
+            + info.ram.saturation_index().await? * weight_ram
+            + info.cpu.saturation_index().await? * weight_cpu)
+            / (weight_disk + weight_ram + weight_cpu);
+
+        Ok(index)
     }
 }
 
@@ -93,6 +110,18 @@ impl HostRam {
         };
         Ok(ram)
     }
+    pub async fn get_percentage_reserved(&self) -> Result<f64, VirshleError> {
+        let res = self.reserved as f64 / self.total as f64 * 100.0;
+        Ok(res)
+    }
+    pub async fn saturation_index(&self) -> Result<f64, VirshleError> {
+        let res = self.get_percentage_reserved().await? / MAX_RAM_RESERVATION;
+        Ok(res)
+    }
+    // RAM saturation
+    pub async fn is_saturated(&self) -> Result<bool, VirshleError> {
+        Ok(self.reserved as f64 / self.total as f64 * 100.0 >= MAX_RAM_RESERVATION)
+    }
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]
@@ -134,6 +163,18 @@ impl HostCpu {
         let vms = Vm::get_all().await?;
         let n_cpus: u64 = vms.iter().map(|e| e.vcpu).sum();
         Ok(n_cpus)
+    }
+    pub async fn get_percentage_reserved(&self) -> Result<f64, VirshleError> {
+        let res = self.reserved as f64 / self.number as f64 * 100.0;
+        Ok(res)
+    }
+    pub async fn saturation_index(&self) -> Result<f64, VirshleError> {
+        let res = self.get_percentage_reserved().await? / MAX_CPU_RESERVATION;
+        Ok(res)
+    }
+    // CPU saturation
+    pub async fn is_saturated(&self) -> Result<bool, VirshleError> {
+        Ok(self.reserved as f64 / self.number as f64 * 100.0 >= MAX_CPU_RESERVATION)
     }
 }
 
@@ -183,6 +224,19 @@ impl HostDisk {
             .map(|e| e.disk.iter().map(|d| d.get_size().unwrap()).sum::<u64>())
             .sum();
         Ok(n_cpus)
+    }
+
+    pub async fn get_percentage_reserved(&self) -> Result<f64, VirshleError> {
+        let res = self.reserved as f64 / self.size as f64 * 100.0;
+        Ok(res)
+    }
+    pub async fn saturation_index(&self) -> Result<f64, VirshleError> {
+        let res = self.get_percentage_reserved().await? / MAX_DISK_RESERVATION;
+        Ok(res)
+    }
+    // Disk saturation
+    pub async fn is_saturated(&self) -> Result<bool, VirshleError> {
+        Ok(self.reserved as f64 / self.size as f64 * 100.0 >= MAX_DISK_RESERVATION)
     }
 }
 

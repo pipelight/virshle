@@ -1,4 +1,13 @@
-use super::{info::HostInfo, Node};
+use crate::api::client;
+use std::cmp::Ordering;
+
+use crate::connection::{Connection, ConnectionState};
+use std::collections::HashMap;
+
+use super::{info::HostInfo, Node, NodeInfo};
+
+// Random
+use rand::prelude::IndexedRandom;
 
 // Error Handling
 use crate::{
@@ -10,51 +19,92 @@ use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Node {
-    pub fn is_best(name: &str, url: &str) -> Result<Self, VirshleError> {
-        // Order by weight
+    // Get random non-saturated node.
+    pub async fn get_by_random() -> Result<Self, VirshleError> {
+        let nodes: HashMap<Node, (ConnectionState, Option<NodeInfo>)> =
+            client::node::get_info_all().await?;
 
-        // Order by space left for Vm creation.
-        let e = Node {
-            name: name.to_owned(),
-            url: url.to_owned(),
-            weight: 0,
-        };
-
-        // Select random in purged list
-
-        Ok(e)
-    }
-    pub async fn is_cpu_saturated(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
-        let info = HostInfo::get().await?;
-        if info.cpu.reserved as f64 / info.cpu.number as f64 * 100.0 >= MAX_CPU_RESERVATION {
-            return Ok(true);
-        }
-        Ok(false)
-    }
-    // Ram saturation
-    pub async fn is_ram_saturated(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
-        let info = HostInfo::get().await?;
-        if info.ram.available as f64 / info.ram.total as f64 * 100.0 >= MAX_RAM_RESERVATION {
-            return Ok(true);
-        }
-        Ok(false)
-    }
-    // Disk saturation
-    pub async fn is_disk_saturated(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
-        let info = HostInfo::get().await?;
-        if let Some(disks) = &vm_template.disk {
-            let total_size: u64 = disks
-                .iter()
-                .map(|e| e.get_size().unwrap())
-                .reduce(|acc, x| acc + x)
-                .unwrap();
-            if info.disk.available as f64 / total_size as f64 * 100.0 >= MAX_DISK_RESERVATION {
-                return Ok(true);
+        let mut ref_vec: Vec<&Node> = vec![];
+        for (node, (state, info)) in &nodes {
+            if let Some(info) = info {
+                // Remove saturated nodes
+                if info.get_saturation_index().await? < 1.0 {
+                    ref_vec.push(&node)
+                }
             }
         }
-        Ok(false)
+        match ref_vec.choose(&mut rand::rng()) {
+            Some(node) => Ok(node.to_owned().to_owned()),
+            None => Err(LibError::builder()
+                .msg("Couldn't get a proper node.")
+                .help("Nodes unreachable or saturated!")
+                .build()
+                .into()),
+        }
     }
-    pub async fn is_disk_reserved(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
+
+    // Get random non-saturated node with weight.
+    pub async fn get_by_load_balance() -> Result<Self, VirshleError> {
+        let nodes: HashMap<Node, (ConnectionState, Option<NodeInfo>)> =
+            client::node::get_info_all().await?;
+
+        let mut ref_vec: Vec<&Node> = vec![];
+        for (node, (state, info)) in &nodes {
+            if let Some(info) = info {
+                // Remove saturated nodes
+                if info.get_saturation_index().await? < 1.0 {
+                    let weighted_vec: Vec<&Node>;
+                    // Add weight to node
+                    if let Some(weight) = node.weight {
+                        weighted_vec = std::iter::repeat_n(node, weight as usize).collect();
+                    } else {
+                        weighted_vec = vec![&node];
+                    }
+                    ref_vec.extend(weighted_vec);
+                }
+            }
+        }
+        match ref_vec.choose(&mut rand::rng()) {
+            Some(node_ref) => Ok(node_ref.to_owned().to_owned()),
+            None => Err(LibError::builder()
+                .msg("Couldn't get a proper node.")
+                .help("Nodes unreachable or saturated!")
+                .build()
+                .into()),
+        }
+    }
+
+    // Get random non-saturated node by round-robin.
+    pub async fn get_by_saturation_index() -> Result<Self, VirshleError> {
+        let nodes: HashMap<Node, (ConnectionState, Option<NodeInfo>)> =
+            client::node::get_info_all().await?;
+
+        let mut ref_vec: Vec<(f64, &Node)> = vec![];
+        for (node, (state, info)) in &nodes {
+            if let Some(info) = info {
+                // Remove saturated nodes
+                if info.get_saturation_index().await? < 1.0 {
+                    let s_index = info.get_saturation_index().await?;
+                    ref_vec.push((s_index, &node));
+                }
+            }
+        }
+        // Find lowest saturation index.
+        ref_vec.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(Ordering::Equal));
+        ref_vec.first();
+
+        match ref_vec.first() {
+            Some((_, node)) => Ok(node.to_owned().to_owned()),
+            None => Err(LibError::builder()
+                .msg("Couldn't get a proper node.")
+                .help("Nodes unreachable or saturated!")
+                .build()
+                .into()),
+        }
+    }
+
+    // If disk can create the requested template
+    pub async fn can_create_vm(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
         let info = HostInfo::get().await?;
         if let Some(disks) = &vm_template.disk {
             let total_vm_size: u64 = disks
@@ -66,11 +116,6 @@ impl Node {
                 return Ok(true);
             }
         }
-        Ok(false)
-    }
-    pub async fn is_saturated(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
-        let info = HostInfo::get().await?;
-
         Ok(false)
     }
 }

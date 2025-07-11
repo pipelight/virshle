@@ -31,7 +31,7 @@ use super::VirshleConfig;
 pub struct Node {
     pub name: String,
     pub url: String,
-    pub weight: i32,
+    pub weight: Option<i32>,
 }
 
 impl Default for Node {
@@ -40,7 +40,7 @@ impl Default for Node {
         Self {
             name: "default".to_owned(),
             url,
-            weight: 0,
+            weight: None,
         }
     }
 }
@@ -49,7 +49,7 @@ impl Node {
         let e = Node {
             name: name.to_owned(),
             url: url.to_owned(),
-            weight: 0,
+            weight: None,
         };
         Ok(e)
     }

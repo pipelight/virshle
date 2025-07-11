@@ -38,7 +38,7 @@ pub const CONFIG_DIR: &'static str = "/etc/virshle";
 // Nodes maximum staturation values in %.
 pub const MAX_RAM_RESERVATION: f64 = 250_f64;
 pub const MAX_CPU_RESERVATION: f64 = 300_f64;
-pub const MAX_DISK_RESERVATION: f64 = 90_f64;
+pub const MAX_DISK_RESERVATION: f64 = 95_f64;
 
 /*
 * The main virshle cli and daemon configuration struct.
