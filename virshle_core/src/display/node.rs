@@ -12,7 +12,7 @@ use std::fmt;
 use tabled::{
     settings::{
         disable::Remove, location::ByColumnName, object::Columns, themes::BorderCorrection, Panel,
-        Style,
+        Style, Width,
     },
     Table, Tabled,
 };
@@ -26,14 +26,17 @@ use virshle_error::VirshleError;
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq, Tabled)]
 pub struct CpuTable {
     pub name: String,
-    #[tabled(display = "display_some_num")]
-    number: Option<u64>,
-    #[tabled(display = "display_some_num")]
-    reserved: Option<u64>,
-    #[tabled(display = "display_some_percentage_used")]
-    percentage_reserved: Option<f64>,
-    #[tabled(display = "display_some_percentage_used")]
-    usage: Option<f64>,
+    #[tabled(display("display_some_num"))]
+    pub number: Option<u64>,
+    #[tabled(
+        rename = "%reserved",
+        display("Self::display_some_cpu_percentage_reserved")
+    )]
+    pub percentage_reserved: Option<f64>,
+    #[tabled(display("Self::display_some_cpu_reserved", &self.percentage_reserved))]
+    pub reserved: Option<u64>,
+    #[tabled(display("display_some_percentage_used"))]
+    pub usage: Option<f64>,
 }
 impl HostCpu {
     pub async fn display_many(
@@ -94,11 +97,12 @@ impl CpuTable {
         let mut res = Table::new(&items);
         if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
         } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(ByColumnName::new("usage")));
         } else if log_enabled!(Level::Error) {
             res.with(Remove::column(ByColumnName::new("usage")));
-            res.with(Remove::column(ByColumnName::new("reserved")));
+            res.with(Remove::column(ByColumnName::new("percentage_reserved")));
         }
+        res.modify(ByColumnName::new("usage"), Width::increase(8));
+        res.modify(ByColumnName::new("percentage_reserved"), Width::increase(8));
         res.with(Style::rounded());
         println!("{}", res);
         Ok(())
@@ -108,18 +112,21 @@ impl CpuTable {
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq, Tabled)]
 pub struct RamTable {
     pub name: String,
-    #[tabled(display = "display_some_bytes")]
+    #[tabled(display("display_some_bytes"))]
     total: Option<u64>,
-    #[tabled(display = "display_some_bytes")]
-    used: Option<u64>,
-    #[tabled(display = "display_some_bytes")]
+    #[tabled(display("display_some_bytes"))]
     free: Option<u64>,
-    #[tabled(display = "display_some_bytes")]
-    reserved: Option<u64>,
-    #[tabled(display = "display_some_ram_percentage_reserved")]
+    #[tabled(
+        rename = "%reserved",
+        display("Self::display_some_ram_percentage_reserved")
+    )]
     percentage_reserved: Option<f64>,
-    #[tabled(display = "display_some_percentage_used")]
+    #[tabled(display("Self::display_some_ram_reserved", &self.percentage_reserved))]
+    reserved: Option<u64>,
+    #[tabled(rename = "%used", display("display_some_percentage_used"))]
     percentage_used: Option<f64>,
+    #[tabled(display("Self::display_some_ram_used", &self.percentage_used))]
+    used: Option<u64>,
 }
 impl HostRam {
     pub async fn display_many(
@@ -185,13 +192,13 @@ impl RamTable {
         if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
         } else if log_enabled!(Level::Warn) {
             res.with(Remove::column(ByColumnName::new("free")));
-            res.with(Remove::column(ByColumnName::new("used")));
         } else if log_enabled!(Level::Error) {
             res.with(Remove::column(ByColumnName::new("free")));
-            res.with(Remove::column(ByColumnName::new("used")));
-            res.with(Remove::column(ByColumnName::new("total")));
-            res.with(Remove::column(ByColumnName::new("reserved")));
+            res.with(Remove::column(ByColumnName::new("percentage_used")));
+            res.with(Remove::column(ByColumnName::new("percentage_reserved")));
         }
+        res.modify(ByColumnName::new("percentage_used"), Width::increase(8));
+        res.modify(ByColumnName::new("percentage_reserved"), Width::increase(8));
         res.with(Style::rounded());
         println!("{}", res);
         Ok(())
@@ -201,18 +208,21 @@ impl RamTable {
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq, Tabled)]
 pub struct HostDiskTable {
     pub name: String,
-    #[tabled(display = "display_some_bytes")]
+    #[tabled(display("display_some_bytes"))]
     size: Option<u64>,
-    #[tabled(display = "display_some_bytes")]
-    used: Option<u64>,
-    #[tabled(display = "display_some_bytes")]
+    #[tabled(display("display_some_bytes"))]
     available: Option<u64>,
-    #[tabled(display = "display_some_bytes")]
-    reserved: Option<u64>,
-    #[tabled(display = "display_some_percentage_used")]
-    percentage_used: Option<f64>,
-    #[tabled(display = "display_some_disk_percentage_reserved")]
+    #[tabled(
+        rename = "%reserved",
+        display("Self::display_some_disk_percentage_reserved")
+    )]
     percentage_reserved: Option<f64>,
+    #[tabled(display("Self::display_some_disk_reserved", &self.percentage_reserved))]
+    reserved: Option<u64>,
+    #[tabled(rename = "%used", display = "display_some_percentage_used")]
+    percentage_used: Option<f64>,
+    #[tabled(display("Self::display_some_disk_used", &self.percentage_used))]
+    used: Option<u64>,
 }
 impl HostDisk {
     pub async fn display_many(
@@ -275,16 +285,17 @@ impl HostDiskTable {
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Warn)
-            || log_enabled!(Level::Info)
-            || log_enabled!(Level::Debug)
-            || log_enabled!(Level::Trace)
-        {
-        } else if log_enabled!(Level::Error) {
-            res.with(Remove::column(ByColumnName::new("used")));
-            res.with(Remove::column(ByColumnName::new("reserved")));
+
+        if log_enabled!(Level::Info) || log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
+        } else if log_enabled!(Level::Warn) {
             res.with(Remove::column(ByColumnName::new("available")));
+        } else if log_enabled!(Level::Error) {
+            res.with(Remove::column(ByColumnName::new("available")));
+            res.with(Remove::column(ByColumnName::new("percentage_used")));
+            res.with(Remove::column(ByColumnName::new("percentage_reserved")));
         }
+        res.modify(ByColumnName::new("percentage_used"), Width::increase(8));
+        res.modify(ByColumnName::new("percentage_reserved"), Width::increase(8));
         res.with(Style::rounded());
         println!("{}", res);
         Ok(())

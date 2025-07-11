@@ -38,7 +38,7 @@ in
         Group = "users";
         Environment = "PATH=/run/current-system/sw/bin";
         ExecStartPre = [
-          "-${package}/bin/virshle init all -vvv"
+          "-${package}/bin/virshle node init --all -vvv"
         ];
         ExecStart = ''
           ${package}/bin/virshle node serve -vvv

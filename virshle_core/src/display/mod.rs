@@ -31,7 +31,7 @@ where
         println!("{}", res);
     } else {
         let mut res = Table::new(&vec);
-        res.with(Remove::column(Columns::single(0)));
+        res.with(Remove::column(Columns::last()));
         res.with(Style::rounded());
         println!("{}", res);
     }

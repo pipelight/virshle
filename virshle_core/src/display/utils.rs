@@ -1,3 +1,5 @@
+use super::node::{CpuTable, HostDiskTable, RamTable};
+
 use owo_colors::OwoColorize;
 use std::net::IpAddr;
 use uuid::Uuid;
@@ -34,12 +36,12 @@ pub fn display_ram(ram: &u64) -> String {
     let res = human_bytes((ram.to_owned()) as f64);
     format!("{}", res)
 }
-
 // Convert cloud-hypervisor ram from MiB.
 pub fn display_vram(vram: &u64) -> String {
     let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
     format!("{}", res)
 }
+
 pub fn display_some_num(num: &Option<u64>) -> String {
     if let Some(num) = num {
         format!("{}", num)
@@ -100,7 +102,7 @@ pub fn make_progress_bar(percentage: &f64, max: Option<f64>) -> String {
     let (cols, _) = size().unwrap();
     let max = max.unwrap_or(100.0);
 
-    let progress = match cols >= 20 {
+    let progress = match cols >= 100 {
         true => {
             let bar_total_size = cols as f64 / 10.0;
             let n_chars = (bar_total_size * percentage / max).ceil();
@@ -112,11 +114,21 @@ pub fn make_progress_bar(percentage: &f64, max: Option<f64>) -> String {
             progress
         }
         false => {
-            let progress = format!("[{percentage:.1}%");
+            let progress = format!("{percentage:.1}%");
             progress
         }
     };
     progress
+}
+
+pub fn add_color_used(string: &str, percentage: &f64) -> String {
+    if percentage < &100_f64 {
+        format!("{}", string.green())
+    } else if percentage < &200_f64 {
+        format!("{}", string.yellow())
+    } else {
+        format!("{}", string.red())
+    }
 }
 
 pub fn display_some_percentage_used(percentage: &Option<f64>) -> String {
@@ -128,79 +140,143 @@ pub fn display_some_percentage_used(percentage: &Option<f64>) -> String {
 }
 pub fn display_percentage_used(percentage: &f64) -> String {
     let progress = make_progress_bar(percentage, None);
-
-    if percentage < &20_f64 {
-        format!("{}", progress.green())
-    } else if percentage < &80_f64 {
-        format!("{}", progress.yellow())
-    } else if percentage > &80_f64 {
-        format!("{}", progress.red())
-    } else {
-        format!("{}", progress)
-    }
-}
-
-pub fn display_some_disk_percentage_reserved(percentage: &Option<f64>) -> String {
-    if let Some(percentage) = percentage {
-        display_disk_percentage_reserved(&percentage)
-    } else {
-        "".to_owned()
-    }
-}
-pub fn display_disk_percentage_reserved(percentage: &f64) -> String {
-    let max = MAX_DISK_RESERVATION;
-    let progress = make_progress_bar(percentage, Some(max));
-
     if percentage < &80_f64 {
         format!("{}", progress.green())
-    } else if percentage < &100_f64 {
+    } else if percentage < &90_f64 {
         format!("{}", progress.yellow())
-    } else if percentage > &80_f64 {
+    } else {
         format!("{}", progress.red())
-    } else {
-        format!("{}", progress)
-    }
-}
-pub fn display_some_cpu_percentage_reserved(percentage: &Option<f64>) -> String {
-    if let Some(percentage) = percentage {
-        display_cpu_percentage_reserved(&percentage)
-    } else {
-        "".to_owned()
-    }
-}
-pub fn display_cpu_percentage_reserved(percentage: &f64) -> String {
-    let max = MAX_CPU_RESERVATION;
-    let progress = make_progress_bar(percentage, Some(max));
-
-    if percentage < &80_f64 {
-        format!("{}", progress.green())
-    } else if percentage < &100_f64 {
-        format!("{}", progress.yellow())
-    } else if percentage > &80_f64 {
-        format!("{}", progress.red())
-    } else {
-        format!("{}", progress)
     }
 }
 
-pub fn display_some_ram_percentage_reserved(percentage: &Option<f64>) -> String {
-    if let Some(percentage) = percentage {
-        display_cpu_percentage_reserved(&percentage)
-    } else {
-        "".to_owned()
+impl CpuTable {
+    pub fn display_some_cpu_percentage_reserved(percentage: &Option<f64>) -> String {
+        if let Some(percentage) = percentage {
+            Self::display_cpu_percentage_reserved(&percentage)
+        } else {
+            "".to_owned()
+        }
+    }
+    pub fn display_cpu_percentage_reserved(percentage: &f64) -> String {
+        let max = MAX_CPU_RESERVATION;
+        let progress = make_progress_bar(percentage, Some(max));
+        Self::add_color_reserved(&progress, percentage)
+    }
+    pub fn add_color_reserved(string: &str, percentage: &f64) -> String {
+        if percentage < &200_f64 {
+            format!("{}", string.green())
+        } else if percentage < &250_f64 {
+            format!("{}", string.yellow())
+        } else {
+            format!("{}", string.red())
+        }
+    }
+    pub fn display_some_cpu_reserved(num: &Option<u64>, percentage: &Option<f64>) -> String {
+        if num.is_some() && percentage.is_some() {
+            format!(
+                "{}",
+                Self::add_color_reserved(&num.unwrap().to_string(), &percentage.unwrap())
+            )
+        } else {
+            format!("")
+        }
     }
 }
-pub fn display_ram_percentage_reserved(percentage: &f64) -> String {
-    let max = MAX_RAM_RESERVATION;
-    let progress = make_progress_bar(percentage, Some(max));
 
-    if percentage < &80_f64 {
-        format!("{}", progress.green())
-    } else if percentage < &100_f64 {
-        format!("{}", progress.yellow())
-    } else if percentage > &80_f64 {
-        format!("{}", progress.red())
-    } else {
-        format!("{}", progress)
+impl RamTable {
+    pub fn display_some_ram_percentage_reserved(percentage: &Option<f64>) -> String {
+        if let Some(percentage) = percentage {
+            Self::display_ram_percentage_reserved(&percentage)
+        } else {
+            "".to_owned()
+        }
+    }
+    pub fn display_ram_percentage_reserved(percentage: &f64) -> String {
+        let max = MAX_RAM_RESERVATION;
+        let progress = make_progress_bar(percentage, Some(max));
+        Self::add_color_reserved(&progress, percentage)
+    }
+    pub fn display_some_ram_reserved(num: &Option<u64>, percentage: &Option<f64>) -> String {
+        if num.is_some() && percentage.is_some() {
+            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            format!("{}", Self::add_color_reserved(&num, &percentage.unwrap()))
+        } else {
+            format!("")
+        }
+    }
+    pub fn display_some_ram_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
+        if num.is_some() && percentage.is_some() {
+            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            format!("{}", Self::add_color_used(&num, &percentage.unwrap()))
+        } else {
+            format!("")
+        }
+    }
+    pub fn add_color_reserved(string: &str, percentage: &f64) -> String {
+        if percentage < &100_f64 {
+            format!("{}", string.green())
+        } else if percentage < &200_f64 {
+            format!("{}", string.yellow())
+        } else {
+            format!("{}", string.red())
+        }
+    }
+    pub fn add_color_used(string: &str, percentage: &f64) -> String {
+        if percentage < &50_f64 {
+            format!("{}", string.green())
+        } else if percentage < &80_f64 {
+            format!("{}", string.yellow())
+        } else {
+            format!("{}", string.red())
+        }
+    }
+}
+impl HostDiskTable {
+    pub fn display_some_disk_percentage_reserved(percentage: &Option<f64>) -> String {
+        if let Some(percentage) = percentage {
+            Self::display_disk_percentage_reserved(&percentage)
+        } else {
+            "".to_owned()
+        }
+    }
+    pub fn display_disk_percentage_reserved(percentage: &f64) -> String {
+        let max = MAX_DISK_RESERVATION;
+        let progress = make_progress_bar(percentage, Some(max));
+        Self::add_color_reserved(&progress, percentage)
+    }
+
+    pub fn display_some_disk_reserved(num: &Option<u64>, percentage: &Option<f64>) -> String {
+        if num.is_some() && percentage.is_some() {
+            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            format!("{}", Self::add_color_reserved(&num, &percentage.unwrap()))
+        } else {
+            format!("")
+        }
+    }
+    pub fn display_some_disk_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
+        if num.is_some() && percentage.is_some() {
+            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            format!("{}", Self::add_color_used(&num, &percentage.unwrap()))
+        } else {
+            format!("")
+        }
+    }
+    pub fn add_color_reserved(string: &str, percentage: &f64) -> String {
+        if percentage < &80_f64 {
+            format!("{}", string.green())
+        } else if percentage < &95_f64 {
+            format!("{}", string.yellow())
+        } else {
+            format!("{}", string.red())
+        }
+    }
+    pub fn add_color_used(string: &str, percentage: &f64) -> String {
+        if percentage < &80_f64 {
+            format!("{}", string.green())
+        } else if percentage < &95_f64 {
+            format!("{}", string.yellow())
+        } else {
+            format!("{}", string.red())
+        }
     }
 }
