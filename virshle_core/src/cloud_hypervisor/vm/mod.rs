@@ -14,6 +14,9 @@ pub use template::VmTemplate;
 
 use super::vmm_types::VmConfig;
 
+// Time
+use chrono::{DateTime, NaiveDateTime, Utc};
+
 // Serde
 use convert_case::{Case, Casing};
 use serde::de::DeserializeOwned;
@@ -121,6 +124,12 @@ pub struct Vm {
     pub uuid: Uuid,
     pub disk: Vec<Disk>,
 
+    // Date
+    #[serde(skip)]
+    pub created_at: NaiveDateTime,
+    #[serde(skip)]
+    pub updated_at: NaiveDateTime,
+
     // Very optional vm parameters.
     /// Room for additional parameters (unused for now).
     pub config: Option<VmConfigPlus>,
@@ -128,6 +137,8 @@ pub struct Vm {
 
 impl Default for Vm {
     fn default() -> Self {
+        let now: NaiveDateTime = Utc::now().naive_utc();
+
         Self {
             id: None,
             name: random_name().unwrap(),
@@ -137,6 +148,10 @@ impl Default for Vm {
             net: None,
             uuid: Uuid::new_v4(),
             disk: vec![],
+
+            // Date
+            created_at: now,
+            updated_at: now,
 
             config: Default::default(),
         }

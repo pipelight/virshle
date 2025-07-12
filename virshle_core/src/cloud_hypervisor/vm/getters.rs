@@ -64,6 +64,8 @@ impl Vm {
                 Ok(mut v) => {
                     // Populate struct with database id.
                     v.id = Some(e.id as u64);
+                    v.created_at = e.created_at;
+                    v.updated_at = e.updated_at;
                     v
                 }
                 Err(e) => {
@@ -114,6 +116,8 @@ impl Vm {
                     Ok(mut v) => {
                         // Populate struct with database id.
                         v.id = Some(e.id as u64);
+                        v.created_at = e.created_at;
+                        v.updated_at = e.updated_at;
                         v
                     }
                     Err(e) => {

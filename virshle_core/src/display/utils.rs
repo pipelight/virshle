@@ -1,5 +1,8 @@
 use super::node::{CpuTable, HostDiskTable, RamTable};
 
+// Time
+use chrono::{DateTime, NaiveDateTime, Utc};
+
 use owo_colors::OwoColorize;
 use std::net::IpAddr;
 use uuid::Uuid;
@@ -55,6 +58,18 @@ pub fn display_some_bool(b: &Option<bool>) -> String {
     } else {
         format!("")
     }
+}
+
+pub fn display_some_datetime(date: &Option<NaiveDateTime>) -> String {
+    if let Some(date) = date {
+        display_datetime(&date)
+    } else {
+        format!("")
+    }
+}
+pub fn display_datetime(date: &NaiveDateTime) -> String {
+    let res = date.format("%m-%d-%Y %H:%M");
+    format!("{}", res)
 }
 
 pub fn display_some_disks(disks: &Option<Vec<DiskInfo>>) -> String {

@@ -3,6 +3,9 @@ use crate::cloud_hypervisor::{DiskInfo, Vm, VmState};
 use crate::config::Node;
 use crate::connection::Uri;
 
+// Time
+use chrono::{DateTime, NaiveDateTime, Utc};
+
 use human_bytes::human_bytes;
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
@@ -37,6 +40,12 @@ pub struct VmTable {
     pub ips: Vec<IpAddr>,
     #[tabled(display("display_some_disks_short"))]
     pub disk: Option<Vec<DiskInfo>>,
+
+    #[tabled(display("display_some_datetime"))]
+    pub created_at: Option<NaiveDateTime>,
+    #[tabled(display("display_some_datetime"))]
+    pub updated_at: Option<NaiveDateTime>,
+
     pub uuid: Uuid,
     #[tabled(display("display_account_uuid"))]
     pub account_uuid: Option<Uuid>,
@@ -53,6 +62,8 @@ impl VmTable {
             state: tmp.state,
             ips: tmp.ips,
             disk: Some(DiskInfo::from_vec(&vm.disk)?),
+            created_at: Some(vm.created_at),
+            updated_at: Some(vm.updated_at),
             uuid: vm.uuid,
             account_uuid: tmp.account_uuid,
         };
@@ -96,19 +107,23 @@ impl VmTable {
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
-        if log_enabled!(Level::Debug) || log_enabled!(Level::Trace) {
+        if log_enabled!(Level::Trace) {
+        } else if log_enabled!(Level::Debug) {
         } else if log_enabled!(Level::Info) {
             res.with(Remove::column(ByColumnName::new("account_uuid")));
+            res.with(Remove::column(ByColumnName::new("uuid")));
         } else if log_enabled!(Level::Warn) {
-            res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("account_uuid")));
-            res.with(Remove::column(ByColumnName::new("disk")));
+            res.with(Remove::column(ByColumnName::new("uuid")));
+            res.with(Remove::column(ByColumnName::new("created_at")));
         } else if log_enabled!(Level::Error) {
-            res.with(Remove::column(ByColumnName::new("ips")));
-            res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("account_uuid")));
+            res.with(Remove::column(ByColumnName::new("uuid")));
+            res.with(Remove::column(ByColumnName::new("created_at")));
             res.with(Remove::column(ByColumnName::new("disk")));
+            res.with(Remove::column(ByColumnName::new("ips")));
         }
+        res.with(Remove::column(ByColumnName::new("updated_at")));
         res.with(Style::rounded());
         println!("{}", res);
         Ok(())
