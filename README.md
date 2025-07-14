@@ -18,7 +18,7 @@ There is a cli(client) that can control multiple nodes(servers) that manage mult
 Connection between the client and servers are done through
 unix-socket, or ssh.
 
-<!---
+```txt
 ┌──────┬──────┐            ┌──────┬──────┐
 │      │      │            │      │      │
 │      │      │            │      │      │
@@ -36,7 +36,7 @@ unix-socket, or ssh.
      │  cli    │
      │         │
      └─────────┘
---->
+```
 
 ## Getting started.
 
@@ -207,7 +207,7 @@ interface to the bridge.
 
 You may want virshle to report VM ips.
 
-![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls.png)
+![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
 
 You need a configured KeaDHCP(v4 or v6 or both) instance running somewhere.
 Then add the connection url to your configuration.
