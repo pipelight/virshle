@@ -133,6 +133,25 @@ url = "ssh://anon@remote_2:22/var/lib/virshle/virshle.sock"
 weight = 2
 ```
 
+### Node health check.
+
+Instead of troubleshooting the node by hand with your favorite tools (df, free, htop),
+You may have a quick glance at your node global state.
+
+````
+
+```sh
+virshle node ls -all -vvv
+````
+
+![node_list_all](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_all_vvv.png)
+
+Here can you see **used resources**,
+plus **reserved resources** for your VMs.
+
+For example, you can, of course, reserve more CPUs than what you physically have on a host
+and the linux kernel will share the power between guests.
+
 ## Vm management.
 
 ### Create a VM.
