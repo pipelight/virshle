@@ -42,7 +42,7 @@ unix-socket, or ssh.
 
 ### Start a node.
 
-Create the required resources:
+The following command creates the required resources on host:
 
 - filesystem paths(/var/lib/virshle) and config path (/etc/virshle),
 - vm database(/var/lib/virshle.sqlite),
@@ -65,8 +65,8 @@ virshle node serve -vvv
 #### Local node
 
 When running a node on your local machine,
-the cli automatically connects to the node unix-socket without further
-configuration.
+the cli automatically connects to the local node unix-socket
+without further configuration.
 
 While listing available nodes, your local node appears with the name `default`.
 
@@ -76,7 +76,7 @@ virshle node ls -vvv
 
 ![node_list_default](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_vvv_default.png)
 
-#### Remote node
+#### Remote nodes.
 
 You can create a list of manageable nodes in the configuration file at
 `/etc/virshle/config.toml`
@@ -95,16 +95,43 @@ name = "local-ssh"
 url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 ```
 
-_When specifying nodes url,
-you have to explicitly write your local node address if you want to use it._
-
 ```sh
 virshle node ls -vvv
 ```
 
 ![node_list_multi](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_vvv_multi.png)
 
-### Create your first VM.
+_When specifying nodes url,
+you have to explicitly write your local node address if you want to use it._
+
+#### Node load balance.
+
+When you work with multiple nodes, and create a machine with
+`v vm create -t xs`
+without giving a node to work on
+`--node <node_name>`,
+
+The **load balancer** chooses a random (and not saturated) node,
+You can add a `weight` to the node if you want it to be chosen
+more often.
+
+```toml
+# /etc/virshle/config.toml
+
+# local host
+[[node]]
+name = "remote_1"
+url = "ssh://anon@remote_1:22/var/lib/virshle/virshle.sock"
+weight = 10
+
+# local host through ssh
+[[node]]
+name = "remote_2"
+url = "ssh://anon@remote_2:22/var/lib/virshle/virshle.sock"
+weight = 2
+```
+
+### Create a VM (Virtual Machine).
 
 The preferred way to create VMs with virshle is by the usage of templates.
 
@@ -134,10 +161,16 @@ name = "main"
 [template.vm.net.type.tap]
 ```
 
-Then you can create a machine from that template.
+Then only can you create a machine from that template.
 
 ```sh
 v vm create -t xs
+```
+
+Or create a vm on a remote node.
+
+```sh
+v vm create -t xs --node <node_name>
 ```
 
 List your VMs and associated information.
@@ -178,6 +211,46 @@ v vm start --id <vm_id>
 ssh <vm_ip>
 ```
 
+## Network configuration
+
+Virshle tries to lower the amount of black magic needed for network configuration.
+
+It uses a few
+[openvswitch](https://github.com/openvswitch/ovs)
+commands (`ovs-vsctl`) to create a VM dedicated brigde (br0).
+
+Then freshly created VMs are attached to this bridge (br0).
+
+Checkout your network configuration with.
+`ip l`
+`ovs-vsctl show`
+
+To add outside network connectivity, you need to add your main
+interface to the bridge.
+
+[https://github.com/pipelight/virshle/virshle_core/src/network/README.md]
+
+### DHCP (Work in progress)
+
+You may want virshle to manage your VM ip addresses.
+
+So it doesn't implement any internal dhcp or static ip configuration.
+You
+
+It relies on external software like [KeaDHCP](https://kea.readthedocs.io/en/latest/)
+You need a configured KeaDHCP(v4 or v6 or both) instance running somewhere.
+
+Then add the connection url to your configuration.
+
+```toml
+[dhcp]
+[dhcp.kea]
+url = "tcp://localhost:5547"
+
+```
+
+![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
+
 ## Internals
 
 ### Resources management
@@ -194,32 +267,16 @@ unaffected.
 You can then twist numerous copies of the same machine
 by spamming this same command.
 
-### Network management
-
-VMs are attached to a virtual openvswitch bridge (br0).
-
-To add outside network connectivity, you need to add your main
-interface to the bridge.
-
-[https://github.com/pipelight/virshle/virshle_core/src/network/README.md]
-
-### DHCP (Work in progress)
-
-You may want virshle to report VM ips.
-
-![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
-
-You need a configured KeaDHCP(v4 or v6 or both) instance running somewhere.
-Then add the connection url to your configuration.
-
-```toml
-[dhcp]
-[dhcp.kea]
-url = "tcp://localhost:5547"
-
-```
-
 ## Install
+
+Mandatory dependencies:
+
+- [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
+- [openvswitch](https://github.com/openvswitch/ovs)
+
+Optional dependencies:
+
+- [KeaDHCP](https://kea.readthedocs.io/en/latest/)
 
 ### Cargo
 
