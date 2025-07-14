@@ -38,7 +38,7 @@ unix-socket, or ssh.
      └─────────┘
 ```
 
-## Getting started.
+## Node management.
 
 ### Start a node.
 
@@ -60,9 +60,7 @@ Then run the virshle node daemon.
 virshle node serve -vvv
 ```
 
-### Connect to the node.
-
-#### Local node
+### Connect to a local node.
 
 When running a node on your local machine,
 the cli automatically connects to the local node unix-socket
@@ -76,7 +74,7 @@ virshle node ls -vvv
 
 ![node_list_default](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_vvv_default.png)
 
-#### Remote nodes.
+### Connect to remote nodes.
 
 You can create a list of manageable nodes in the configuration file at
 `/etc/virshle/config.toml`
@@ -95,16 +93,20 @@ name = "local-ssh"
 url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 ```
 
+_When specifying nodes url,
+you have to explicitly write your local node address if you want to use it._
+
+For virshle to access a node through ssh, it needs the **authorized_key**
+into a running **ssh-agent**.
+Make sure you have an ssh-agent running with your key loaded inside.
+
 ```sh
 virshle node ls -vvv
 ```
 
 ![node_list_multi](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_vvv_multi.png)
 
-_When specifying nodes url,
-you have to explicitly write your local node address if you want to use it._
-
-#### Node load balance.
+### Node load balancing.
 
 When you work with multiple nodes, and create a machine with
 `v vm create -t xs`
@@ -131,7 +133,9 @@ url = "ssh://anon@remote_2:22/var/lib/virshle/virshle.sock"
 weight = 2
 ```
 
-### Create a VM (Virtual Machine).
+## Vm (Virtual machines) management.
+
+### Create a VM.
 
 The preferred way to create VMs with virshle is by the usage of templates.
 
@@ -251,22 +255,6 @@ url = "tcp://localhost:5547"
 
 ![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
 
-## Internals
-
-### Resources management
-
-Resources from your template definition
-are copied into virshle working directory `/var/lib/virshle/`.
-
-![working_directory_tree](https://github.com/pipelight/virshle/blob/master/public/images/working_directory_tree.png)
-
-Which mean that your virtual machine do not run on the disk at
-`~/Iso/nixos.efi.img`, but on a copy of that disk, leaving the original file
-unaffected.
-
-You can then twist numerous copies of the same machine
-by spamming this same command.
-
 ## Install
 
 Mandatory dependencies:
@@ -303,6 +291,22 @@ services.virshle = {
     enable = true;
 };
 ```
+
+## Internals
+
+### Resources management
+
+Resources from your template definition
+are copied into virshle working directory `/var/lib/virshle/`.
+
+![working_directory_tree](https://github.com/pipelight/virshle/blob/master/public/images/working_directory_tree.png)
+
+Which mean that your virtual machine do not run on the disk at
+`~/Iso/nixos.efi.img`, but on a copy of that disk, leaving the original file
+unaffected.
+
+You can then twist numerous copies of the same machine
+by spamming the same command.
 
 ## Alternatives
 

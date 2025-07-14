@@ -138,6 +138,7 @@ name = "main"
 ## Kea dhcp
 [dhcp]
 [dhcp.kea]
+url = "tcp://localhost:5547"
 
 ## Fake dhcp when no dhcp available on network
 # [dhcp.fake.pool.main]
