@@ -282,12 +282,8 @@ More on network: [https://github.com/pipelight/virshle/virshle_core/src/network/
 
 ### DHCP (Work in progress)
 
-You may want virshle to manage your VM ip addresses.
-
-So it doesn't implement any internal dhcp or static ip configuration.
-You
-
-It relies on external software like [KeaDHCP](https://kea.readthedocs.io/en/latest/)
+Virshle relies on external software to manage Vm ips,
+like [KeaDHCP](https://kea.readthedocs.io/en/latest/)
 You need a configured KeaDHCP(v4 or v6 or both) instance running somewhere.
 
 Then add the connection url to your configuration.
@@ -296,6 +292,12 @@ Then add the connection url to your configuration.
 [dhcp]
 [dhcp.kea]
 url = "tcp://localhost:5547"
+```
+
+Dhcp leases managed by KeaDHCP shows up once configured.
+
+```sh
+v vm ls -v
 ```
 
 ![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
