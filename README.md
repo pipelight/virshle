@@ -11,12 +11,11 @@ And makes use of
 [openvswitch](https://github.com/openvswitch/ovs)
 for network configuration.
 
-## Architecture
+## Node management.
 
-There is a cli(client) that can control multiple nodes(servers) that manage multiple vms.
-
-Connection between the client and servers are done through
-unix-socket, or ssh.
+Virshle is a cli(client) that can control multiple nodes(servers)
+that manage multiple vm(virtual machine).
+So before creating a vm, you'll have to **spin up a node first**.
 
 ```txt
 ┌──────┬──────┐            ┌──────┬──────┐
@@ -37,8 +36,6 @@ unix-socket, or ssh.
      │         │
      └─────────┘
 ```
-
-## Node management.
 
 ### Start a node.
 
@@ -75,6 +72,9 @@ virshle node ls -vvv
 ![node_list_default](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_vvv_default.png)
 
 ### Connect to remote nodes.
+
+Connection between the client and servers are done through
+**unix-sockets** or **ssh**.
 
 You can create a list of manageable nodes in the configuration file at
 `/etc/virshle/config.toml`
@@ -133,7 +133,7 @@ url = "ssh://anon@remote_2:22/var/lib/virshle/virshle.sock"
 weight = 2
 ```
 
-## Vm (Virtual machines) management.
+## Vm management.
 
 ### Create a VM.
 
