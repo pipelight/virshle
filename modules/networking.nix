@@ -62,6 +62,12 @@ with lib; {
       # Vm isolated bridge
       br0 = {
         interfaces = {
+          ## For use with DoraDhcp or KeaDhcp.
+          ##
+          ## This interface is for when you need to give ip addresses to your VM
+          ## from a local dhcpcd server (on the same machine).
+          ##
+          ## But Most of the time, your router takes care of this.
           vm-dhcp = {
             type = "internal";
           };

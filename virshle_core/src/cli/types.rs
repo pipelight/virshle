@@ -172,7 +172,9 @@ pub enum TemplateArgs {
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum NodeArgs {
     /// Init/Ensure system global configuration (openvswitches, directories, database).
+    #[command(arg_required_else_help = true)]
     Init(InitArgs),
+
     Ls(NodeLsArgs),
     Ping(CurrentWorkingNode),
     Serve,

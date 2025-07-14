@@ -28,6 +28,7 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeaDhcp {
+    pub url: String,
     pub pool: Option<HashMap<String, IpPool>>,
 }
 

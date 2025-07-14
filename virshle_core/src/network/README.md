@@ -4,7 +4,7 @@
 
 This crate is a set of function for network manipulation.
 
-Everything done programmatically here can be done with `ip` and `ovs-vsctl show`.
+Everything done programmatically here can be done with `ip` and `ovs-vsctl`.
 _I recommend using those tools for troubleshooting._
 
 ## Host network autoconfiguration
