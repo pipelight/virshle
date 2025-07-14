@@ -235,21 +235,50 @@ ssh <vm_ip>
 ## Network configuration
 
 Virshle tries to lower the amount of black magic needed for network configuration.
+Every command needed to create a network interface can be seen in the logs of
+`v node serve -vvvv`
 
-It uses a few
+### MacVTap
+
+The fastest way to add networking connectivity to a VM is with a `mac_v_tap`.
+Add the following network configuration to a vm template.
+
+```toml
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.mac_v_tap]
+```
+
+It uses the linux network [ip](https://www.man7.org/linux/man-pages/man8/ip.8.html) command
+to create a mac_v_tap interface that will be bound to the VM.
+
+No need for a bridge here, the upstream router gives ips and network access to the VM.
+
+### Bridge and Tap
+
+For a fine-grained control of your network, prefer the tap device.
+
+```toml
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
+```
+
+It uses the [ip](https://www.man7.org/linux/man-pages/man8/ip.8.html) command and
 [openvswitch](https://github.com/openvswitch/ovs)
-commands (`ovs-vsctl`) to create a VM dedicated brigde (br0).
+commands (`ovs-vsctl`) to create a VM dedicated brigde/switch (br0).
 
-Then freshly created VMs are attached to this bridge (br0).
-
-Checkout your network configuration with.
-`ip l`
-`ovs-vsctl show`
+Then freshly created VMs are attached to this bridge(br0) via a tap device.
 
 To add outside network connectivity, you need to add your main
 interface to the bridge.
 
-[https://github.com/pipelight/virshle/virshle_core/src/network/README.md]
+Checkout your network configuration with.
+
+`ip l`
+`ovs-vsctl show`
+
+More on network: [https://github.com/pipelight/virshle/virshle_core/src/network/README.md]
 
 ### DHCP (Work in progress)
 
@@ -267,7 +296,6 @@ Then add the connection url to your configuration.
 [dhcp]
 [dhcp.kea]
 url = "tcp://localhost:5547"
-
 ```
 
 ![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
@@ -331,7 +359,7 @@ Virshle is a **level 2 hypervisor** in the vein of our good old
 [libvirt](https://libvirt.org/).
 Its aim is to be a comfortable cli to spin up your VM from.
 
-It was originally designed to be fancy replacement of the virsh command line
+It was originally designed to be a fancy replacement of the virsh command line
 which stood on top of libvirt.
 
 But mid development libvirt has been replaced by
