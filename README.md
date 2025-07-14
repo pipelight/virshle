@@ -135,14 +135,12 @@ weight = 2
 
 ### Node health check.
 
-Instead of troubleshooting the node by hand with your favorite tools (df, free, htop),
-You may have a quick glance at your node global state.
-
-````
+Instead of troubleshooting the node by hand with your favourite tools(df, free, htop...),
+you may have a quick glance at your node global state.
 
 ```sh
 virshle node ls -all -vvv
-````
+```
 
 ![node_list_all](https://github.com/pipelight/virshle/blob/master/public/images/v_node_ls_all_vvv.png)
 
