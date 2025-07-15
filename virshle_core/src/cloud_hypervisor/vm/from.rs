@@ -1,5 +1,5 @@
 use super::{Vm, VmConfigPlus, VmNet, VmTemplate};
-use crate::cloud_hypervisor::{Disk, DiskTemplate};
+use crate::cloud_hypervisor::{disk::shellexpand, Disk, DiskTemplate};
 
 // Pretty print
 use bat::PrettyPrinter;
@@ -23,7 +23,8 @@ use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertRe
 use crate::config::MANAGED_DIR;
 
 // Error Handling
-use miette::{IntoDiagnostic, Result};
+use log::error;
+use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
 impl From<vm::Model> for Vm {
@@ -37,17 +38,17 @@ impl From<vm::Model> for Vm {
     }
 }
 
-impl From<&VmTemplate> for Vm {
-    fn from(e: &VmTemplate) -> Self {
+impl Vm {
+    pub fn from(e: &VmTemplate) -> Result<Self, VirshleError> {
         let mut vm = Vm {
             vcpu: e.vcpu,
             vram: e.vram,
             net: e.net.clone(),
             ..Default::default()
         };
-        ensure_directories(e, &mut vm).unwrap();
-        create_disks(e, &mut vm).unwrap();
-        vm
+        ensure_directories(e, &mut vm)?;
+        create_disks(e, &mut vm)?;
+        Ok(vm)
     }
 }
 
@@ -76,7 +77,7 @@ pub fn ensure_directories(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virs
 pub fn create_disks(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     if let Some(disks) = &template.disk {
         for disk in disks {
-            let source = shellexpand::tilde(&disk.path).to_string();
+            let source = shellexpand(&disk.path)?;
             let target = format!("{MANAGED_DIR}/vm/{}/disk/{}", vm.uuid, disk.name);
 
             // Create disk on host drive

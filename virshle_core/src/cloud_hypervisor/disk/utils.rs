@@ -1,5 +1,7 @@
+use std::path::Path;
+
 // Error Handling
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -35,5 +37,25 @@ pub fn reverse_human_bytes(string: &str) -> Result<u64, VirshleError> {
             .help("Must be of the form 50GiB, 2MiB, 110KiB or 1B")
             .build()
             .into())
+    }
+}
+/// Expand tild "~" in file path.
+pub fn shellexpand(relpath: &str) -> Result<String, VirshleError> {
+    let source: String = match relpath.starts_with("~") {
+        false => relpath.to_owned(),
+        true => relpath.replace("~", dirs::home_dir().unwrap().to_str().unwrap()),
+    };
+
+    let path = Path::new(&source);
+    if path.exists() {
+        Ok(source)
+    } else {
+        let message = format!("Couldn't find file {:#?} expended to {:#?}.", relpath, path);
+        error!("{:#?}", message);
+        let err = LibError::builder()
+            .msg(&message)
+            .help("Are you sure the file exist?")
+            .build();
+        return Err(err.into());
     }
 }

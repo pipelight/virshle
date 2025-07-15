@@ -2,6 +2,7 @@ use crate::api::client;
 use std::cmp::Ordering;
 
 use crate::connection::{Connection, ConnectionState};
+use crate::display::vm_template::VmTemplateTable;
 use std::collections::HashMap;
 
 use super::{info::HostInfo, Node, NodeInfo};
@@ -103,19 +104,21 @@ impl Node {
         }
     }
 
-    // If disk can create the requested template
-    pub async fn can_create_vm(&self, vm_template: &VmTemplate) -> Result<bool, VirshleError> {
+    // If self node can create the requested template
+    pub async fn can_create_vm(vm_template: &VmTemplate) -> Result<bool, VirshleError> {
         let info = HostInfo::get().await?;
-        if let Some(disks) = &vm_template.disk {
-            let total_vm_size: u64 = disks
-                .iter()
-                .map(|e| e.get_size().unwrap())
-                .reduce(|acc, x| acc + x)
-                .unwrap();
-            if total_vm_size as f64 / info.disk.size as f64 * 100.0 >= MAX_DISK_RESERVATION {
-                return Ok(true);
-            }
+        // Check saturation
+        if info.disk.is_saturated().await?
+            || info.ram.is_saturated().await?
+            || info.cpu.is_saturated().await?
+        {
+            return Ok(false);
+        // Check remaining disk space
+        } else if let Some(disks) = &vm_template.disk {
+            let disks_total_size: u64 = disks.into_iter().map(|e| e.get_size().unwrap_or(0)).sum();
+            return Ok(disks_total_size > info.disk.available);
         }
+
         Ok(false)
     }
 }

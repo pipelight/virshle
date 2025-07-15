@@ -1,7 +1,7 @@
 mod info;
-mod utils;
+pub mod utils;
 pub use info::DiskInfo;
-pub use utils::reverse_human_bytes;
+pub use utils::{reverse_human_bytes, shellexpand};
 
 // Struct
 use super::vm::{InitData, UserData, Vm, VmData};
@@ -29,6 +29,23 @@ pub struct DiskTemplate {
     pub name: String,
     pub path: String,
     pub readonly: Option<bool>,
+}
+impl DiskTemplate {
+    pub fn get_size(&self) -> Result<u64, VirshleError> {
+        let source = shellexpand(&self.path)?;
+        let path = Path::new(&source);
+        if path.exists() && path.is_file() {
+            let metadata = fs::metadata(path)?;
+            let size = metadata.len();
+            Ok(size)
+        } else {
+            Err(LibError::builder()
+                .msg("Counldn't get disk file size.")
+                .help("Disk doesn't exist or is unreachable")
+                .build()
+                .into())
+        }
+    }
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
@@ -60,23 +77,6 @@ impl From<&DiskTemplate> for Disk {
             name: e.name.to_owned(),
             path: e.path.to_owned(),
             readonly: e.readonly,
-        }
-    }
-}
-impl DiskTemplate {
-    pub fn get_size(&self) -> Result<u64, VirshleError> {
-        let source = shellexpand::tilde(&self.path).to_string();
-        let path = Path::new(&source);
-        if path.exists() && path.is_file() {
-            let metadata = fs::metadata(path)?;
-            let size = metadata.len();
-            Ok(size)
-        } else {
-            Err(LibError::builder()
-                .msg("Counldn't get disk file size.")
-                .help("Disk doesn't exist or is unreachable")
-                .build()
-                .into())
         }
     }
 }

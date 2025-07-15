@@ -119,7 +119,7 @@ pub mod vm {
 
         if let Some(name) = &args.template_name {
             let template = config.get_template(&name)?;
-            let mut vm = Vm::from(&template);
+            let mut vm = Vm::from(&template)?;
             vm.create(user_data).await?;
             Ok(vm)
         } else {

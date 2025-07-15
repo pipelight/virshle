@@ -294,7 +294,7 @@ Then add the connection url to your configuration.
 url = "tcp://localhost:5547"
 ```
 
-Dhcp leases managed by KeaDHCP shows up once configured.
+Dhcp leases managed by KeaDHCP show up once configured.
 
 ```sh
 v vm ls -v

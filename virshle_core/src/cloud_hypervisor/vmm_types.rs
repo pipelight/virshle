@@ -351,7 +351,7 @@ mod test {
         let vm_template = VmTemplate::from_toml(&toml)?;
         println!("{:#?}", vm_template);
 
-        let vm = Vm::from(&vm_template);
+        let vm = Vm::from(&vm_template)?;
         println!("{:#?}", vm);
 
         // let vmm_config = VmConfig::from(&vm);
