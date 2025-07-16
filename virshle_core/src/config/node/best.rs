@@ -117,8 +117,8 @@ impl Node {
         } else if let Some(disks) = &vm_template.disk {
             let disks_total_size: u64 = disks.into_iter().map(|e| e.get_size().unwrap_or(0)).sum();
             return Ok(disks_total_size > info.disk.available);
+        } else {
+            Ok(false)
         }
-
-        Ok(false)
     }
 }

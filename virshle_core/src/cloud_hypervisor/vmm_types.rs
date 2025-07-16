@@ -226,7 +226,7 @@ impl VmConfig {
         // Add bootloader
         let payload = PayloadConfig {
             kernel: Some("/run/cloud-hypervisor/hypervisor-fw".to_owned()),
-            cmdline: Some("earlyprintk=ttyS0 console=hvc0 root=/dev/vda1 rw".to_owned()),
+            cmdline: Some("earlyprintk=ttyS0 console=ttyS0 root=/dev/vda1 rw".to_owned()),
         };
         config.payload = Some(payload);
 

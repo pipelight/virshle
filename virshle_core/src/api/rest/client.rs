@@ -20,6 +20,7 @@ use crate::config::VirshleConfig;
 
 pub mod template {
     use super::*;
+    use crate::api::CreateVmArgs;
 
     pub async fn get_all() -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
         let nodes = Node::get_all()?;
@@ -37,6 +38,44 @@ pub mod template {
             }
         }
         Ok(templates)
+    }
+    pub async fn reclaim(
+        args: CreateVmArgs,
+        node_name: Option<String>,
+    ) -> Result<bool, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+
+        if let Some(template_name) = args.template_name.clone() {
+            info!(
+                "[start] reclaiming resources to create a vm from template {:#?} on node {:#?}",
+                template_name, node.name
+            );
+            let mut conn = Connection::from(&node);
+            let mut rest = RestClient::from(&mut conn);
+            rest.base_url("/api/v1");
+            rest.ping_url("/api/v1/node/ping");
+            rest.open().await?;
+            rest.ping().await?;
+
+            let can_create_vm: bool = rest
+                .put("/template/reclaim", Some(args))
+                .await?
+                .to_value()
+                .await?;
+
+            info!(
+                "[end] reclaiming resources to create a vm from template {:#?} on node {:#?}",
+                template_name, node.name
+            );
+            Ok(can_create_vm)
+        } else {
+            Err(LibError::builder()
+                .msg("Couldn't reclaim resources for vm creation.")
+                .help("A template name was not provided.")
+                .build()
+                .into())
+        }
     }
 }
 pub mod node {
@@ -223,7 +262,7 @@ pub mod vm {
         }
     }
 
-    pub async fn delete(args: GetVmArgs, node_name: Option<String>) -> Result<(), VirshleError> {
+    pub async fn delete(args: GetVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -244,14 +283,14 @@ pub mod vm {
 
         info!("[end] deleted vm {:#?} on node {:#?}", vm.name, node.name);
 
-        Ok(())
+        Ok(vm)
     }
     /// Bulk operation
     /// Stop many virtual machine on a node.
     pub async fn delete_many(
         args: GetManyVmArgs,
         node_name: Option<String>,
-    ) -> Result<(), VirshleError> {
+    ) -> Result<Vec<Vm>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] deleting many vms on node {:#?}", node.name);
@@ -276,7 +315,7 @@ pub mod vm {
             .join(",");
         info!("[end] deleted vms:\n[{vms_name}] on node {:#?}", node.name);
 
-        Ok(())
+        Ok(vms)
     }
     /// Start a virtual machine on a node.
     pub async fn start(

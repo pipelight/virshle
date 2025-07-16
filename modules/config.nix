@@ -62,6 +62,5 @@ in
     environment.systemPackages = with pkgs; [
       # Network manager
       inputs.virshle.packages.${system}.default
-      openvswitch-dpdk
     ];
   }

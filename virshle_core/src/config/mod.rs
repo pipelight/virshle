@@ -64,11 +64,11 @@ impl VirshleConfig {
     ///   - an initial configuration.
     ///   - a dedicated network virtual switch.
     pub async fn ensure_all() -> Result<(), VirshleError> {
-        Self::ensure_directories();
-        Self::ensure_database();
-        Self::ensure_network();
+        Self::ensure_directories().await?;
+        Self::ensure_database().await?;
+        Self::ensure_network().await?;
 
-        Self::_clean_directories();
+        Self::_clean_directories().await?;
         Ok(())
     }
     /// Ensure virshle working directories exists.

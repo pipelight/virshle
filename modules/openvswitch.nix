@@ -12,7 +12,10 @@ in
   mkIf cfg.enable {
     # OpenVSwitch
     virtualisation.vswitch = {
-      package = mkIf cfg.dpdk.enable pkgs.openvswitch-dpdk;
+      package =
+        if cfg.dpdk.enable
+        then pkgs.openvswitch-dpdk
+        else pkgs.openvswitch;
       enable = true;
     };
 
@@ -43,11 +46,10 @@ in
 
     environment.systemPackages = with pkgs; [
       # Network manager
-      (mkIf
-        cfg.dpdk.enable
-        openvswitch-dpdk)
-      (mkIf
-        (!cfg.dpdk.enable)
-        openvswitch)
+      (
+        if cfg.dpdk.enable
+        then openvswitch-dpdk
+        else openvswitch
+      )
     ];
   }

@@ -48,14 +48,20 @@ pub mod node {
 
 pub mod template {
     use super::*;
-    use crate::api::CreateVmArgs;
+    use crate::{api::CreateVmArgs, display::vm_template, Node};
 
     /// Ask node if a vm can be created from template.
-    pub async fn reclaim(Json(args): Json<CreateVmArgs>) -> Result<Json<()>, VirshleError> {
+    pub async fn reclaim(Json(args): Json<CreateVmArgs>) -> Result<Json<bool>, VirshleError> {
         Ok(Json(_reclaim(args).await?))
     }
-    pub async fn _reclaim(args: CreateVmArgs) -> Result<(), VirshleError> {
-        Ok(())
+    pub async fn _reclaim(args: CreateVmArgs) -> Result<bool, VirshleError> {
+        if let Some(name) = &args.template_name {
+            let vm_template = VmTemplate::get_by_name(name)?;
+            let can = Node::can_create_vm(&vm_template).await?;
+            Ok(can)
+        } else {
+            Ok(false)
+        }
     }
 
     /// Get summarized information about a VM.
@@ -63,7 +69,7 @@ pub mod template {
         Ok(Json(_get_info_many().await?))
     }
     pub async fn _get_info_many() -> Result<Vec<VmTemplateTable>, VirshleError> {
-        let vm_templates = VmTemplate::get_all().await?;
+        let vm_templates = VmTemplate::get_all()?;
         let mut info = vec![];
         for e in vm_templates {
             let table = VmTemplateTable::from(&e)?;

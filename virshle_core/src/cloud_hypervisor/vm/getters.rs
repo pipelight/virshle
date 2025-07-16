@@ -43,9 +43,21 @@ use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl VmTemplate {
-    pub async fn get_all() -> Result<Vec<VmTemplate>, VirshleError> {
+    pub fn get_all() -> Result<Vec<VmTemplate>, VirshleError> {
         let config = VirshleConfig::get()?;
         config.get_templates()
+    }
+    pub fn get_by_name(name: &str) -> Result<Self, VirshleError> {
+        let templates = Self::get_all()?;
+        let res: Vec<VmTemplate> = templates.into_iter().filter(|e| e.name == name).collect();
+        match res.first() {
+            Some(v) => Ok(v.to_owned()),
+            None => {
+                let message = format!("Couldn't find a vm_template with the name: {}", name);
+                let help = "Are you sure this vm template exist?";
+                return Err(LibError::builder().msg(&message).help(help).build().into());
+            }
+        }
     }
 }
 

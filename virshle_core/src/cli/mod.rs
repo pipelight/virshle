@@ -317,24 +317,52 @@ impl Cli {
                 Crud::Rm(args) => {
                     let cw_node = args.current_workgin_node.node;
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
-                        client::vm::delete(
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Deleting vm...", None);
+                        let vm = client::vm::delete(
                             GetVmArgs {
                                 id: args.id,
                                 uuid: args.uuid,
                                 name: args.name,
                             },
-                            cw_node,
+                            cw_node.clone(),
                         )
                         .await?;
+
+                        // Spinner
+                        let node = Node::unwrap_or_default(cw_node).await?;
+                        let vm_name = format!("vm-{}", vm.name);
+                        let message = format!(
+                            "Deleted {} on node {}",
+                            vm_name.bold().blue(),
+                            node.name.bold().green()
+                        );
+                        sp.stop_and_persist("✅", &message);
                     } else if args.state.is_some() || args.account.is_some() {
-                        client::vm::delete_many(
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Deleting vms...", None);
+                        let vms = client::vm::delete_many(
                             GetManyVmArgs {
                                 vm_state: args.state,
                                 account_uuid: args.account,
                             },
-                            cw_node,
+                            cw_node.clone(),
                         )
                         .await?;
+
+                        let vms_name: Vec<String> = vms
+                            .iter()
+                            .map(|e| format!("vm-{}", e.name.bold().blue()))
+                            .collect();
+                        let vms_name: String = vms_name.join("\n");
+                        // Spinner
+                        let node = Node::unwrap_or_default(cw_node).await?;
+                        let message = format!(
+                            "Deleted [{}] on node {}",
+                            vms_name,
+                            node.name.bold().green()
+                        );
+                        sp.stop_and_persist("✅", &message);
                     }
                 }
                 _ => {}
