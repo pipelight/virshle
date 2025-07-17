@@ -126,7 +126,7 @@ impl InitData {
                 [[pipelines.steps]]
                 name = "set fixed mac address"
                 commands = [
-                    "source ./init.env && ip a {} add dev {}"
+                    "ip a {} add dev {}"
                 ]
                 "#,
                     network.ipv6, iface,

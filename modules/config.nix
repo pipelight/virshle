@@ -10,6 +10,7 @@ with lib; let
   cfg = config.services.${moduleName};
 
   user = cfg.user;
+  logLevel = cfg.logLevel;
 in
   mkIf cfg.enable {
     ## Module
@@ -18,6 +19,29 @@ in
       "d '/var/lib/virshle' 774 root users - -"
     ];
 
+    ## Mount iso
+    users.groups.disk.members = [user];
+    security.wrappers.umount = with pkgs; {
+      owner = mkForce "anon";
+      group = mkForce "wheel";
+      permissions = "u+rx,g+rx";
+    };
+    security.wrappers.mount = with pkgs; {
+      owner = mkForce "anon";
+      group = mkForce "wheel";
+      permissions = mkForce "u+rx,g+rx";
+    };
+    security.wrappers.virshle = with pkgs; let
+      package = inputs.virshle.packages.${system}.default;
+    in {
+      source = "${package}/bin/virshle";
+      capabilities = "cap_net_admin,cap_sys_admin+ep";
+      owner = "anon";
+      group = "users";
+      permissions = "u+rx,g+rx,o+rx";
+    };
+
+    ## Systemd unit file
     systemd.services.virshle = {
       enable = true;
       description = "Virshle node daemon (level 2 hypervisor)";
@@ -34,18 +58,29 @@ in
 
       serviceConfig = with pkgs; let
         package = inputs.virshle.packages.${system}.default;
+        verbosity =
+          {
+            "error" = "";
+            "warn" = "-v";
+            "info" = "-vv";
+            "debug" = "-vvv";
+            "trace" = "-vvvv";
+          }.${
+            logLevel
+          };
       in {
         Type = "simple";
         User = "anon";
         Group = "users";
-        Environment = "PATH=/run/current-system/sw/bin";
+        Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
         ExecStartPre = [
-          "-${package}/bin/virshle node init --all -vvv"
+          "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
         ];
         ExecStart = ''
-          ${package}/bin/virshle node serve -vvv
+          ${config.security.wrapperDir}/virshle node serve ${verbosity}
         '';
-        WorkingDirectory = "/var/lib/virshle";
+
+        # WorkingDirectory = "/var/lib/virshle";
         # StandardInput = "null";
         StandardOutput = "journal+console";
         StandardError = "journal+console";
@@ -53,8 +88,8 @@ in
         AmbientCapabilities = [
           # "CAP_NET_BIND_SERVICE"
           # "CAP_SET_PROC"
-          # "CAP_SETUID"
-          # "CAP_SETGID"
+          "CAP_SETUID"
+          "CAP_SETGID"
           "CAP_SYS_ADMIN"
           "CAP_NET_ADMIN"
         ];

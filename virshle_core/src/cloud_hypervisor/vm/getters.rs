@@ -392,7 +392,7 @@ impl Vm {
         match VirshleConfig::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
                 let hostname = format!("vm-{}", &self.name);
-                let leases = KeaDhcp::get_leases_by_hostname(&hostname).await?;
+                let leases = kea_dhcp.get_leases_by_hostname(&hostname).await?;
                 ips = leases.iter().map(|e| e.address).collect();
             }
             _ => {}

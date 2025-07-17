@@ -59,11 +59,11 @@ impl Vm {
 
             // Delete assiociated leases.
             match VirshleConfig::get()?.dhcp {
-                Some(DhcpType::Fake(fake)) => {
+                Some(DhcpType::Fake(fake_dhcp)) => {
                     FakeDhcp::delete_leases(vm_record.id).await?;
                 }
-                Some(DhcpType::Kea(kea)) => {
-                    KeaDhcp::delete_leases(&self.name).await?;
+                Some(DhcpType::Kea(kea_dhcp)) => {
+                    kea_dhcp.delete_leases(&self.name).await?;
                 }
                 _ => {}
             }

@@ -28,8 +28,16 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeaDhcp {
-    pub url: String,
-    pub pool: Option<HashMap<String, IpPool>>,
+    pub url: Option<String>,
+    pub suffix: Option<String>,
+}
+impl Default for KeaDhcp {
+    fn default() -> Self {
+        Self {
+            url: Some("tcp://localhost:5547".to_owned()),
+            suffix: Some("vm".to_owned()),
+        }
+    }
 }
 
 /*
@@ -37,7 +45,7 @@ pub struct KeaDhcp {
 */
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct RestResponse {
-    arguments: RestLeasesResponse,
+    arguments: Option<RestLeasesResponse>,
     result: u64,
 }
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -121,85 +129,91 @@ pub const LEASES_DIR: &'static str = "/var/lib/kea";
 pub struct KeaCommand {
     command: String,
     service: Vec<String>,
+    #[serde(skip)]
     arguments: Option<HashMap<String, String>>,
 }
 #[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct KeaBulkCommand {
     command: String,
     service: Vec<String>,
+    #[serde(skip)]
     arguments: Option<HashMap<String, HashMap<String, String>>>,
 }
 
 impl KeaDhcp {
-    pub async fn get_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
-        let mut leases: Vec<Lease> = Self::get_ipv6_leases_by_hostname(hostname).await?;
-        leases.extend(Self::get_ipv4_leases_by_hostname(hostname).await?);
+    pub async fn get_leases_by_hostname(&self, hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+        let mut leases: Vec<Lease> = self.get_ipv6_leases_by_hostname(hostname).await?;
+        leases.extend(self.get_ipv4_leases_by_hostname(hostname).await?);
         Ok(leases)
     }
-    pub async fn get_ipv6_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+    pub async fn get_ipv6_leases_by_hostname(
+        &self,
+        hostname: &str,
+    ) -> Result<Vec<Lease>, VirshleError> {
         let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
         let mut rest = RestClient::from(&mut conn);
         rest.open().await?;
 
+        let hostname = if let Some(suffix) = &self.suffix {
+            format!("{}.{}.", hostname, suffix)
+        } else {
+            format!("{}.", hostname)
+        };
         let cmd = KeaCommand {
             command: "lease6-get-by-hostname".to_owned(),
             service: vec!["dhcp6".to_owned()],
-            arguments: Some(HashMap::from([(
-                "hostname".to_owned(),
-                format!("{}.", hostname),
-            )])),
+            arguments: Some(HashMap::from([("hostname".to_owned(), hostname)])),
         };
 
         let mut leases: Vec<Lease> = vec![];
         let response: Vec<RestResponse> =
             rest.post("/", Some(cmd.clone())).await?.to_value().await?;
         if let Some(inside) = response.first() {
-            leases = inside
-                .arguments
-                .leases
-                .iter()
-                .map(|e| Lease::from(e))
-                .collect();
+            if let Some(arguments) = &inside.arguments {
+                leases = arguments.leases.iter().map(|e| Lease::from(e)).collect();
+            }
         }
 
         Ok(leases)
     }
-    pub async fn get_ipv4_leases_by_hostname(hostname: &str) -> Result<Vec<Lease>, VirshleError> {
+    pub async fn get_ipv4_leases_by_hostname(
+        &self,
+        hostname: &str,
+    ) -> Result<Vec<Lease>, VirshleError> {
         let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
         let mut rest = RestClient::from(&mut conn);
         rest.open().await?;
 
+        let hostname = if let Some(suffix) = &self.suffix {
+            format!("{}.{}", hostname, suffix)
+        } else {
+            format!("{}", hostname)
+        };
         let cmd = KeaCommand {
             command: "lease4-get-by-hostname".to_owned(),
             service: vec!["dhcp4".to_owned()],
-            arguments: Some(HashMap::from([(
-                "hostname".to_owned(),
-                format!("{}", hostname),
-            )])),
+            arguments: Some(HashMap::from([("hostname".to_owned(), hostname)])),
         };
 
         let mut leases: Vec<Lease> = vec![];
         let response: Vec<RestResponse> =
             rest.post("/", Some(cmd.clone())).await?.to_value().await?;
         if let Some(inside) = response.first() {
-            leases = inside
-                .arguments
-                .leases
-                .iter()
-                .map(|e| Lease::from(e))
-                .collect();
+            if let Some(arguments) = &inside.arguments {
+                leases = arguments.leases.iter().map(|e| Lease::from(e)).collect();
+            }
         }
 
         Ok(leases)
     }
 
-    pub async fn get_leases() -> Result<Vec<Lease>, VirshleError> {
-        let mut leases: Vec<Lease> = Self::get_ipv6_leases().await?;
-        leases.extend(Self::get_ipv4_leases().await?);
+    pub async fn get_leases(&self) -> Result<Vec<Lease>, VirshleError> {
+        let mut leases: Vec<Lease> = self.get_ipv6_leases().await?;
+        leases.extend(self.get_ipv4_leases().await?);
         Ok(leases)
     }
 
-    pub async fn get_ipv4_leases() -> Result<Vec<Lease>, VirshleError> {
+    pub async fn get_ipv4_leases(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
         let mut rest = RestClient::from(&mut conn);
         rest.open().await?;
@@ -214,18 +228,15 @@ impl KeaDhcp {
         let response: Vec<RestResponse> =
             rest.post("/", Some(cmd.clone())).await?.to_value().await?;
         if let Some(inside) = response.first() {
-            leases = inside
-                .arguments
-                .leases
-                .iter()
-                .map(|e| Lease::from(e))
-                .collect();
+            if let Some(arguments) = &inside.arguments {
+                leases = arguments.leases.iter().map(|e| Lease::from(e)).collect();
+            }
         }
 
         Ok(leases)
     }
 
-    pub async fn get_ipv6_leases() -> Result<Vec<Lease>, VirshleError> {
+    pub async fn get_ipv6_leases(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
         let mut rest = RestClient::from(&mut conn);
         rest.open().await?;
@@ -240,30 +251,34 @@ impl KeaDhcp {
         let response: Vec<RestResponse> =
             rest.post("/", Some(cmd.clone())).await?.to_value().await?;
         if let Some(inside) = response.first() {
-            leases = inside
-                .arguments
-                .leases
-                .iter()
-                .map(|e| Lease::from(e))
-                .collect();
+            if let Some(arguments) = &inside.arguments {
+                leases = arguments.leases.iter().map(|e| Lease::from(e)).collect();
+            }
         }
 
         Ok(leases)
     }
-    pub async fn delete_leases(vm_name: &str) -> Result<(), VirshleError> {
-        Self::delete_ipv4_leases(vm_name).await?;
-        Self::delete_ipv6_leases(vm_name).await?;
+    pub async fn clean_leases(&self) -> Result<(), VirshleError> {
         Ok(())
     }
-    pub async fn delete_ipv6_leases(vm_name: &str) -> Result<(), VirshleError> {
-        let hostname = format!("vm-{}", vm_name);
-
+    pub async fn delete_leases(&self, vm_name: &str) -> Result<(), VirshleError> {
+        self.delete_ipv4_leases(vm_name).await?;
+        self.delete_ipv6_leases(vm_name).await?;
+        Ok(())
+    }
+    pub async fn delete_ipv6_leases(&self, vm_name: &str) -> Result<(), VirshleError> {
         let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
         let mut rest = RestClient::from(&mut conn);
         rest.open().await?;
 
+        let hostname = if let Some(suffix) = &self.suffix {
+            format!("{}.{}.", vm_name, suffix)
+        } else {
+            format!("{}.", vm_name)
+        };
+
         let mut ipv6_map: HashMap<String, String> = HashMap::new();
-        let ipv6_leases = Self::get_ipv6_leases_by_hostname(&hostname).await?;
+        let ipv6_leases = self.get_ipv6_leases_by_hostname(&hostname).await?;
         for lease in ipv6_leases {
             ipv6_map.insert("ip-address".to_owned(), lease.address.to_string());
         }
@@ -277,15 +292,19 @@ impl KeaDhcp {
         rest.post("/", Some(cmd.clone())).await?;
         Ok(())
     }
-    pub async fn delete_ipv4_leases(vm_name: &str) -> Result<(), VirshleError> {
-        let hostname = format!("vm-{}", vm_name);
-
+    pub async fn delete_ipv4_leases(&self, vm_name: &str) -> Result<(), VirshleError> {
         let mut conn = Connection::TcpConnection(TcpConnection::new("tcp://localhost:5547")?);
         let mut rest = RestClient::from(&mut conn);
         rest.open().await?;
 
+        let hostname = if let Some(suffix) = &self.suffix {
+            format!("{}.{}", vm_name, suffix)
+        } else {
+            format!("{}", vm_name)
+        };
+
         let mut ipv6_map: HashMap<String, String> = HashMap::new();
-        let ipv6_leases = Self::get_ipv6_leases_by_hostname(&hostname).await?;
+        let ipv6_leases = self.get_ipv6_leases_by_hostname(&hostname).await?;
         for lease in ipv6_leases {
             ipv6_map.insert("ip-address".to_owned(), lease.address.to_string());
         }
@@ -307,19 +326,19 @@ mod tests {
 
     #[tokio::test]
     async fn read_leases() -> Result<()> {
-        let res = KeaDhcp::get_leases().await?;
+        let res = KeaDhcp::default().get_leases().await?;
         println!("{:#?}", res);
         Ok(())
     }
     #[tokio::test]
     async fn read_leases4() -> Result<()> {
-        let res = KeaDhcp::get_ipv4_leases().await?;
+        let res = KeaDhcp::default().get_ipv4_leases().await?;
         println!("{:#?}", res);
         Ok(())
     }
     #[tokio::test]
     async fn read_leases6() -> Result<()> {
-        let res = KeaDhcp::get_ipv6_leases().await?;
+        let res = KeaDhcp::default().get_ipv6_leases().await?;
         println!("{:#?}", res);
         Ok(())
     }

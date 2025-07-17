@@ -139,6 +139,7 @@ name = "main"
 [dhcp]
 [dhcp.kea]
 url = "tcp://localhost:5547"
+suffix = "vm"
 
 ## Fake dhcp when no dhcp available on network
 # [dhcp.fake.pool.main]

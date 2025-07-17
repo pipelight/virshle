@@ -20,7 +20,7 @@ use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
 // Error Handling
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
@@ -141,8 +141,6 @@ impl InitDisk<'_> {
 
         #[cfg(debug_assertions)]
         commands.push(format!("sudo chmod 766 {source}"));
-        #[cfg(not(debug_assertions))]
-        commands.push(format!("chmod o+w {source}"));
 
         for cmd in commands {
             let mut proc = Process::new();
@@ -150,16 +148,18 @@ impl InitDisk<'_> {
 
             match res.state.status {
                 Some(Status::Failed) => {
-                    let message = format!("Couldn't create an init disk.");
-                    let help = res.io.stderr.unwrap_or_default();
-                    return Err(LibError::builder().msg(&message).help(&help).build().into());
+                    let message = format!("[disk]: couldn't create init disk.");
+                    let help = format!(
+                        "{} -> {} ",
+                        &res.io.stdin.unwrap().trim(),
+                        &res.io.stderr.unwrap().trim()
+                    );
+                    error!("{}:{}", &message, &help);
                 }
                 _ => {
-                    trace!(
-                        "Executed {:#?} -> Stdio {{\n{:#?}\n}}",
-                        res.io.stdin,
-                        res.io.stdout
-                    );
+                    let message = format!("[disk]: created init disk.");
+                    let help = format!("{}", &res.io.stdin.unwrap().trim(),);
+                    trace!("{}:{}", &message, &help);
                 }
             };
         }
@@ -189,7 +189,9 @@ impl InitDisk<'_> {
             "sudo mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
         ));
         #[cfg(not(debug_assertions))]
-        commands.push(format!("mount -t vfat -o loop {source} {target}"));
+        commands.push(format!(
+            "mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
+        ));
 
         for cmd in commands {
             let mut proc = Process::new();
@@ -197,21 +199,24 @@ impl InitDisk<'_> {
 
             match res.state.status {
                 Some(Status::Failed) => {
-                    let message = format!("Couldn't mount init disk.");
-                    let help = res.io.stderr.unwrap_or_default();
-                    return Err(LibError::builder().msg(&message).help(&help).build().into());
+                    let message = format!("[disk]: couldn't mount init disk.");
+                    let help = format!(
+                        "{} -> {} ",
+                        &res.io.stdin.unwrap().trim(),
+                        &res.io.stderr.unwrap().trim()
+                    );
+                    error!("{}:{}", &message, &help);
                 }
                 _ => {
-                    trace!(
-                        "Executed {:#?} -> Stdio {{\n{:#?}\n}}",
-                        res.io.stdin,
-                        res.io.stdout
-                    );
+                    let message = format!("[disk]: mounted init disk.");
+                    let help = format!("{}", &res.io.stdin.unwrap().trim(),);
+                    trace!("{}:{}", &message, &help);
                 }
             };
         }
         Ok(self)
     }
+
     /*
      * Unmount init disk from host filesystem.
      */
@@ -233,16 +238,19 @@ impl InitDisk<'_> {
 
             match res.state.status {
                 Some(Status::Failed) => {
-                    let message = format!("Couldn't unmount init disk.");
-                    let help = res.io.stderr.unwrap_or_default();
+                    let message = format!("[disk]: couldn't unmount init disk.");
+                    let help = format!(
+                        "{} -> {} ",
+                        &res.io.stdin.unwrap().trim(),
+                        &res.io.stderr.unwrap().trim()
+                    );
+                    error!("{}:{}", &message, &help);
                     return Err(LibError::builder().msg(&message).help(&help).build().into());
                 }
                 _ => {
-                    trace!(
-                        "Executed {:#?} -> Stdio {{\n{:#?}\n}}",
-                        res.io.stdin,
-                        res.io.stdout
-                    );
+                    let message = format!("[disk]: unmounted init disk.");
+                    let help = format!("{}", &res.io.stdin.unwrap().trim(),);
+                    trace!("{}:{}", &message, &help);
                 }
             };
         }
