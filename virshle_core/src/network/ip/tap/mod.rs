@@ -32,7 +32,7 @@ pub fn create(name: &str) -> Result<(), VirshleError> {
     ));
     #[cfg(not(debug_assertions))]
     cmds.push(format!(
-        "sudo ip tap \
+        "ip tap \
             add name {name} \
             mode tap"
     ));
@@ -80,7 +80,7 @@ pub fn create_macvtap(name: &str) -> Result<(), VirshleError> {
     ));
     #[cfg(not(debug_assertions))]
     cmds.push(format!(
-        "sudo ip link \
+        "ip link \
             add link {vm_bridge_name} \
             name {name} \
             type macvtap"

@@ -1,6 +1,6 @@
-## Install
+# Install
 
-### NixOs (with flakes).
+## NixOs (with flakes).
 
 When using nixos,
 you can enable the module by
@@ -28,7 +28,7 @@ services.virshle = {
 
 You have a fresh node running without any further configuration needed.
 
-### Other Linux distributions.
+# Other Linux distributions.
 
 Mandatory dependencies:
 
@@ -42,7 +42,7 @@ Copy or symlink the required ch files at:
 `/run/cloud-hypervisor/hypervisor-fw` and
 `/run/cloud-hypervisor/CLOUDVH.fd`
 
-## Homelab, hosting and cloud providers.
+# Homelab, hosting and cloud providers.
 
 Once a node is configured, you may want to have refined control over
 network.

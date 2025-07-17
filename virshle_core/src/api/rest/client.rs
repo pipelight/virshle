@@ -115,6 +115,7 @@ pub mod node {
         rest.ping().await?;
 
         let state = rest.connection.get_state().await?;
+
         let info: Option<NodeInfo> = rest.get("/node/info").await?.to_value().await.ok();
         let res = (node, (state, info));
 
@@ -136,6 +137,13 @@ pub mod node {
                 let res: NodeInfo = rest.get("/node/info").await?.to_value().await?;
                 node_info.insert(node, (state, Some(res)));
             } else {
+                let state = rest.connection.get_state().await?;
+                let message = format!("node {:#?} unreachable", node.name);
+                match state {
+                    ConnectionState::SshAuthError => warn!("{}", &message),
+                    ConnectionState::Unreachable => warn!("{}", &message),
+                    _ => {}
+                };
                 node_info.insert(node, (rest.connection.get_state().await?, None));
             }
         }
@@ -210,6 +218,15 @@ pub mod vm {
                     .to_value()
                     .await?;
                 vms.insert(node, node_vms);
+            } else {
+                // Logging
+                let state = rest.connection.get_state().await?;
+                let message = format!("node {:#?} unreachable", node.name);
+                match state {
+                    ConnectionState::SshAuthError => warn!("{}", &message),
+                    ConnectionState::Unreachable => warn!("{}", &message),
+                    _ => {}
+                };
             }
         }
         Ok(vms)
