@@ -8,6 +8,8 @@
 with lib; let
   moduleName = "virshle";
   cfg = config.services.${moduleName};
+
+  user = cfg.user;
 in
   mkIf cfg.enable {
     ## Module
@@ -34,7 +36,7 @@ in
         package = inputs.virshle.packages.${system}.default;
       in {
         Type = "simple";
-        User = "root";
+        User = "anon";
         Group = "users";
         Environment = "PATH=/run/current-system/sw/bin";
         ExecStartPre = [

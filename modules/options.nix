@@ -11,6 +11,10 @@ in {
   ## Options
   options.services.${moduleName} = {
     enable = mkEnableOption "Enable ${moduleName}.";
+    user = mkOption {
+      default = "root";
+      type = types.str;
+    };
     manageNetwork.enable = mkEnableOption "Configure host network to give VM network access";
     dpdk.enable = mkEnableOption "Configure host network to give VM network access";
   };

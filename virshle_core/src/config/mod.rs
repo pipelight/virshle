@@ -77,6 +77,7 @@ impl VirshleConfig {
         let directories = [
             MANAGED_DIR.to_owned(),
             MANAGED_DIR.to_owned() + "/vm",
+            MANAGED_DIR.to_owned() + "/cache",
             CONFIG_DIR.to_owned(),
         ];
         for directory in directories {
