@@ -183,7 +183,7 @@ ssh <vm_ip>
 ## Other configurations
 
 - **Custom disk images**,
-  See [docs/custom_disk.md](https://github.com/pipelight/virshle/blob/master/docs/multi_node.md)
+  See [docs/custom_disk.md](https://github.com/pipelight/virshle/blob/master/docs/custom_disk.md)
 
 - **Multiple nodes**,
   Configure a cluster of multiple nodes.
