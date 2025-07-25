@@ -131,10 +131,12 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    // Set working node
-                    let cw_node = args.current_workgin_node.node;
                     // Spinner
                     let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
+
+                    // Set working node
+                    let cw_node = args.current_workgin_node.node;
+
                     let mut user_data = None;
                     if let Some(user_data_filepath) = args.user_data {
                         user_data = Some(UserData::from_file(&user_data_filepath)?);
@@ -198,6 +200,7 @@ impl Cli {
                                 // Spinner
                                 let mut sp =
                                     Spinner::new(spinners::Toggle5, "Starting vm...", None);
+
                                 // Rest API
                                 let vm = client::vm::start(
                                     GetVmArgs {
@@ -223,6 +226,7 @@ impl Cli {
                                 // Spinner
                                 let mut sp =
                                     Spinner::new(spinners::Toggle5, "Starting vms...", None);
+
                                 let vms = client::vm::start_many(
                                     GetManyVmArgs {
                                         vm_state: args.state,
@@ -232,9 +236,11 @@ impl Cli {
                                     user_data,
                                 )
                                 .await?;
+
+                                let indent = " ".repeat(2);
                                 let vms_name: Vec<String> = vms
                                     .iter()
-                                    .map(|e| format!("vm-{}", e.name.bold().blue()))
+                                    .map(|e| format!("{indent}vm-{}", e.name.bold().blue()))
                                     .collect();
                                 let vms_name: String = vms_name.join("\n");
 
@@ -256,6 +262,7 @@ impl Cli {
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Stopping vm...", None);
+
                         let vm = client::vm::shutdown(
                             GetVmArgs {
                                 id: args.id,
@@ -278,6 +285,7 @@ impl Cli {
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Stopping vms...", None);
+
                         let vms = client::vm::shutdown_many(
                             GetManyVmArgs {
                                 vm_state: args.state,
@@ -286,9 +294,11 @@ impl Cli {
                             cw_node.clone(),
                         )
                         .await?;
+
+                        let indent = " ".repeat(2);
                         let vms_name: Vec<String> = vms
                             .iter()
-                            .map(|e| format!("vm-{}", e.name.bold().blue()))
+                            .map(|e| format!("{indent}vm-{}", e.name.bold().blue()))
                             .collect();
                         let vms_name: String = vms_name.join("\n");
 
@@ -319,6 +329,7 @@ impl Cli {
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vm...", None);
+
                         let vm = client::vm::delete(
                             GetVmArgs {
                                 id: args.id,
@@ -341,6 +352,7 @@ impl Cli {
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vms...", None);
+
                         let vms = client::vm::delete_many(
                             GetManyVmArgs {
                                 vm_state: args.state,
@@ -350,15 +362,17 @@ impl Cli {
                         )
                         .await?;
 
+                        let indent = " ".repeat(2);
                         let vms_name: Vec<String> = vms
                             .iter()
-                            .map(|e| format!("vm-{}", e.name.bold().blue()))
+                            .map(|e| format!("{indent}vm-{}", e.name.bold().blue()))
                             .collect();
                         let vms_name: String = vms_name.join("\n");
+
                         // Spinner
                         let node = Node::unwrap_or_default(cw_node).await?;
                         let message = format!(
-                            "Deleted [{}] on node {}",
+                            "Deleted [\n{}\n] on node {}",
                             vms_name,
                             node.name.bold().green()
                         );

@@ -1,7 +1,0 @@
-environments:
-  main:
-    variables:
-      - name: HOSTNAME
-        value: vm_name
-      - name: authorized_keys
-        value: vm_name

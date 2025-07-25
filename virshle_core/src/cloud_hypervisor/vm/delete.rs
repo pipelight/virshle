@@ -35,6 +35,8 @@ impl Vm {
         self.delete_disks()?;
         // Remove vm networks
         self.delete_networks()?;
+        // Soft lease deletion
+        self.delete_leases().await.ok();
         // Finally Remove db networks
         self.delete_db_record().await?;
 
@@ -159,6 +161,18 @@ impl Vm {
         if path.exists() {
             fs::remove_dir_all(&directory)?;
         }
+        Ok(())
+    }
+
+    /// Delete vm associated dhcp leases.
+    pub async fn delete_leases(&self) -> Result<(), VirshleError> {
+        match VirshleConfig::get()?.dhcp {
+            Some(DhcpType::Kea(kea_dhcp)) => {
+                let hostname = format!("vm-{}", &self.name);
+                kea_dhcp.delete_ipv6_leases_by_name(&hostname).await?;
+            }
+            _ => {}
+        };
         Ok(())
     }
 }

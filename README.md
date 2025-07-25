@@ -6,50 +6,40 @@ It works on top of
 [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
 and
 [linux-kvm](https://linux-kvm.org/page/Main_Page)
-for machines virtualization.
-And makes use of
+for machines virtualization,
+and makes extensive use of
 [openvswitch](https://github.com/openvswitch/ovs)
 for network configuration.
 
 ## Install
 
-Mandatory dependencies:
+### NixOs (with flakes).
 
-- [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
-- [openvswitch](https://github.com/openvswitch/ovs)
-
-Optional dependencies:
-
-- [KeaDHCP](https://kea.readthedocs.io/en/latest/)
-
-### Cargo
-
-```sh
-cargo install --git https://github.com/pipelight/virshle
-```
-
-It is recommended to create a systemd unit file to run virshle in the background
-and on server boot.
-
-See the
-[nixos systemd unit](https://github.com/pipelight/virshle/modules/config.nix).
-
-### NixOs with flakes
-
-Install the nixos module via flakes.
-
-But this isn't enough to add network connectivity to VMs,
-So make sure you have your host network configuration as in
-[`modules/networking.nix`](https://github.com/pipelight/virshle/modules/config.nix).
+Add the repo url to your configuration.
 
 ```nix
+# flake.nix
+inputs = {
+  virshle = {
+      url = "github:pipelight/virshle";
+  };
+};
+```
+
+Enable the service.
+
+```nix
+# default.nix
 services.virshle = {
     enable = true;
-    # Mandator:
+    logLevel = "INFO";
     # The user to run the node as.
     user = "anon";
 };
 ```
+
+See [docs/install.md](https://github.com/pipelight/virshle/docs/install.md)
+for other distributions.
 
 ## Getting started.
 
@@ -190,21 +180,19 @@ ssh <vm_ip>
 
 ![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
 
+## Other configurations
+
+### Multiple nodes
+
+Configure a cluster of multiple nodes.
+See [docs/multi_node.md](https://github.com/pipelight/virshle/docs/multi_node.md)
+
+### Network configuration
+
+Different network configurations.
+See [docs/network.md](https://github.com/pipelight/virshle/docs/network.md)
+
 ## Alternatives
-
-Virshle is a **level 2 hypervisor** in the vein of our good old
-[libvirt](https://libvirt.org/).
-Its aim is to be a comfortable cli to spin up your VM from.
-
-It was originally designed to be a fancy replacement of the virsh command line
-which stood on top of libvirt.
-
-But mid development libvirt has been replaced by
-[cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
-and
-[openvswitch](https://github.com/openvswitch/ovs)
-for more flexibility.
-And the name stuck.
 
 Similar software can be found at:
 
@@ -216,15 +204,3 @@ some hypervisors may suit you better:
 
 - [Firecracker](https://github.com/firecracker-microvm/firecracker),
 - [CrosVm](https://chromium.googlesource.com/chromiumos/platform/crosvm)
-
-## Others
-
-### Comparison with libvirt stack.
-
-|            | virshle  | libvirt              |
-| ---------- | -------- | -------------------- |
-| config     | toml/kdl | xml                  |
-| hypervisor | ch       | many (ch, qemu...)   |
-| kernel     | linux    | many (linux, mac...) |
-
-Schemas generated with [asciiflow](https://github.com/lewish/asciiflow).

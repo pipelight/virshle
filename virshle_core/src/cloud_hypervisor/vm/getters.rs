@@ -1,5 +1,6 @@
 use super::{Vm, VmNet, VmTemplate};
 use crate::display::VmTable;
+use crate::network::dhcp::Lease;
 
 use uuid::Uuid;
 
@@ -13,7 +14,11 @@ use crate::cloud_hypervisor::vmm_types::{VmConfig, VmInfoResponse, VmState};
 // Ips
 use crate::config::VirshleConfig;
 use crate::network::dhcp::{DhcpType, KeaDhcp};
-use std::net::IpAddr;
+
+// Network primitives
+use crate::network::utils;
+use macaddr::MacAddr6;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use std::str::FromStr;
 
@@ -258,7 +263,7 @@ impl Vm {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct VmInfo {
     pub state: VmState,
-    pub ips: Vec<IpAddr>,
+    pub leases: Vec<Lease>,
     pub account_uuid: Option<Uuid>,
 }
 
@@ -354,11 +359,12 @@ impl Vm {
     pub async fn get_info(&self) -> Result<VmInfo, VirshleError> {
         let res = VmInfo {
             state: self.get_state().await?,
-            ips: self.get_ips().await?,
+            leases: self.get_leases().await?,
             account_uuid: self.get_account_uuid().await.ok(),
         };
         Ok(res)
     }
+
     /// Return vm state,
     /// or the default state if couldn't connect to vm.
     pub async fn get_state(&self) -> Result<VmState, VirshleError> {
@@ -385,20 +391,26 @@ impl Vm {
         };
         Ok(state)
     }
-    /// Return vm ips,
-    /// or an empty vec if nothing found.
-    pub async fn get_ips(&self) -> Result<Vec<IpAddr>, VirshleError> {
-        let mut ips: Vec<IpAddr> = vec![];
+    /// Return vm leases
+    pub async fn get_leases(&self) -> Result<Vec<Lease>, VirshleError> {
+        let mut leases: Vec<Lease> = vec![];
+
         match VirshleConfig::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
                 let hostname = format!("vm-{}", &self.name);
-                let leases = kea_dhcp.get_leases_by_hostname(&hostname).await?;
-                ips = leases.iter().map(|e| e.address).collect();
+                leases = kea_dhcp.get_leases_by_hostname(&hostname).await?;
             }
             _ => {}
         };
+        Ok(leases)
+    }
+    /// Return vm ips,
+    /// or an empty vec if nothing found.
+    pub async fn get_ips(&self) -> Result<Vec<IpAddr>, VirshleError> {
+        let ips = self.get_leases().await?.iter().map(|e| e.address).collect();
         Ok(ips)
     }
+
     pub async fn get_account_uuid(&self) -> Result<Uuid, VirshleError> {
         let db = connect_db().await?;
         let vm_record: Option<database::entity::vm::Model> = database::prelude::Vm::find()
@@ -418,6 +430,11 @@ impl Vm {
             .help("")
             .build();
         Err(err.into())
+    }
+
+    pub fn get_default_mac(&self) -> Result<MacAddr6, VirshleError> {
+        let mac_address = utils::uuid_to_mac(&self.uuid);
+        Ok(mac_address)
     }
 }
 

@@ -1,10 +1,13 @@
-## Network configuration.
+# Network configuration.
 
 Virshle tries to lower the amount of black magic needed for network configuration.
 Every command needed to create a network interface can be seen in the logs of
 `v node serve -vvvv`
 
-### MacVTap
+Nixos users can find an example of host network configuration at
+[`modules/networking.nix`](https://github.com/pipelight/virshle/modules/config.nix).
+
+## MacVTap
 
 The fastest way to add networking connectivity to a VM is with a `mac_v_tap`.
 Add the following network configuration to a vm template.
@@ -20,7 +23,7 @@ to create a mac_v_tap interface that will be bound to the VM.
 
 No need for a bridge here, the upstream router gives ips and network access to the VM.
 
-### Bridge and Tap
+## Bridge and Tap
 
 For a fine-grained control of your network, prefer the tap device.
 
@@ -46,13 +49,14 @@ Checkout your network configuration with.
 
 More on network: [https://github.com/pipelight/virshle/virshle_core/src/network/README.md]
 
-### DHCP (Work in progress)
+## DHCP
 
-Virshle relies on external software to manage Vm ips,
-like [KeaDHCP](https://kea.readthedocs.io/en/latest/)
+Virshle relies on external software to manage vm ips.
+
+[KeaDHCP](https://kea.readthedocs.io/en/latest/) is supported.
 You need a configured KeaDHCP(v4 or v6 or both) instance running somewhere.
 
-Then add the connection url to your configuration.
+Then add the kea remote control url to your virshle configuration.
 
 ```toml
 [dhcp]
@@ -60,7 +64,7 @@ Then add the connection url to your configuration.
 url = "tcp://localhost:5547"
 ```
 
-Dhcp leases managed by KeaDHCP show up once configured.
+Dhcp leases managed by KeaDHCP show up when increasing verbosity.
 
 ```sh
 v vm ls -v

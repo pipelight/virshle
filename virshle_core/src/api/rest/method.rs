@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 // Node
-use crate::config::NodeInfo;
+use crate::config::{Node, NodeInfo};
 
 use crate::display::{VmTable, VmTemplateTable};
 // Hypervisor
@@ -125,6 +125,16 @@ pub mod vm {
 
         if let Some(name) = &args.template_name {
             let template = config.get_template(&name)?;
+
+            // Safeguard before creating.
+            if !Node::can_create_vm(&template).await? {
+                return Err(LibError::builder()
+                    .msg("Couldn't create Vm")
+                    .help("Node is saturated.")
+                    .build()
+                    .into());
+            }
+
             let mut vm = Vm::from(&template)?;
             vm.create(user_data).await?;
             Ok(vm)

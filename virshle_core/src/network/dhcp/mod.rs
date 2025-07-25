@@ -9,6 +9,7 @@ use std::net::IpAddr;
 // Reexports
 pub use fake::FakeDhcp;
 pub use kea::KeaDhcp;
+pub use lease::Lease;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]

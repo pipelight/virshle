@@ -1,0 +1,24 @@
+# /etc/systemd/system/virshle.service
+
+[Unit]
+After=network.target socket.target ovs-vswitchd.service ovsdb.service
+Description=Virshle node daemon
+Documentation=https://github.com/pipelight/virshle
+
+[Service]
+AmbientCapabilities=CAP_SETUID
+AmbientCapabilities=CAP_SETGID
+AmbientCapabilities=CAP_SYS_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+Environment=PATH=/bin/env
+ExecStart=/bin/env virshle node serve -vvvv
+
+ExecStartPre=/bin/env -virshle node init --all -vvvv
+Group=users
+StandardError=journal+console
+StandardOutput=journal+console
+Type=simple
+User=anon
+
+[Install]
+WantedBy=multi-user.target

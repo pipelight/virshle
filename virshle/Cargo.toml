@@ -3,7 +3,7 @@ name = "virshle"
 version = "0.1.7"
 edition = "2021"
 authors = ["areskul"]
-description = "Make libvirt great again"
+description = "A modern virtual machine manager"
 homepage = "https://github.com/pipelight/virshle"
 repository = "git@github.com:pipelight/virshle.git"
 

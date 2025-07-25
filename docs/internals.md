@@ -1,5 +1,19 @@
 # Internals
 
+Virshle is a **level 2 hypervisor** in the vein of our good old
+[libvirt](https://libvirt.org/).
+Its aim is to be a comfortable cli to spin up your VM from.
+
+It was originally designed to be a fancy replacement of the virsh command line
+which stood on top of libvirt.
+
+But mid development libvirt has been replaced by
+[cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
+and
+[openvswitch](https://github.com/openvswitch/ovs)
+for more flexibility.
+And the name stuck.
+
 ## Troubleshoot
 
 Virshle was originally a bash script that simply aggregated commands
