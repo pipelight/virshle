@@ -32,7 +32,7 @@ Enable the service.
 # default.nix
 services.virshle = {
     enable = true;
-    logLevel = "INFO";
+    logLevel = "info";
     # The user to run the node as.
     user = "anon";
 };
@@ -182,15 +182,16 @@ ssh <vm_ip>
 
 ## Other configurations
 
-### Multiple nodes
+- **Custom disk images**,
+  See [docs/custom_disk.md](https://github.com/pipelight/virshle/docs/multi_node.md)
 
-Configure a cluster of multiple nodes.
-See [docs/multi_node.md](https://github.com/pipelight/virshle/docs/multi_node.md)
+- **Multiple nodes**,
+  Configure a cluster of multiple nodes.
+  See [docs/multi_node.md](https://github.com/pipelight/virshle/docs/multi_node.md)
 
-### Network configuration
-
-Different network configurations.
-See [docs/network.md](https://github.com/pipelight/virshle/docs/network.md)
+- **Network configuration**,
+  Different network configurations.
+  See [docs/network.md](https://github.com/pipelight/virshle/docs/network.md)
 
 ## Alternatives
 

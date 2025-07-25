@@ -21,7 +21,7 @@ Enable the service.
 # default.nix
 services.virshle = {
     enable = true;
-    logLevel = "INFO";
+    logLevel = "info";
     # The user to run the node as.
     user = "anon";
 };
