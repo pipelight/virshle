@@ -14,10 +14,11 @@ with lib; let
 in
   mkIf cfg.enable {
     ## Module
-    systemd.tmpfiles.rules = [
-      "Z '/var/lib/virshle' 774 root users - -"
-      "d '/var/lib/virshle' 774 root users - -"
-    ];
+
+    # systemd.tmpfiles.rules = mkDefault [
+    # "Z '/var/lib/virshle' 774 root users - -"
+    #   "d '/var/lib/virshle' 774 root users - -"
+    # ];
 
     ## Mount iso
     users.groups.disk.members = [user];
@@ -74,6 +75,7 @@ in
         Group = "users";
         Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
         ExecStartPre = [
+          "-${pkgs.coreutils}/bin/chown -R ${user}:users /var/lib/virshle"
           "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
         ];
         ExecStart = ''

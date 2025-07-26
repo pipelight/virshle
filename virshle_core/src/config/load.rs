@@ -15,7 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // Error Handling
-use log::{info, trace};
+use log::{error, info, trace, warn};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
@@ -53,7 +53,21 @@ impl VirshleConfig {
         let path = Self::release_path();
 
         let path = path.display().to_string();
-        let config = Self::from_file(&path)?;
+        let config = match Self::from_file(&path) {
+            Ok(v) => v,
+            Err(e) => {
+                let message = format!("Couldn't find a configuration file.",);
+                let help = format!("Create a configuration file at /etc/virshle/confi.toml");
+                let err = WrapError::builder()
+                    .msg(&message)
+                    .help(&help)
+                    .origin(Error::from_err(e))
+                    .build();
+
+                error!("{}", err);
+                return Err(err.into());
+            }
+        };
 
         trace!("Found config file.");
         Ok(config)

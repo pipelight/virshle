@@ -199,6 +199,7 @@ Similar software can be found at:
 
 - [libvirt applications](https://libvirt.org/apps.html),
 - [multipass](https://github.com/cannonical/multipass)
+- [aurae](https://github.com/aurae-runtime/aurae)
 
 If you want VM for specific usage like workload isolation,
 some hypervisors may suit you better:
