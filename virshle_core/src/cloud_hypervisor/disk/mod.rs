@@ -1,13 +1,9 @@
 mod info;
 pub mod utils;
 pub use info::DiskInfo;
-pub use utils::{reverse_human_bytes, shellexpand};
-
-use sys_mount::{Mount, MountFlags, SupportedFilesystems};
 
 // Struct
 use super::vm::{InitData, UserData, Vm, VmData};
-use bytes::BytesMut;
 
 // Filesystem
 // use tokio::fs::{self, File};
@@ -37,7 +33,7 @@ pub struct DiskTemplate {
 }
 impl DiskTemplate {
     pub fn get_size(&self) -> Result<u64, VirshleError> {
-        let source = shellexpand(&self.path)?;
+        let source = utils::shellexpand(&self.path)?;
         let path = Path::new(&source);
         if path.exists() && path.is_file() {
             let metadata = std::fs::metadata(path)?;
@@ -144,20 +140,35 @@ impl InitDisk<'_> {
     pub fn _release_create(&self) -> Result<&Self, VirshleError> {
         let disk_dir = self.vm.get_disk_dir()?;
         let source = format!("{disk_dir}/pipelight-init");
+
+        let mount_dir = self.vm.get_mount_dir()?;
+        let target = format!("{mount_dir}/pipelight-init/pipelight.toml");
+
         //dd
-        make_empty_file(source)?;
+        utils::make_empty_file(&source)?;
         //vfat
-        format_to_vfat(source)?;
+        utils::format_to_vfat(&source)?;
         //mount
+        utils::_umount(&target).ok();
+        utils::_mount(&source, &target)?;
 
         Ok(self)
     }
 
     pub fn _debug_create(&self) -> Result<&Self, VirshleError> {
+        let disk_dir = self.vm.get_disk_dir()?;
+        let source = format!("{disk_dir}/pipelight-init");
+
+        let mount_dir = self.vm.get_mount_dir()?;
+        let target = format!("{mount_dir}/pipelight-init");
+
         //dd
-        make_empty_file(source)?;
+        utils::make_empty_file(&source)?;
         //vfat
-        format_to_vfat(source)?;
+        utils::format_to_vfat(&source)?;
+        //mount
+        utils::umount(&target).ok();
+        utils::mount(&source, &target)?;
         Ok(self)
     }
 

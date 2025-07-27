@@ -18,4 +18,5 @@ pkgs.mkShell {
       \"type\": \"sqlite\",
       \"url\": \"/var/lib/virshle/virshle.sqlite?mode=rwc\"
     }]";
+  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
 }

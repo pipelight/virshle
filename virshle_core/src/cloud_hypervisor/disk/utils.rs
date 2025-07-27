@@ -1,4 +1,15 @@
+// Process
+use pipelight_exec::{Process, Status};
+
+// Filesystem
+// use tokio::fs::{self, File};
+// use tokio::io::AsyncWrite;
+use bytes::BytesMut;
+use std::fs::{self, File, OpenOptions};
+use std::io::Write;
 use std::path::Path;
+use sys_mount::{unmount, UnmountFlags};
+use sys_mount::{FilesystemType, Mount, MountFlags, SupportedFilesystems};
 
 // Error Handling
 use log::{debug, error, info, trace};
@@ -61,7 +72,7 @@ pub fn shellexpand(relpath: &str) -> Result<String, VirshleError> {
 }
 
 pub fn make_empty_file(path: &str) -> Result<(), VirshleError> {
-    let mut commands = vec![format!("dd if=/dev/null of={source} bs=1M seek=10")];
+    let mut commands = vec![format!("dd if=/dev/null of={path} bs=1M seek=10")];
     for cmd in commands {
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -90,12 +101,12 @@ pub fn make_empty_file(path: &str) -> Result<(), VirshleError> {
 /// See: https://unix.stackexchange.com/questions/108858/seek-argument-in-command-dd
 pub fn _make_empty_file(path: &str, block_size: &str, file_size: &str) -> Result<(), VirshleError> {
     //dd
-    let bs = utils::reverse_human_bytes("1MiB")?;
+    let bs = reverse_human_bytes("1MiB")?;
     let seek = 10;
     let bytes = BytesMut::with_capacity(bs as usize);
     // Truncate file if already exists.
-    File::create(&source)?;
-    let mut file = OpenOptions::new().write(true).append(true).open(&source)?;
+    File::create(&path)?;
+    let mut file = OpenOptions::new().write(true).append(true).open(&path)?;
     for i in 0..seek {
         file.write(&bytes);
         file.flush();
@@ -103,11 +114,8 @@ pub fn _make_empty_file(path: &str, block_size: &str, file_size: &str) -> Result
     Ok(())
 }
 /// Create a vfat partition on empty file.
-pub fn format_to_vfat(&self) -> Result<&Self, VirshleError> {
-    let disk_dir = self.vm.get_disk_dir()?;
-    let source = format!("{disk_dir}/pipelight-init");
-
-    let mut commands = vec![format!("mkfs.vfat -F 32 -n INIT {source}")];
+pub fn format_to_vfat(path: &str) -> Result<(), VirshleError> {
+    let mut commands = vec![format!("mkfs.vfat -F 32 -n INIT {path}")];
     for cmd in commands {
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -128,11 +136,11 @@ pub fn format_to_vfat(&self) -> Result<&Self, VirshleError> {
             }
         };
     }
-    Ok(self)
+    Ok(())
 }
 
 /// Mount init disk to host filesystem.
-pub fn debug_mount(source: &str, target: &str) -> Result<(), VirshleError> {
+pub fn mount(source: &str, target: &str) -> Result<(), VirshleError> {
     // Ensure mounting directory exists and nothing is already mounted.
     umount(target).ok();
     fs::create_dir_all(&target)?;
@@ -172,15 +180,66 @@ pub fn debug_mount(source: &str, target: &str) -> Result<(), VirshleError> {
     }
     Ok(())
 }
+/// Unmount init disk from host filesystem.
+pub fn umount(path: &str) -> Result<(), VirshleError> {
+    let mut commands = vec![];
 
-pub fn release_mount(source: &str, target: &str) -> Result<(), VirshleError> {
+    // Umount need root priviledge
+    #[cfg(debug_assertions)]
+    commands.push(format!("sudo umount {path}"));
+    #[cfg(not(debug_assertions))]
+    commands.push(format!("umount {path}"));
+
+    for cmd in commands {
+        let mut proc = Process::new();
+        let res = proc.stdin(&cmd).run()?;
+
+        match res.state.status {
+            Some(Status::Failed) => {
+                let message = format!("[disk]: couldn't unmount init disk.");
+                let help = format!(
+                    "{} -> {} ",
+                    &res.io.stdin.unwrap().trim(),
+                    &res.io.stderr.unwrap().trim()
+                );
+                error!("{}:{}", &message, &help);
+                return Err(LibError::builder().msg(&message).help(&help).build().into());
+            }
+            _ => {
+                let message = format!("[disk]: unmounted init disk.");
+                let help = format!("{}", &res.io.stdin.unwrap().trim(),);
+                trace!("{}:{}", &message, &help);
+            }
+        };
+    }
+
+    // Clean mount points
+    fs::remove_dir_all(&path)?;
+
+    Ok(())
+}
+
+/// Unmount filesystem with ffi bindings.
+pub fn _umount(target: &str) -> Result<(), VirshleError> {
+    match unmount(target, UnmountFlags::empty()) {
+        Ok(()) => (),
+        Err(why) => {
+            error!("failed to unmount filesystems: {}", why);
+            return Err(VirshleError::from(why));
+        }
+    }
+
+    Ok(())
+}
+/// Mount filesystem with ffi bindings.
+pub fn _mount(source: &str, target: &str) -> Result<(), VirshleError> {
     // Fetch a listed of supported file systems on this system. This will be used
     // as the fstype to `Mount::new`, as the `Auto` mount parameter.
     let supported = match SupportedFilesystems::new() {
         Ok(supported) => supported,
         Err(why) => {
-            eprintln!("failed to get supported file systems: {}", why);
-            exit(1);
+            error!("failed to mount filesystems: {}", why);
+            return Err(VirshleError::from(why));
         }
     };
 
@@ -188,22 +247,16 @@ pub fn release_mount(source: &str, target: &str) -> Result<(), VirshleError> {
     // one of the supported file systems.
     let result = Mount::builder()
         .fstype(FilesystemType::from(&supported))
-        .mount(src, dir);
+        .mount(source, target);
 
     match result {
         Ok(mount) => {
-            let message = format!("[disk]: couldn't mount init disk.");
-            let help = format!(
-                "{} -> {} ",
-                &res.io.stdin.unwrap().trim(),
-                &res.io.stderr.unwrap().trim()
-            );
-            error!("{}:{}", &message, &help);
+            let message = format!("[disk]: mounted init disk.");
+            trace!("{}", &message);
         }
         Err(why) => {
-            let message = format!("[disk]: mounted init disk.");
-            let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-            trace!("{}:{}", &message, &help);
+            let message = format!("[disk]: couldn't mount init disk.");
+            error!("{}:{}", &message, &why);
         }
     };
     Ok(())

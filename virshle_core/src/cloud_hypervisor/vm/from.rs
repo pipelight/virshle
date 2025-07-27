@@ -1,5 +1,5 @@
 use super::{Vm, VmConfigPlus, VmNet, VmTemplate};
-use crate::cloud_hypervisor::{disk::shellexpand, Disk, DiskTemplate};
+use crate::cloud_hypervisor::{disk::utils, Disk, DiskTemplate};
 
 // Pretty print
 use bat::PrettyPrinter;
@@ -77,7 +77,7 @@ pub fn ensure_directories(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virs
 pub fn create_disks(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     if let Some(disks) = &template.disk {
         for disk in disks {
-            let source = shellexpand(&disk.path)?;
+            let source = utils::shellexpand(&disk.path)?;
             let target = format!("{MANAGED_DIR}/vm/{}/disk/{}", vm.uuid, disk.name);
 
             // Create disk on host drive
