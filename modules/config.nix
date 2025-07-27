@@ -17,12 +17,12 @@ in
     ## Module
 
     # systemd.tmpfiles.rules = mkDefault [
-    # "Z '/var/lib/virshle' 774 root users - -"
+    #   "Z '/var/lib/virshle' 774 root users - -"
     #   "d '/var/lib/virshle' 774 root users - -"
     # ];
 
     ## Mount iso
-    # users.groups.disk.members = [user];
+    users.groups.disk.members = [user];
 
     security.wrappers.umount = with pkgs; {
       setuid = true;
@@ -43,7 +43,7 @@ in
       source = "${package}/bin/virshle";
       capabilities = "cap_net_admin,cap_sys_admin+ep";
       owner = "anon";
-      group = "users";
+      group = "wheel";
       permissions = "u+rx,g+rx,o+rx";
     };
 
@@ -77,7 +77,7 @@ in
       in {
         Type = "simple";
         User = "anon";
-        Group = "users";
+        Group = "wheel";
         Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
         ExecStartPre = [
           "-${pkgs.coreutils}/bin/chown -R ${user}:users /var/lib/virshle"
