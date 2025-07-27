@@ -1,4 +1,9 @@
-# Virshle: Virtual Machine Manager.
+<span>
+<h1>
+<img width="125px" alt="pipelight_logo" src="https://github.com/pipelight/virshle/blob/master/public/images/logo.png"/>
+<p>Virshle: A Virtual Machine Manager.</p>
+</h1>
+</span>
 
 Virshle is a single command line utility to manage multiple virtual machines.
 
@@ -10,36 +15,6 @@ for machines virtualization,
 and makes extensive use of
 [openvswitch](https://github.com/openvswitch/ovs)
 for network configuration.
-
-## Install
-
-### NixOs (with flakes).
-
-Add the repo url to your configuration.
-
-```nix
-# flake.nix
-inputs = {
-  virshle = {
-      url = "github:pipelight/virshle";
-  };
-};
-```
-
-Enable the service.
-
-```nix
-# default.nix
-services.virshle = {
-    enable = true;
-    logLevel = "info";
-    # The user to run the node as.
-    user = "anon";
-};
-```
-
-See [docs/install.md](https://github.com/pipelight/virshle/docs/install.md)
-for other distributions.
 
 ## Getting started.
 
@@ -192,6 +167,36 @@ ssh <vm_ip>
 - **Network configuration**,
   Different network configurations.
   See [docs/network.md](https://github.com/pipelight/virshle/blob/master/docs/network.md)
+
+## Install
+
+### NixOs (with flakes).
+
+Add the repo url to your configuration.
+
+```nix
+# flake.nix
+inputs = {
+  virshle = {
+      url = "github:pipelight/virshle";
+  };
+};
+```
+
+Enable the service.
+
+```nix
+# default.nix
+services.virshle = {
+    enable = true;
+    logLevel = "info";
+    # The user to run the node as.
+    user = "anon";
+};
+```
+
+See [docs/install.md](https://github.com/pipelight/virshle/docs/install.md)
+for other distributions.
 
 ## Alternatives
 
