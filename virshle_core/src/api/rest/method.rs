@@ -57,7 +57,7 @@ pub mod template {
     pub async fn _reclaim(args: CreateVmArgs) -> Result<bool, VirshleError> {
         if let Some(name) = &args.template_name {
             let vm_template = VmTemplate::get_by_name(name)?;
-            let can = Node::can_create_vm(&vm_template).await?;
+            let can = Node::can_create_vm(&vm_template).await.is_ok();
             Ok(can)
         } else {
             Ok(false)
@@ -127,13 +127,7 @@ pub mod vm {
             let template = config.get_template(&name)?;
 
             // Safeguard before creating.
-            if !Node::can_create_vm(&template).await? {
-                return Err(LibError::builder()
-                    .msg("Couldn't create Vm")
-                    .help("Node is saturated.")
-                    .build()
-                    .into());
-            }
+            Node::can_create_vm(&template).await?;
 
             let mut vm = Vm::from(&template)?;
             vm.create(user_data).await?;

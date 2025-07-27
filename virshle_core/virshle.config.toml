@@ -22,7 +22,7 @@ weight = 10
 # Testing Templates: 
 # for testing vm
 [[template.vm]]
-name = "xs-offline"
+name = "xxs-offline"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
@@ -30,7 +30,7 @@ name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
 
 [[template.vm]]
-name = "xs-tap"
+name = "xxs-tap"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
@@ -41,7 +41,7 @@ name = "main"
 [template.vm.net.type.tap]
 
 [[template.vm]]
-name = "xs-macvtap"
+name = "xxs-macvtap"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]
@@ -52,7 +52,7 @@ name = "main"
 [template.vm.net.type.mac_v_tap]
 
 [[template.vm]]
-name = "xs-dpdk"
+name = "xxs-dpdk"
 vcpu = 1
 vram = 2
 [[template.vm.disk]]

@@ -15,7 +15,7 @@ use crate::{
     config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION},
     VmTemplate,
 };
-use log::{info, warn};
+use log::{error, info, warn};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -105,20 +105,37 @@ impl Node {
     }
 
     // If self node can create the requested template
-    pub async fn can_create_vm(vm_template: &VmTemplate) -> Result<bool, VirshleError> {
+    pub async fn can_create_vm(vm_template: &VmTemplate) -> Result<(), VirshleError> {
         let info = HostInfo::get().await?;
         // Check saturation
         if info.disk.is_saturated().await?
             || info.ram.is_saturated().await?
             || info.cpu.is_saturated().await?
         {
-            return Ok(false);
+            return Err(LibError::builder()
+                .msg("Couldn't create Vm")
+                .help("Node is saturated.")
+                .build()
+                .into());
         // Check remaining disk space
         } else if let Some(disks) = &vm_template.disk {
             let disks_total_size: u64 = disks.into_iter().map(|e| e.get_size().unwrap_or(0)).sum();
-            return Ok(disks_total_size > info.disk.available);
+            if disks_total_size < info.disk.available {
+                return Ok(());
+            } else {
+                let help = format!(
+                    "Not enough disk space for new vm from template {:#?}",
+                    vm_template.name
+                );
+                warn!("{}", help);
+                return Err(LibError::builder()
+                    .msg("Couldn't create Vm")
+                    .help(&help)
+                    .build()
+                    .into());
+            }
         } else {
-            Ok(false)
+            Ok(())
         }
     }
 }

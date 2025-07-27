@@ -11,6 +11,7 @@ with lib; let
 
   user = cfg.user;
   logLevel = cfg.logLevel;
+  # security = pkgs.callPackage (pkgs.modulesPath + "/security/wrappers/default.nix");
 in
   mkIf cfg.enable {
     ## Module
@@ -21,17 +22,21 @@ in
     # ];
 
     ## Mount iso
-    users.groups.disk.members = [user];
+    # users.groups.disk.members = [user];
+
     security.wrappers.umount = with pkgs; {
-      owner = mkForce "anon";
+      setuid = true;
+      owner = mkForce "root";
       group = mkForce "wheel";
       permissions = "u+rx,g+rx";
     };
     security.wrappers.mount = with pkgs; {
-      owner = mkForce "anon";
+      setuid = true;
+      owner = mkForce "root";
       group = mkForce "wheel";
       permissions = mkForce "u+rx,g+rx";
     };
+
     security.wrappers.virshle = with pkgs; let
       package = inputs.virshle.packages.${system}.default;
     in {
@@ -90,8 +95,8 @@ in
         AmbientCapabilities = [
           # "CAP_NET_BIND_SERVICE"
           # "CAP_SET_PROC"
-          "CAP_SETUID"
-          "CAP_SETGID"
+          # "CAP_SETUID"
+          # "CAP_SETGID"
           "CAP_SYS_ADMIN"
           "CAP_NET_ADMIN"
         ];
