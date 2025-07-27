@@ -26,12 +26,14 @@ in
 
     security.wrappers.umount = with pkgs; {
       setuid = true;
+      setgid = true;
       owner = mkForce "root";
       group = mkForce "wheel";
       permissions = "u+rx,g+rx";
     };
     security.wrappers.mount = with pkgs; {
       setuid = true;
+      setgid = true;
       owner = mkForce "root";
       group = mkForce "wheel";
       permissions = mkForce "u+rx,g+rx";
@@ -41,8 +43,10 @@ in
       package = inputs.virshle.packages.${system}.default;
     in {
       source = "${package}/bin/virshle";
-      capabilities = "cap_net_admin,cap_sys_admin+ep";
-      owner = "anon";
+      # capabilities = "cap_net_admin,cap_sys_admin+ep";
+      setuid = true;
+      setgid = true;
+      owner = "root";
       group = "wheel";
       permissions = "u+rx,g+rx,o+rx";
     };
@@ -76,7 +80,7 @@ in
           };
       in {
         Type = "simple";
-        User = "anon";
+        User = "root";
         Group = "wheel";
         Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
         ExecStartPre = [

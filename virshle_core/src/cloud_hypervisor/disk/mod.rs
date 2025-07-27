@@ -3,11 +3,16 @@ pub mod utils;
 pub use info::DiskInfo;
 pub use utils::{reverse_human_bytes, shellexpand};
 
+use sys_mount::{Mount, MountFlags, SupportedFilesystems};
+
 // Struct
 use super::vm::{InitData, UserData, Vm, VmData};
+use bytes::BytesMut;
 
 // Filesystem
-use std::fs;
+// use tokio::fs::{self, File};
+// use tokio::io::AsyncWrite;
+use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
@@ -35,7 +40,7 @@ impl DiskTemplate {
         let source = shellexpand(&self.path)?;
         let path = Path::new(&source);
         if path.exists() && path.is_file() {
-            let metadata = fs::metadata(path)?;
+            let metadata = std::fs::metadata(path)?;
             let size = metadata.len();
             Ok(size)
         } else {
@@ -58,7 +63,7 @@ impl Disk {
     pub fn get_size(&self) -> Result<u64, VirshleError> {
         let path = Path::new(&self.path);
         if path.exists() && path.is_file() {
-            let metadata = fs::metadata(path)?;
+            let metadata = std::fs::metadata(path)?;
             let size = metadata.len();
             Ok(size)
         } else {
@@ -113,12 +118,12 @@ impl InitDisk<'_> {
         // Remove old pipeline
         let path = Path::new(&target);
         if path.exists() {
-            fs::remove_file(path)?;
+            std::fs::remove_file(path)?;
         }
         // Write file to disk
         let p_config = init_data.to_pipelight_toml_config()?;
         let bytes = p_config.as_bytes();
-        let mut file = fs::File::create(path)?;
+        let mut file = std::fs::File::create(path)?;
         file.write_all(bytes)?;
 
         Ok(self)
@@ -127,42 +132,32 @@ impl InitDisk<'_> {
      * Create an init disk on host filesystem.
      */
     pub fn create(&self) -> Result<&Self, VirshleError> {
+        #[cfg(debug_assertions)]
+        let res = self._debug_create()?;
+
+        #[cfg(not(debug_assertions))]
+        let res = self._release_create()?;
+
+        Ok(res)
+    }
+
+    pub fn _release_create(&self) -> Result<&Self, VirshleError> {
         let disk_dir = self.vm.get_disk_dir()?;
         let source = format!("{disk_dir}/pipelight-init");
+        //dd
+        make_empty_file(source)?;
+        //vfat
+        format_to_vfat(source)?;
+        //mount
 
-        let mount_dir = self.vm.get_mount_dir()?;
-        let target = format!("{mount_dir}/pipelight-init");
+        Ok(self)
+    }
 
-        // Create a fresh pipelight-init disk.
-        let mut commands = vec![
-            format!("dd if=/dev/null of={source} bs=1M seek=10"),
-            format!("mkfs.vfat -F 32 -n INIT {source}"),
-        ];
-
-        #[cfg(debug_assertions)]
-        commands.push(format!("sudo chmod 766 {source}"));
-
-        for cmd in commands {
-            let mut proc = Process::new();
-            let res = proc.stdin(&cmd).run()?;
-
-            match res.state.status {
-                Some(Status::Failed) => {
-                    let message = format!("[disk]: couldn't create init disk.");
-                    let help = format!(
-                        "{} -> {} ",
-                        &res.io.stdin.unwrap().trim(),
-                        &res.io.stderr.unwrap().trim()
-                    );
-                    error!("{}:{}", &message, &help);
-                }
-                _ => {
-                    let message = format!("[disk]: created init disk.");
-                    let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                    trace!("{}:{}", &message, &help);
-                }
-            };
-        }
+    pub fn _debug_create(&self) -> Result<&Self, VirshleError> {
+        //dd
+        make_empty_file(source)?;
+        //vfat
+        format_to_vfat(source)?;
         Ok(self)
     }
 
