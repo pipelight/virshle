@@ -22,6 +22,9 @@ pkgs.rustPlatform.buildRustPackage rec {
   nativeBuildInputs = with pkgs; [
     installShellFiles
     pkg-config
+
+    llvmPackages.clang
+    clang
   ];
   buildInputs = with pkgs; [
     openssl

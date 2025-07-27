@@ -22,31 +22,28 @@ in
     # ];
 
     ## Mount iso
-    users.groups.disk.members = [user];
-
-    security.wrappers.umount = with pkgs; {
-      setuid = true;
-      setgid = true;
-      owner = mkForce "root";
-      group = mkForce "wheel";
-      permissions = "u+rx,g+rx";
-    };
-    security.wrappers.mount = with pkgs; {
-      setuid = true;
-      setgid = true;
-      owner = mkForce "root";
-      group = mkForce "wheel";
-      permissions = mkForce "u+rx,g+rx";
-    };
+    # users.groups.disk.members = [user];
+    # security.wrappers.umount = with pkgs; {
+    #   setuid = true;
+    #   setgid = true;
+    #   owner = mkForce "root";
+    #   group = mkForce "wheel";
+    #   permissions = "u+rx,g+rx";
+    # };
+    # security.wrappers.mount = with pkgs; {
+    #   setuid = true;
+    #   setgid = true;
+    #   owner = mkForce "root";
+    #   group = mkForce "wheel";
+    #   permissions = mkForce "u+rx,g+rx";
+    # };
 
     security.wrappers.virshle = with pkgs; let
       package = inputs.virshle.packages.${system}.default;
     in {
       source = "${package}/bin/virshle";
-      # capabilities = "cap_net_admin,cap_sys_admin+ep";
-      setuid = true;
-      setgid = true;
-      owner = "root";
+      capabilities = "cap_net_admin,cap_sys_admin+ep";
+      owner = user;
       group = "wheel";
       permissions = "u+rx,g+rx,o+rx";
     };
@@ -84,7 +81,7 @@ in
         Group = "wheel";
         Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
         ExecStartPre = [
-          "-${pkgs.coreutils}/bin/chown -R ${user}:users /var/lib/virshle"
+          "-${pkgs.coreutils}/bin/chown -R ${user}:wheel /var/lib/virshle"
           "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
         ];
         ExecStart = ''
