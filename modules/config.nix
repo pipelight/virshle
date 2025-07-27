@@ -22,21 +22,21 @@ in
     # ];
 
     ## Mount iso
-    # users.groups.disk.members = [user];
-    # security.wrappers.umount = with pkgs; {
-    #   setuid = true;
-    #   setgid = true;
-    #   owner = mkForce "root";
-    #   group = mkForce "wheel";
-    #   permissions = "u+rx,g+rx";
-    # };
-    # security.wrappers.mount = with pkgs; {
-    #   setuid = true;
-    #   setgid = true;
-    #   owner = mkForce "root";
-    #   group = mkForce "wheel";
-    #   permissions = mkForce "u+rx,g+rx";
-    # };
+    users.groups.disk.members = [user];
+    security.wrappers.umount = with pkgs; {
+      setuid = true;
+      setgid = true;
+      owner = mkForce "root";
+      group = mkForce "wheel";
+      permissions = "u+rx,g+rx";
+    };
+    security.wrappers.mount = with pkgs; {
+      setuid = true;
+      setgid = true;
+      owner = mkForce "root";
+      group = mkForce "wheel";
+      permissions = mkForce "u+rx,g+rx";
+    };
 
     security.wrappers.virshle = with pkgs; let
       package = inputs.virshle.packages.${system}.default;

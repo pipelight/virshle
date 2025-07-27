@@ -144,12 +144,8 @@ impl InitDisk<'_> {
         let mount_dir = self.vm.get_mount_dir()?;
         let target = format!("{mount_dir}/pipelight-init/pipelight.toml");
 
-        //dd
         utils::make_empty_file(&source)?;
-        //vfat
         utils::format_to_vfat(&source)?;
-        //mount
-        utils::_umount(&target).ok();
         utils::_mount(&source, &target)?;
 
         Ok(self)
@@ -162,13 +158,10 @@ impl InitDisk<'_> {
         let mount_dir = self.vm.get_mount_dir()?;
         let target = format!("{mount_dir}/pipelight-init");
 
-        //dd
         utils::make_empty_file(&source)?;
-        //vfat
         utils::format_to_vfat(&source)?;
-        //mount
-        utils::umount(&target).ok();
         utils::mount(&source, &target)?;
+
         Ok(self)
     }
 
@@ -183,7 +176,6 @@ impl InitDisk<'_> {
         let target = format!("{mount_dir}/pipelight-init");
 
         // Ensure mounting directory exists and nothing is already mounted.
-        self.umount().ok();
         fs::create_dir_all(&target)?;
 
         let mut commands = vec![];

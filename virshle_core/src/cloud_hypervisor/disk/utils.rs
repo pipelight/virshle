@@ -72,7 +72,7 @@ pub fn shellexpand(relpath: &str) -> Result<String, VirshleError> {
 }
 
 pub fn make_empty_file(path: &str) -> Result<(), VirshleError> {
-    let mut commands = vec![format!("dd if=/dev/null of={path} bs=1M seek=10")];
+    let commands = vec![format!("dd if=/dev/null of={path} bs=1M seek=10")];
     for cmd in commands {
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -222,17 +222,16 @@ pub fn umount(path: &str) -> Result<(), VirshleError> {
 /// Unmount filesystem with ffi bindings.
 pub fn _umount(target: &str) -> Result<(), VirshleError> {
     match unmount(target, UnmountFlags::empty()) {
-        Ok(()) => (),
+        Ok(_) => Ok(()),
         Err(why) => {
             error!("failed to unmount filesystems: {}", why);
-            return Err(VirshleError::from(why));
+            Err(VirshleError::from(why))
         }
     }
-
-    Ok(())
 }
 /// Mount filesystem with ffi bindings.
 pub fn _mount(source: &str, target: &str) -> Result<(), VirshleError> {
+    _umount(target).ok();
     // Fetch a listed of supported file systems on this system. This will be used
     // as the fstype to `Mount::new`, as the `Auto` mount parameter.
     let supported = match SupportedFilesystems::new() {
