@@ -126,8 +126,67 @@ v vm ls
 Then start your vm.
 
 ```sh
-v vm start --id <vm_id>
+# Pattern
+v vm start --id <vm_id> --attach
 ```
+
+### Start and provision a VM.
+
+You need to provide the vm with **user_data** such as an ssh public key
+for remote access.
+
+Here for we do not use the now conventional
+[cloud-init](https://cloudinit.readthedocs.io/en/latest/explanation/introduction.html#introduction),
+but rather
+[pipelight-init](https://github.com/pipelight/pipelight)
+which shines when it comes to provisioning speed.
+
+```sh
+# Pattern
+v vm start --id <vm_id> --user_data <user_data_filepath>
+# Example
+v vm start --id 1 --user_data user_data.toml
+```
+
+Then, you can access your via **ssh**:
+
+- without network, on local node,
+
+  ```sh
+  ssh vm-name.vsock
+  ```
+
+- with network,
+
+  Add a network configuration to the vm template
+
+  ```toml
+  # /etc/virshle/config.toml
+  [[template.vm.net]]
+  name = "main"
+  [template.vm.net.type.mac_v_tap]
+  ```
+
+  ```sh
+  v vm create -t <template_name>
+  ```
+
+  ```sh
+  v vm start --id <vm_id>
+  ```
+
+  With the vm_ip,
+
+  ```sh
+  ssh <vm_ip>
+  ```
+
+  With the vm_name,
+  depends on your dhcp/dns configuration.
+
+  ```sh
+  ssh vm-name.vm
+  ```
 
 ### Access your VM
 
@@ -135,22 +194,6 @@ Either attach the vm to a terminal standard outputs.
 
 ```sh
 v vm start --id <vm_id> --attach
-```
-
-Or add a network configuration and connect to the VM through ssh.
-
-```toml
-[[template.vm.net]]
-name = "main"
-[template.vm.net.type.mac_v_tap]
-```
-
-```sh
-v vm start --id <vm_id>
-```
-
-```sh
-ssh <vm_ip>
 ```
 
 ![vm_list](https://github.com/pipelight/virshle/blob/master/public/images/v_vm_ls_v.png)
@@ -195,7 +238,7 @@ services.virshle = {
 };
 ```
 
-See [docs/install.md](https://github.com/pipelight/virshle/docs/install.md)
+See [docs/install.md](https://github.com/pipelight/virshle/blob/master/docs/install.md)
 for other distributions.
 
 ## Alternatives

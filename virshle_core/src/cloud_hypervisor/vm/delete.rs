@@ -151,6 +151,17 @@ impl Vm {
             fs::remove_file(&socket)?;
         }
 
+        let vsocket = &self.get_vsocket()?;
+        let path = Path::new(&vsocket);
+        if path.exists() {
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo rm {}", &vsocket))
+                .run()?;
+            #[cfg(not(debug_assertions))]
+            fs::remove_file(&socket)?;
+        }
+
         Ok(())
     }
     /// Remove vm working directory and dependencies filetree.

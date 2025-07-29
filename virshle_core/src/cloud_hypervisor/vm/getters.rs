@@ -202,10 +202,8 @@ impl Vm {
 
         if let Some(record) = record {
             let mut vm: Vm = serde_json::from_value(record.definition)?;
-
             // Populate struct with database id.
             vm.id = Some(record.id as u64);
-
             return Ok(vm);
         } else {
             let message = format!("Couldn't find a vm with the name: {}", name);
@@ -226,10 +224,8 @@ impl Vm {
 
         if let Some(record) = record {
             let mut vm: Vm = serde_json::from_value(record.definition)?;
-
             // Populate struct with database id.
             vm.id = Some(record.id as u64);
-
             return Ok(vm);
         } else {
             let message = format!("Couldn't find a vm with the uuid: {}", uuid);
@@ -250,7 +246,9 @@ impl Vm {
             .await?;
 
         if let Some(record) = record {
-            let vm: Vm = serde_json::from_value(record.definition)?;
+            let mut vm: Vm = serde_json::from_value(record.definition)?;
+            // Populate struct with database id.
+            vm.id = Some(record.id as u64);
             return Ok(vm);
         } else {
             let message = format!("Couldn't find a vm with the id: {}", id);
@@ -315,11 +313,14 @@ impl Vm {
         let path = format!("{MANAGED_DIR}/vm/{}/tmp", self.uuid);
         Ok(path)
     }
-    /*
-     * Return vm socket path.
-     */
+    /// Return vm socket path for ch REST API communication.
     pub fn get_socket(&self) -> Result<String, VirshleError> {
         let path = format!("{MANAGED_DIR}/vm/{}/ch.sock", self.uuid);
+        Ok(path)
+    }
+    /// Return vm vsocket path for host guest (ssh) communication.
+    pub fn get_vsocket(&self) -> Result<String, VirshleError> {
+        let path = format!("{MANAGED_DIR}/vm/{}/ch.vsock", self.uuid);
         Ok(path)
     }
     pub fn get_socket_uri(&self) -> Result<String, VirshleError> {

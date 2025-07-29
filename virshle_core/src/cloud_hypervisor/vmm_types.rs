@@ -26,11 +26,42 @@ use log::info;
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
+#[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct VmConfig {
+    pub cpus: CpusConfig,
+    pub memory: MemoryConfig,
+    pub disks: Option<Vec<DiskConfig>>,
+    pub net: Option<Vec<NetConfig>>,
+
+    // Hardcoded into virshle for now.
+    pub payload: Option<PayloadConfig>,
+
+    pub console: Option<ConsoleConfig>,
+    pub serial: Option<ConsoleConfig>,
+    pub vsock: Option<VsockConfig>,
+
+    // Memory
+    pub balloon: Option<BalloonConfig>,
+
+    #[serde(flatten)]
+    other: serde_json::Value,
+}
+
 // Cpu
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ConsoleConfig {
     pub mode: ConsoleOutputMode,
+    pub socket: Option<String>,
 }
+
+// Disk efi bootloader
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct PayloadConfig {
+    pub kernel: Option<String>,
+    pub cmdline: Option<String>,
+}
+
+// Console
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum ConsoleOutputMode {
     #[default]
@@ -41,6 +72,12 @@ pub enum ConsoleOutputMode {
     Socket,
     Null,
 }
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct VsockConfig {
+    pub cid: u32,
+    pub socket: String,
+}
+
 // Cpu
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct CpusConfig {
@@ -65,6 +102,12 @@ pub struct MemoryConfig {
     #[serde(flatten)]
     other: serde_json::Value,
 }
+#[derive(Default, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct BalloonConfig {
+    pub size: Option<u64>,
+    pub deflate_on_oom: Option<bool>,
+    pub free_page_reporting: Option<bool>,
+}
 
 // Disk
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -84,20 +127,6 @@ impl From<&Disk> for DiskConfig {
             ..Default::default()
         }
     }
-}
-
-#[derive(Default, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BalloonConfig {
-    pub size: Option<u64>,
-    pub deflate_on_oom: Option<bool>,
-    pub free_page_reporting: Option<bool>,
-}
-
-// Disk efi bootloader
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct PayloadConfig {
-    pub kernel: Option<String>,
-    pub cmdline: Option<String>,
 }
 
 // Network
@@ -124,7 +153,6 @@ pub struct NetConfig {
     #[serde(flatten)]
     other: serde_json::Value,
 }
-
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum VhostMode {
     #[default]
@@ -172,23 +200,6 @@ pub struct VmInfoResponse {
     pub state: VmState,
 }
 
-#[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub struct VmConfig {
-    pub cpus: CpusConfig,
-    pub memory: MemoryConfig,
-    pub disks: Option<Vec<DiskConfig>>,
-    pub net: Option<Vec<NetConfig>>,
-
-    // Hardcoded into virshle for now.
-    pub payload: Option<PayloadConfig>,
-    pub console: Option<ConsoleConfig>,
-    pub serial: Option<ConsoleConfig>,
-    pub balloon: Option<BalloonConfig>,
-
-    #[serde(flatten)]
-    other: serde_json::Value,
-}
-
 // impl From<&Vm> for VmConfig {
 // fn from(e: &Vm) -> Self {
 impl VmConfig {
@@ -226,17 +237,36 @@ impl VmConfig {
         // Add bootloader
         let payload = PayloadConfig {
             kernel: Some("/run/cloud-hypervisor/hypervisor-fw".to_owned()),
-            cmdline: Some("earlyprintk=ttyS0 console=ttyS0 root=/dev/vda1 rw".to_owned()),
+            cmdline: Some(
+                "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw".to_owned(),
+            ),
         };
         config.payload = Some(payload);
 
         // Attach/Detach from standard output.
+        // let console_socket = format!("{}/console.sock", e.get_dir()?);
         config.serial = Some(ConsoleConfig {
+            // mode: ConsoleOutputMode::Socket,
+            // socket: Some(console_socket),
+            // mode: ConsoleOutputMode::Null,
             mode: ConsoleOutputMode::Tty,
+            ..Default::default()
         });
         config.console = Some(ConsoleConfig {
             mode: ConsoleOutputMode::Null,
+            // mode: ConsoleOutputMode::Socket,
+            // mode: ConsoleOutputMode::Pty,
+            ..Default::default()
         });
+
+        let v_socket = format!("{}/ch.vsock", e.get_dir()?);
+        if let Some(id) = e.id {
+            let v_cid: u32 = format!("10{}", id).parse()?;
+            config.vsock = Some(VsockConfig {
+                cid: v_cid,
+                socket: v_socket,
+            });
+        }
 
         // Add disks
         let mut disk: Vec<DiskConfig> = vec![];
@@ -354,7 +384,6 @@ mod test {
         let vm = Vm::from(&vm_template)?;
         println!("{:#?}", vm);
 
-        // let vmm_config = VmConfig::from(&vm);
         let vmm_config = VmConfig::from(&vm).await?;
 
         println!("{:#?}", vmm_config);
@@ -380,7 +409,6 @@ mod test {
         "#;
 
         let vm = Vm::from_toml(&toml)?;
-        // let vmm_config = VmConfig::from(&vm);
         let vmm_config = VmConfig::from(&vm).await?;
 
         // println!("{:#?}", vmm_config);

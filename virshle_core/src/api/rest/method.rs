@@ -25,8 +25,12 @@ use crate::cloud_hypervisor::{
 };
 use crate::config::VirshleConfig;
 
+// Connections and Http
+use crate::connection::{Connection, ConnectionHandle, ConnectionState};
+use crate::http_request::{Rest, RestClient};
+
 // Error handling
-use log::{error, warn};
+use log::{error, info, warn};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -98,6 +102,8 @@ pub mod template {
 }
 
 pub mod vm {
+    use pipelight_exec::Finder;
+
     use super::*;
     use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
     use crate::cloud_hypervisor::VmConfigPlus;
@@ -183,6 +189,25 @@ pub mod vm {
         let mut vm = Vm::get_by_args(&args).await?;
         vm.start(user_data.clone(), Some(true)).await?;
         Ok(vm)
+    }
+
+    /// Attach a virtual machine on a node.
+    pub async fn _attach(args: GetVmArgs, node_name: Option<String>) -> Result<(), VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+
+        let finder = Finder::new()
+            .seed("cloud-hypervisor")
+            .seed(&vm.uuid.to_string())
+            .search_no_parents()?;
+
+        #[cfg(debug_assertions)]
+        if let Some(matches) = finder.matches {
+            if let Some(_match) = matches.first() {
+                if let Some(pid) = _match.pid {}
+            }
+        }
+
+        Ok(())
     }
 
     /// Delete a vm and return it.

@@ -98,7 +98,7 @@ impl InitData {
         p_config += &unindent(&format!(
             r#"
         [[pipelines]]
-        name = "init_pre"
+        name = "init_net_pre"
         "#
         ))
         .to_owned();
@@ -183,7 +183,7 @@ impl InitData {
         p_config += &unindent(&format!(
             r#"
         [[pipelines]]
-        name = "init_post"
+        name = "init_net_post"
         "#
         ));
         p_config += &unindent(&format!(

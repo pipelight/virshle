@@ -166,12 +166,12 @@ impl Vm {
         attach: Option<bool>,
     ) -> Result<(), VirshleError> {
         info!("[start] starting vm {:#?}", self.name);
-        self.create_networks()?;
-        self.start_vmm(attach).await?;
 
-        // Provision with user defined data
+        // Create ressources
         self.add_init_disk(user_data)?;
+        self.create_networks()?;
 
+        self.start_vmm(attach).await?;
         self.push_config_to_vmm().await?;
 
         let mut conn = Connection::from(&self.clone());

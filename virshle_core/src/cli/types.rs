@@ -45,6 +45,9 @@ pub enum Crud {
     /// Removes(destroy) a virtual machine.
     #[command(arg_required_else_help = true)]
     Rm(VmArgs),
+    /// Removes(destroy) a virtual machine.
+    #[command(arg_required_else_help = true)]
+    Attach(VmArgs),
     /// Stops a virtual machine.
     #[command(arg_required_else_help = true)]
     Stop(VmArgs),

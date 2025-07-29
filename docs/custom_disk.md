@@ -2,22 +2,40 @@
 
 ## With Nixos.
 
-You can create a default vm disk,
-with your favorite configuration already builtin.
+You can create a default disk image (`.img`),
+with your favourite configuration already built-in.
 
 Simply use [nixos-generators](https://github.com/nix-community/nixos-generators)
 
 ```nix
 #flake.nix
-vm = inputs.nixos-generators.nixosGenerate {
-  format = "raw-efi";
-  inherit system;
-  inherit specialArgs;
-  modules = [
-    {virtualisation.diskSize = 10 * 1024;}
-      ./vm.nix
-  ];
-};
+{
+  description = "Virshle virtual machine base config.";
+  inputs = {
+    nixos-generators = {
+      url = "github:nix-community/nixos-generators";
+      inputs.nixpkgs.follows = "nixpkgs";
+      # inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
+    pipelight = {
+      url = "github:pipelight/pipelight?ref=dev";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+  outputs = {
+    self,
+    nixpkgs,
+  } @ inputs:
+    vm = inputs.nixos-generators.nixosGenerate {
+      format = "raw-efi";
+      inherit system;
+      inherit specialArgs;
+      modules = [
+        {virtualisation.diskSize = 10 * 1024;}
+          ./vm.nix
+      ];
+    };
+}
 ```
 
 Enable `pipelight-init` in the vm configuration.

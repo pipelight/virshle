@@ -324,6 +324,25 @@ impl Cli {
                     .await?;
                     VmTable::display_by_nodes(table).await?;
                 }
+                Crud::Attach(args) => {
+                    let cw_node = Node::default();
+                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Attaching vm...", None);
+
+                        // Bypass rest API,
+                        // and run on local node direcly.
+                        method::vm::_attach(
+                            GetVmArgs {
+                                id: args.id,
+                                uuid: args.uuid,
+                                name: args.name,
+                            },
+                            Some(cw_node.name),
+                        )
+                        .await?;
+                    }
+                }
                 Crud::Rm(args) => {
                     let cw_node = args.current_workgin_node.node;
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {

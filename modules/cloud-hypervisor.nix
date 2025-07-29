@@ -3,7 +3,6 @@
   config,
   inputs,
   pkgs,
-  pkgs-unstable,
   ...
 }:
 with lib; let
@@ -26,7 +25,7 @@ in
       " L+ /run/cloud-hypervisor/CLOUDVH.fd - - - - ${cloud-hypervisor-ovmf}"
     ];
 
-    environment.systemPackages = with pkgs-unstable; [
+    environment.systemPackages = with pkgs; [
       # VMMs
       cloud-hypervisor #v0.46.0
 
