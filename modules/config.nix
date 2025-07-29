@@ -12,6 +12,16 @@ with lib; let
   user = cfg.user;
   logLevel = cfg.logLevel;
   # security = pkgs.callPackage (pkgs.modulesPath + "/security/wrappers/default.nix");
+  security_lib = modulesPath + "/security/wrappers/default.nix";
+
+  wrapperDir = inputs.virshle.packages.${system}.default + "/bin/";
+  mount = security_lib.mkSetcapProgram {
+    program = "mount";
+    source = pkgs.mount;
+    owner = mkForce "root";
+    group = mkForce "wheel";
+    permissions = "u+rx,g+rx";
+  };
 in
   mkIf cfg.enable {
     ## Ensure /var/lib/virshle exists.
@@ -78,7 +88,8 @@ in
         Type = "simple";
         User = user;
         Group = "wheel";
-        Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
+        # Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
+        Environment = "PATH=${wrapperDir}";
         ExecStartPre = [
           "-${pkgs.coreutils}/bin/chown -R ${user}:wheel /var/lib/virshle"
           "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
