@@ -14,8 +14,7 @@ with lib; let
   # security = pkgs.callPackage (pkgs.modulesPath + "/security/wrappers/default.nix");
 in
   mkIf cfg.enable {
-    ## Module
-
+    ## Ensure /var/lib/virshle exists.
     # systemd.tmpfiles.rules = mkDefault [
     #   "Z '/var/lib/virshle' 774 root users - -"
     #   "d '/var/lib/virshle' 774 root users - -"
@@ -77,7 +76,7 @@ in
           };
       in {
         Type = "simple";
-        User = "root";
+        User = user;
         Group = "wheel";
         Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
         ExecStartPre = [
