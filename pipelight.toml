@@ -5,11 +5,11 @@ name = "test-nixosModule"
 name = "run module tests"
 commands = [
   # Update flake deps
-  "nix flake update --flake ./templates/flake.test.nix",
+  "nix flake update --flake ./templates/tests",
   # Build flake
   """
   nixos-rebuild build \
-  --flake './templates/flake.test.nix#default' \
+  --flake './templates/tests#default' \
   --override-input virshle ./
   """,
 ]
