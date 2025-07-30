@@ -6024,6 +6024,7 @@ dependencies = [
  "async-trait",
  "axum",
  "bat",
+ "bindgen",
  "bon",
  "bytes",
  "chrono",

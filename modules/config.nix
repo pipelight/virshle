@@ -9,51 +9,22 @@ with lib; let
   moduleName = "virshle";
   cfg = config.services.${moduleName};
 
-  user = cfg.user;
-  logLevel = cfg.logLevel;
-  # security = pkgs.callPackage (pkgs.modulesPath + "/security/wrappers/default.nix");
-  security_lib = modulesPath + "/security/wrappers/default.nix";
+  # user = cfg.user ? "root";
+  user = "root";
 
-  wrapperDir = inputs.virshle.packages.${system}.default + "/bin/";
-  mount = security_lib.mkSetcapProgram {
-    program = "mount";
-    source = pkgs.mount;
-    owner = mkForce "root";
-    group = mkForce "wheel";
-    permissions = "u+rx,g+rx";
-  };
+  logLevel = cfg.logLevel;
 in
   mkIf cfg.enable {
-    ## Ensure /var/lib/virshle exists.
-    # systemd.tmpfiles.rules = mkDefault [
-    #   "Z '/var/lib/virshle' 774 root users - -"
-    #   "d '/var/lib/virshle' 774 root users - -"
-    # ];
-
-    ## Mount iso
-    users.groups.disk.members = [user];
-    security.wrappers.umount = with pkgs; {
-      setuid = true;
-      setgid = true;
-      owner = mkForce "root";
-      group = mkForce "wheel";
-      permissions = "u+rx,g+rx";
-    };
-    security.wrappers.mount = with pkgs; {
-      setuid = true;
-      setgid = true;
-      owner = mkForce "root";
-      group = mkForce "wheel";
-      permissions = mkForce "u+rx,g+rx";
-    };
-
     security.wrappers.virshle = with pkgs; let
       package = inputs.virshle.packages.${system}.default;
     in {
       source = "${package}/bin/virshle";
-      capabilities = "cap_net_admin,cap_sys_admin+ep";
-      owner = user;
+      owner = "root";
       group = "wheel";
+
+      # setuid = true;
+      # setgid = true;
+      capabilities = "cap_net_admin,cap_sys_admin+eip";
       permissions = "u+rx,g+rx,o+rx";
     };
 
@@ -86,20 +57,24 @@ in
           };
       in {
         Type = "simple";
-        User = user;
+        User = "root";
         Group = "wheel";
-        # Environment = "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin";
-        Environment = "PATH=${wrapperDir}";
-        ExecStartPre = [
-          "-${pkgs.coreutils}/bin/chown -R ${user}:wheel /var/lib/virshle"
-          "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
+        Environment = [
+          # "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin"
+          "PATH=/run/current-system/sw/bin"
+          # Set home to user.
+          "HOME=${config.users.users.${user}.home}"
         ];
-        ExecStart = ''
-          ${config.security.wrapperDir}/virshle node serve ${verbosity}
-        '';
+        ExecStartPre = [
+          # "-${pkgs.coreutils}/bin/chown -R ${user}:wheel /var/lib/virshle"
+          # "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
+          "-${package}/virshle node init --all ${verbosity}"
+        ];
+        # ExecStart = "${config.security.wrapperDir}/virshle node serve ${verbosity}"
+        ExecStart = "${package}/bin/virshle node serve ${verbosity}";
 
-        # WorkingDirectory = "/var/lib/virshle";
-        # StandardInput = "null";
+        WorkingDirectory = "/var/lib/virshle";
+        StandardInput = "null";
         StandardOutput = "journal+console";
         StandardError = "journal+console";
 

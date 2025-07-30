@@ -206,6 +206,7 @@ impl Vm {
      * and add it vm config.
      */
     pub fn add_init_disk(&mut self, user_data: Option<UserData>) -> Result<&Self, VirshleError> {
+        debug!("[disk]: creating an init disk for vm {}", self.uuid);
         // Make disk
         let init_disk = InitDisk { vm: &*self };
 
@@ -224,7 +225,6 @@ impl Vm {
         let disk = Disk::from(&init_disk);
         self.disk.push(disk);
 
-        debug!("Created an init disk for vm {}", self.uuid);
         Ok(self)
     }
 }

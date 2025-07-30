@@ -128,46 +128,13 @@ impl InitDisk<'_> {
      * Create an init disk on host filesystem.
      */
     pub fn create(&self) -> Result<&Self, VirshleError> {
-        #[cfg(debug_assertions)]
-        let res = self._debug_create()?;
-
-        #[cfg(not(debug_assertions))]
-        let res = self._release_create()?;
-
-        Ok(res)
-    }
-
-    pub fn _release_create(&self) -> Result<&Self, VirshleError> {
         let disk_dir = self.vm.get_disk_dir()?;
         let source = format!("{disk_dir}/pipelight-init");
-
-        let mount_dir = self.vm.get_mount_dir()?;
-        let target = format!("{mount_dir}/pipelight-init/pipelight.toml");
-
         utils::make_empty_file(&source)?;
         utils::format_to_vfat(&source)?;
-        utils::_mount(&source, &target)?;
-
         Ok(self)
     }
 
-    pub fn _debug_create(&self) -> Result<&Self, VirshleError> {
-        let disk_dir = self.vm.get_disk_dir()?;
-        let source = format!("{disk_dir}/pipelight-init");
-
-        let mount_dir = self.vm.get_mount_dir()?;
-        let target = format!("{mount_dir}/pipelight-init");
-
-        utils::make_empty_file(&source)?;
-        utils::format_to_vfat(&source)?;
-        utils::mount(&source, &target)?;
-
-        Ok(self)
-    }
-
-    /*
-     * Mount init disk to host filesystem.
-     */
     pub fn mount(&self) -> Result<&Self, VirshleError> {
         let disk_dir = self.vm.get_disk_dir()?;
         let source = format!("{disk_dir}/pipelight-init");
@@ -175,87 +142,21 @@ impl InitDisk<'_> {
         let mount_dir = self.vm.get_mount_dir()?;
         let target = format!("{mount_dir}/pipelight-init");
 
-        // Ensure mounting directory exists and nothing is already mounted.
-        fs::create_dir_all(&target)?;
-
-        let mut commands = vec![];
-
-        // TODO(): add systemd unit mountcap.
-        // Mount need root priviledge
         #[cfg(debug_assertions)]
-        commands.push(format!(
-            "sudo mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
-        ));
+        utils::mount(&source, &target)?;
         #[cfg(not(debug_assertions))]
-        commands.push(format!(
-            "mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
-        ));
+        utils::_mount(&source, &target)?;
 
-        for cmd in commands {
-            let mut proc = Process::new();
-            let res = proc.stdin(&cmd).run()?;
-
-            match res.state.status {
-                Some(Status::Failed) => {
-                    let message = format!("[disk]: couldn't mount init disk.");
-                    let help = format!(
-                        "{} -> {} ",
-                        &res.io.stdin.unwrap().trim(),
-                        &res.io.stderr.unwrap().trim()
-                    );
-                    error!("{}:{}", &message, &help);
-                }
-                _ => {
-                    let message = format!("[disk]: mounted init disk.");
-                    let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                    trace!("{}:{}", &message, &help);
-                }
-            };
-        }
         Ok(self)
     }
-
-    /*
-     * Unmount init disk from host filesystem.
-     */
     pub fn umount(&self) -> Result<&Self, VirshleError> {
         let mount_dir = self.vm.get_mount_dir()?;
         let target = format!("{mount_dir}/pipelight-init");
 
-        let mut commands = vec![];
-
-        // Umount need root priviledge
-        #[cfg(debug_assertions)]
-        commands.push(format!("sudo umount {target}"));
-        #[cfg(not(debug_assertions))]
-        commands.push(format!("umount {target}"));
-
-        for cmd in commands {
-            let mut proc = Process::new();
-            let res = proc.stdin(&cmd).run()?;
-
-            match res.state.status {
-                Some(Status::Failed) => {
-                    let message = format!("[disk]: couldn't unmount init disk.");
-                    let help = format!(
-                        "{} -> {} ",
-                        &res.io.stdin.unwrap().trim(),
-                        &res.io.stderr.unwrap().trim()
-                    );
-                    error!("{}:{}", &message, &help);
-                    return Err(LibError::builder().msg(&message).help(&help).build().into());
-                }
-                _ => {
-                    let message = format!("[disk]: unmounted init disk.");
-                    let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                    trace!("{}:{}", &message, &help);
-                }
-            };
-        }
-
-        // Clean mount points
-        fs::remove_dir_all(&target)?;
-
+        // #[cfg(debug_assertions)]
+        utils::umount(&target)?;
+        // #[cfg(not(debug_assertions))]
+        // utils::_umount(&&target)?;
         Ok(self)
     }
 }

@@ -3,6 +3,7 @@ pkgs.mkShell {
   buildInputs = with pkgs.buildPackages; [
     openssl
     pkg-config
+    iproute2
 
     # rust vmm uses latest stable and oxalica tend to lag behind.break
     # so we temporary force use of beta.

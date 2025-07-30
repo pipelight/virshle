@@ -90,3 +90,6 @@ sys-mount = { version = "3.0.1", features = ["loop"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
+
+[build-dependencies]
+bindgen = "0.71.0"

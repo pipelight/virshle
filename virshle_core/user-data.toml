@@ -1,9 +1,9 @@
 #######################
 # Crocuda account user-data
 [account]
+uuid = "6cff9c9c-8713-40ca-b950-669bae24d9c9"
 [account.user]
 name = "anon"
-uuid = "6cff9c9c-8713-40ca-b950-669bae24d9c9"
 public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHftzi3MZD09dJTNM4BfxpkfnqxyKiBk8smdQzA1ores"
 
 

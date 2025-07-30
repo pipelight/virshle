@@ -180,6 +180,39 @@ pub fn mount(source: &str, target: &str) -> Result<(), VirshleError> {
     }
     Ok(())
 }
+/// Mount filesystem with ffi bindings.
+pub fn _mount(source: &str, target: &str) -> Result<(), VirshleError> {
+    _umount(target).ok();
+    // Fetch a listed of supported file systems on this system. This will be used
+    // as the fstype to `Mount::new`, as the `Auto` mount parameter.
+    let supported = match SupportedFilesystems::new() {
+        Ok(supported) => supported,
+        Err(why) => {
+            error!("failed to mount filesystems: {}", why);
+            return Err(VirshleError::from(why));
+        }
+    };
+
+    // The source block will be mounted to the target directory, and the fstype is likely
+    // one of the supported file systems.
+    let result = Mount::builder()
+        .fstype(FilesystemType::from(&supported))
+        .explicit_loopback()
+        .mount(source, target);
+
+    match result {
+        Ok(mount) => {
+            let message = format!("[disk]: mounted init disk.");
+            trace!("{}", &message);
+        }
+        Err(why) => {
+            let message = format!("[disk]: couldn't mount init disk.");
+            error!("{}:{}", &message, &why);
+        }
+    };
+    Ok(())
+}
+
 /// Unmount init disk from host filesystem.
 pub fn umount(path: &str) -> Result<(), VirshleError> {
     let mut commands = vec![];
@@ -220,43 +253,19 @@ pub fn umount(path: &str) -> Result<(), VirshleError> {
 }
 
 /// Unmount filesystem with ffi bindings.
+///
+/// Not working yet for loopback devices, see:
+/// https://github.com/pop-os/sys-mount
 pub fn _umount(target: &str) -> Result<(), VirshleError> {
     match unmount(target, UnmountFlags::empty()) {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            let message = format!("[disk]: unmounted init disk.");
+            trace!("{}", &message);
+            Ok(())
+        }
         Err(why) => {
             error!("failed to unmount filesystems: {}", why);
             Err(VirshleError::from(why))
         }
     }
-}
-/// Mount filesystem with ffi bindings.
-pub fn _mount(source: &str, target: &str) -> Result<(), VirshleError> {
-    _umount(target).ok();
-    // Fetch a listed of supported file systems on this system. This will be used
-    // as the fstype to `Mount::new`, as the `Auto` mount parameter.
-    let supported = match SupportedFilesystems::new() {
-        Ok(supported) => supported,
-        Err(why) => {
-            error!("failed to mount filesystems: {}", why);
-            return Err(VirshleError::from(why));
-        }
-    };
-
-    // The source block will be mounted to the target directory, and the fstype is likely
-    // one of the supported file systems.
-    let result = Mount::builder()
-        .fstype(FilesystemType::from(&supported))
-        .mount(source, target);
-
-    match result {
-        Ok(mount) => {
-            let message = format!("[disk]: mounted init disk.");
-            trace!("{}", &message);
-        }
-        Err(why) => {
-            let message = format!("[disk]: couldn't mount init disk.");
-            error!("{}:{}", &message, &why);
-        }
-    };
-    Ok(())
 }
