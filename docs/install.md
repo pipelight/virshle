@@ -1,6 +1,4 @@
-# Install
-
-## NixOs (with flakes).
+# Install on NixOs (with flakes).
 
 When using nixos, you can enable the module by adding those lines to your configuration.
 
@@ -20,17 +18,31 @@ Enable the service.
 ```nix
 # default.nix
 services.virshle = {
-    enable = true;
-    logLevel = "info";
-    # The user to run the node as.
-    user = "anon";
+  enable = true;
+  logLevel = "info";
+  # The user to run the node as.
+  user = "anon";
 };
 ```
+
+## Custom storage.
+
+You can store VMs resources in another device like an encrypted RAID.
+Just symlink `/var/lib/virshle` to the desired path, and set required permissions.
+
+```nix
+systemd.tmpfiles.rules = [
+  "L+ /var/lib/virshle - - - - /run/media/RAID/storage/virshle"
+  "Z '/run/media/RAID/storage/virshle' 2774 ${config.services.virshle.user} users - -"
+];
+```
+
+## Custom network configuration.
 
 For fine vm network control, you can add a host network configuration like the following
 [`modules/networking.nix`](https://github.com/pipelight/virshle/modules/config.nix).
 
-# Other Linux distributions (Debian).
+# Install on other Linux distributions (Debian).
 
 Install the binary from source with cargo.
 
@@ -38,8 +50,8 @@ Install the binary from source with cargo.
 cargo install --git https://github.com/pipelight/virshle
 ```
 
-Then create a
-[default systemd unit](https://github.com/pipelight/virshle/scripts/virshle.service)
+Then create a default systemd unit like the following:
+[virshle.service](https://github.com/pipelight/virshle/scripts/virshle.service)
 to run virshle in the background on server boot.
 
 ## Dependencies

@@ -4,16 +4,12 @@
   inputs,
   pkgs,
   ...
-}:
-with lib;
-with pkgs; let
+}: let
   moduleName = "virshle";
 
   cfg = config.services.${moduleName};
-  user = cfg.user ? "root";
-  logLevel = cfg.logLevel;
 
-  package = inputs.virshle.packages.${system}.default;
+  package = inputs.virshle.packages.${pkgs.system}.default;
   virshleProxyCommand = pkgs.writeShellScriptBin "virshleProxyCommand" ''
     h=$1
     p=$2
@@ -25,7 +21,14 @@ with pkgs; let
     fn
   '';
 in
-  mkIf cfg.enable {
+  lib.mkIf cfg.enable
+  {
+    ## Working dir
+    systemd.tmpfiles.rules = lib.mkDefault [
+      "Z '/var/lib/crotui' 2774 ${cfg.user} users - -"
+      "d '/var/lib/crotui' 2774 ${cfg.user} users - -"
+    ];
+
     security.wrappers.virshle = {
       source = "${package}/bin/virshle";
       owner = "root";
@@ -40,7 +43,7 @@ in
     ## Systemd unit file
     systemd.services.virshle = {
       enable = true;
-      description = "Virshle node daemon (level 2 hypervisor)";
+      description = "Virshle node daemon (type 2 hypervisor)";
       documentation = [
         "https://github.com/pipelight/virshle"
       ];
@@ -61,7 +64,7 @@ in
             "debug" = "-vvv";
             "trace" = "-vvvv";
           }.${
-            logLevel
+            cfg.logLevel
           };
       in {
         Type = "simple";
@@ -70,15 +73,12 @@ in
         Environment = [
           # "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin"
           "PATH=/run/current-system/sw/bin"
-          # Set home to user.
-          "HOME=${config.users.users.${user}.home}"
+          # If you want "~" to expend as another user's home.
+          "HOME=${config.users.users.${cfg.user}.home}"
         ];
         ExecStartPre = [
-          # "-${pkgs.coreutils}/bin/chown -R ${user}:wheel /var/lib/virshle"
-          # "-${config.security.wrapperDir}/virshle node init --all ${verbosity}"
           "-${package}/virshle node init --all ${verbosity}"
         ];
-        # ExecStart = "${config.security.wrapperDir}/virshle node serve ${verbosity}"
         ExecStart = "${package}/bin/virshle node serve ${verbosity}";
 
         WorkingDirectory = "/var/lib/virshle";
@@ -87,10 +87,6 @@ in
         StandardError = "journal+console";
 
         AmbientCapabilities = [
-          # "CAP_NET_BIND_SERVICE"
-          # "CAP_SET_PROC"
-          # "CAP_SETUID"
-          # "CAP_SETGID"
           "CAP_SYS_ADMIN"
           "CAP_NET_ADMIN"
         ];
@@ -103,10 +99,10 @@ in
       virshleProxyCommand
     ];
 
-    programs.ssh = with lib; {
+    programs.ssh = {
       systemd-ssh-proxy.enable = true;
       # Enable ssh-vsock communication on host side.
-      extraConfig = mkAfter ''
+      extraConfig = lib.mkAfter ''
         ## Virshle special command
         Host vm/*
           ProxyCommand ${virshleProxyCommand}/bin/virshleProxyCommand %h %p

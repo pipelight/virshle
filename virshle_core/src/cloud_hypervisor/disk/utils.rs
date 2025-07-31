@@ -115,7 +115,7 @@ pub fn _make_empty_file(path: &str, block_size: &str, file_size: &str) -> Result
 }
 /// Create a vfat partition on empty file.
 pub fn format_to_vfat(path: &str) -> Result<(), VirshleError> {
-    let mut commands = vec![format!("mkfs.vfat -F 32 -n INIT {path}")];
+    let commands = vec![format!("mkfs.vfat -F 32 -n INIT {path}")];
     for cmd in commands {
         let mut proc = Process::new();
         let res = proc.stdin(&cmd).run()?;
@@ -182,7 +182,12 @@ pub fn mount(source: &str, target: &str) -> Result<(), VirshleError> {
 }
 /// Mount filesystem with ffi bindings.
 pub fn _mount(source: &str, target: &str) -> Result<(), VirshleError> {
+    // Safeguard
     _umount(target).ok();
+
+    // Ensure mounting dir exists.
+    fs::create_dir_all(&target)?;
+
     // Fetch a listed of supported file systems on this system. This will be used
     // as the fstype to `Mount::new`, as the `Auto` mount parameter.
     let supported = match SupportedFilesystems::new() {

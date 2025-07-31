@@ -1,24 +1,30 @@
 # /etc/systemd/system/virshle.service
 
 [Unit]
-After=network.target socket.target ovs-vswitchd.service ovsdb.service
-Description=Virshle node daemon
+Description=Virshle node daemon (type 2 hypervisor)
 Documentation=https://github.com/pipelight/virshle
 
-[Service]
-AmbientCapabilities=CAP_SETUID
-AmbientCapabilities=CAP_SETGID
-AmbientCapabilities=CAP_SYS_ADMIN
-AmbientCapabilities=CAP_NET_ADMIN
-Environment=PATH=/bin/env
-ExecStart=/bin/env virshle node serve -vvvv
+After=network.target socket.target ovs-vswitchd.service ovsdb.service
 
+[Service]
+Type=simple
+ExecStart=/bin/env virshle node serve -vvvv
 ExecStartPre=/bin/env -virshle node init --all -vvvv
-Group=users
+
+Group=wheel
+User=root
+WorkingDirectory=/var/lib/virshle
+
+Environment=PATH=/usr/bin/env
+# If you want "~" to expend as another home.
+# Environment=HOME=/home/anon
+
+StandardInput=null
 StandardError=journal+console
 StandardOutput=journal+console
-Type=simple
-User=anon
+
+AmbientCapabilities=CAP_SYS_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
 
 [Install]
 WantedBy=multi-user.target
