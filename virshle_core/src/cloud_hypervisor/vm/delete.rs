@@ -151,15 +151,14 @@ impl Vm {
             fs::remove_file(&socket)?;
         }
 
-        let vsocket = &self.get_vsocket()?;
-        let path = Path::new(&vsocket);
+        let vsock = &self.get_vsocket()?;
+        let path = Path::new(&vsock);
         if path.exists() {
             #[cfg(debug_assertions)]
-            Process::new()
-                .stdin(&format!("sudo rm {}", &vsocket))
-                .run()?;
+            Process::new().stdin(&format!("sudo rm {}", &vsock)).run()?;
+
             #[cfg(not(debug_assertions))]
-            fs::remove_file(&socket)?;
+            fs::remove_file(&vsock)?;
         }
 
         Ok(())
