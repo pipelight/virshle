@@ -20,6 +20,7 @@ rock lee
 neji hyuga
 sakura haruno
 kakashi hatake
+choji akimichi
 
 ## Bnha
 
@@ -66,10 +67,10 @@ aizen sosuke
 gin ichimaru
 tenza zangetsu
 
-## Kn8
-
 naoya matsumoto
 yoruichi shihoin
+
+## Kn8
 
 kafka hibino
 kikoru shinomiya
@@ -172,3 +173,7 @@ ronnie coleman
 jay cutler
 mike mentzer
 frank zane
+
+john skywalker
+jeff seid
+jo lindner
