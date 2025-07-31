@@ -161,17 +161,6 @@ impl Cli {
                     );
                     sp.stop_and_persist("✅", &message);
                 }
-                Crud::Info(args) => {
-                    if let Some(name) = args.name {
-                        let vm = Vm::get_by_name(&name).await?;
-                        vm.to_toml()?;
-                        vm.get_ch_info().await?;
-                    } else if let Some(id) = args.id {
-                        let vm = Vm::get_by_id(&id).await?;
-                        vm.to_toml()?;
-                        vm.get_ch_info().await?;
-                    }
-                }
                 Crud::Start(args) => {
                     // Set working node
                     let cw_node = args.vm_args.current_workgin_node.node.clone();
@@ -312,37 +301,6 @@ impl Cli {
                         sp.stop_and_persist("✅", &message);
                     }
                 }
-                Crud::Ls(args) => {
-                    let cw_node = args.current_workgin_node.node;
-                    let table = client::vm::get_info_many(
-                        Some(GetManyVmArgs {
-                            vm_state: args.state,
-                            account_uuid: args.account,
-                        }),
-                        cw_node,
-                    )
-                    .await?;
-                    VmTable::display_by_nodes(table).await?;
-                }
-                Crud::Attach(args) => {
-                    let cw_node = Node::default();
-                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
-                        // Spinner
-                        let mut sp = Spinner::new(spinners::Toggle5, "Attaching vm...", None);
-
-                        // Bypass rest API,
-                        // and run on local node direcly.
-                        method::vm::_attach(
-                            GetVmArgs {
-                                id: args.id,
-                                uuid: args.uuid,
-                                name: args.name,
-                            },
-                            Some(cw_node.name),
-                        )
-                        .await?;
-                    }
-                }
                 Crud::Rm(args) => {
                     let cw_node = args.current_workgin_node.node;
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
@@ -397,6 +355,76 @@ impl Cli {
                         );
                         sp.stop_and_persist("✅", &message);
                     }
+                }
+                Crud::Ls(args) => {
+                    let cw_node = args.current_workgin_node.node;
+                    let table = client::vm::get_info_many(
+                        Some(GetManyVmArgs {
+                            vm_state: args.state,
+                            account_uuid: args.account,
+                        }),
+                        cw_node,
+                    )
+                    .await?;
+                    VmTable::display_by_nodes(table).await?;
+                }
+                Crud::ChInfo(args) => {
+                    // Set working node
+                    let cw_node = args.current_workgin_node.node.clone();
+                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                        let res = client::vm::get_ch_info(
+                            GetVmArgs {
+                                id: args.id,
+                                uuid: args.uuid,
+                                name: args.name,
+                            },
+                            cw_node.clone(),
+                        )
+                        .await?;
+                        println!("{:#?}", res);
+                    }
+                }
+                Crud::Info(args) => {
+                    // Set working node
+                    let cw_node = args.current_workgin_node.node.clone();
+                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                        let res = client::vm::get_info(
+                            GetVmArgs {
+                                id: args.id,
+                                uuid: args.uuid,
+                                name: args.name,
+                            },
+                            cw_node.clone(),
+                        )
+                        .await?;
+                        println!("{:#?}", res);
+                    }
+                }
+                Crud::Definition(args) => {
+                    // Set working node
+                    let cw_node = args.current_workgin_node.node.clone();
+                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                        let res = client::vm::get_definition(
+                            GetVmArgs {
+                                id: args.id,
+                                uuid: args.uuid,
+                                name: args.name,
+                            },
+                            cw_node.clone(),
+                        )
+                        .await?;
+                        res.print_to_toml()?;
+                    }
+                }
+                Crud::GetVsockPath(args) => {
+                    let vm = Vm::get_by_args(&GetVmArgs {
+                        id: args.id,
+                        uuid: args.uuid,
+                        name: args.name,
+                    })
+                    .await?;
+                    let path = vm.get_vsocket()?;
+                    println!("{}", path);
                 }
                 _ => {}
             },

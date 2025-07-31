@@ -142,7 +142,7 @@ impl Vm {
         };
         Ok(item)
     }
-    pub fn to_toml(&self) -> Result<String, VirshleError> {
+    pub fn print_to_toml(&self) -> Result<String, VirshleError> {
         let string: String = toml::to_string(self).map_err(CastError::from)?;
         if log_enabled!(Level::Warn) {
             let (cols, _) = size()?;
@@ -167,7 +167,7 @@ mod test {
     #[test]
     fn display_vm_to_toml() -> Result<()> {
         let vm = Vm::default();
-        let string = vm.to_toml()?;
+        let string = vm.print_to_toml()?;
         println!("");
         PrettyPrinter::new()
             .input_from_bytes(string.as_bytes())

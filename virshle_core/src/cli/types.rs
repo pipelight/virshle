@@ -45,18 +45,26 @@ pub enum Crud {
     /// Removes(destroy) a virtual machine.
     #[command(arg_required_else_help = true)]
     Rm(VmArgs),
-    /// Removes(destroy) a virtual machine.
-    #[command(arg_required_else_help = true)]
-    Attach(VmArgs),
     /// Stops a virtual machine.
     #[command(arg_required_else_help = true)]
     Stop(VmArgs),
     /// Parse a virtual machine toml configuration.
+
     #[command(arg_required_else_help = true)]
     Config(VmArgs),
+
     /// Inspect a created virtual machine configuration (cloud-hypervisor api).
     #[command(arg_required_else_help = true)]
     Info(VmArgs),
+    /// Inspect a created virtual machine configuration (cloud-hypervisor api).
+    #[command(arg_required_else_help = true)]
+    ChInfo(VmArgs),
+    /// Return the path fo vm vsock
+    #[command(arg_required_else_help = true, hide = true)]
+    GetVsockPath(VmArgs),
+    /// Return the path fo vm vsock
+    #[command(arg_required_else_help = true, hide = true)]
+    Definition(VmArgs),
 
     /// List existing vms.
     #[command()]

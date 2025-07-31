@@ -194,7 +194,7 @@ impl FromStr for VmState {
     }
 }
 
-#[derive(Default, Clone, Deserialize, Serialize)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct VmInfoResponse {
     pub config: VmConfig,
     pub state: VmState,

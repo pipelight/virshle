@@ -153,6 +153,7 @@ pub mod node {
 pub mod vm {
     use super::*;
     use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
+    use crate::cloud_hypervisor::vmm_types::VmInfoResponse;
     use crate::cloud_hypervisor::VmConfigPlus;
 
     /// Get a hashmap/dict of all vms per (reachable) node.
@@ -187,50 +188,6 @@ pub mod vm {
         Ok(vms)
     }
 
-    /// Bulk
-    /// Get a hashmap/dict of all vms per (reachable) node.
-    /// - node: the node name set in the virshle config file.
-    /// - node: an optional account uuid.
-    pub async fn get_info_many(
-        args: Option<GetManyVmArgs>,
-        node_name: Option<String>,
-    ) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
-        // Single or Multiple node search.
-        let config = VirshleConfig::get()?;
-        let nodes = if let Some(name) = node_name {
-            vec![Node::get_by_name(&name)?]
-        } else {
-            Node::get_all()?
-        };
-
-        let mut vms: HashMap<Node, Vec<VmTable>> = HashMap::new();
-
-        for node in nodes {
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-
-            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
-                let node_vms: Vec<VmTable> = rest
-                    .post("/vm/info.many", args.clone())
-                    .await?
-                    .to_value()
-                    .await?;
-                vms.insert(node, node_vms);
-            } else {
-                // Logging
-                let state = rest.connection.get_state().await?;
-                let message = format!("node {:#?} unreachable", node.name);
-                match state {
-                    ConnectionState::SshAuthError => warn!("{}", &message),
-                    ConnectionState::Unreachable => warn!("{}", &message),
-                    _ => {}
-                };
-            }
-        }
-        Ok(vms)
-    }
     /// Create a virtual machine on a given node.
     ///
     /// # Arguments
@@ -456,6 +413,41 @@ pub mod vm {
 
         Ok(vm)
     }
+    pub async fn get_definition(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<Vm, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching info for on a vm on node {:#?}", node.name);
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let vm: Vm = rest
+            .post(
+                "/vm/definition",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+
+        info!(
+            "[end] fetched info on vm {:#?} on node {:#?}",
+            vm.name, node.name
+        );
+        Ok(vm)
+    }
+
     pub async fn get_info(
         args: GetVmArgs,
         node_name: Option<String>,
@@ -492,16 +484,58 @@ pub mod vm {
         Ok(vm)
     }
 
-    pub async fn get_ch_info(
+    /// Bulk
+    /// Get a hashmap/dict of all vms per (reachable) node.
+    /// - node: the node name set in the virshle config file.
+    /// - node: an optional account uuid.
+    pub async fn get_info_many(
+        args: Option<GetManyVmArgs>,
+        node_name: Option<String>,
+    ) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
+        // Single or Multiple node search.
+        let config = VirshleConfig::get()?;
+        let nodes = if let Some(name) = node_name {
+            vec![Node::get_by_name(&name)?]
+        } else {
+            Node::get_all()?
+        };
+
+        let mut vms: HashMap<Node, Vec<VmTable>> = HashMap::new();
+
+        for node in nodes {
+            let mut conn = Connection::from(&node);
+            let mut rest = RestClient::from(&mut conn);
+            rest.base_url("/api/v1");
+            rest.ping_url("/api/v1/node/ping");
+
+            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
+                let node_vms: Vec<VmTable> = rest
+                    .post("/vm/info.many", args.clone())
+                    .await?
+                    .to_value()
+                    .await?;
+                vms.insert(node, node_vms);
+            } else {
+                // Logging
+                let state = rest.connection.get_state().await?;
+                let message = format!("node {:#?} unreachable", node.name);
+                match state {
+                    ConnectionState::SshAuthError => warn!("{}", &message),
+                    ConnectionState::Unreachable => warn!("{}", &message),
+                    _ => {}
+                };
+            }
+        }
+        Ok(vms)
+    }
+
+    pub async fn get_raw_ch_info(
         args: GetVmArgs,
         node_name: Option<String>,
     ) -> Result<(), VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
-        info!(
-            "[start] fetching CH info for on a vm on node {:#?}",
-            node.name
-        );
+        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
 
         let mut conn = Connection::from(&node);
         let mut rest = RestClient::from(&mut conn);
@@ -510,9 +544,45 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let vm: Vm = rest
+        rest.base_url("/api/v1/ch");
+        let res: String = rest
             .post(
-                "/vm/ch/info",
+                "/vm.info",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_string()
+            .await?;
+
+        conn.close();
+        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
+
+        Ok(())
+    }
+
+    pub async fn get_ch_info(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<(), VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        rest.base_url("/api/v1/ch");
+        let res: VmInfoResponse = rest
+            .post(
+                "/vm.info",
                 Some(GetVmArgs {
                     uuid: args.uuid,
                     id: args.id,
@@ -524,11 +594,39 @@ pub mod vm {
             .await?;
         conn.close();
 
-        info!(
-            "[end] fetched CH info on vm {:#?} on node {:#?}",
-            vm.name, node.name
-        );
+        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
 
         Ok(())
+    }
+    pub async fn get_vsock_path(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<String, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching info for on a vm on node {:#?}", node.name);
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let path: String = rest
+            .post(
+                "/vm/get_vsock_path",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+
+        info!("[end] fetched info on a vm on node {:#?}", node.name);
+        Ok(path)
     }
 }

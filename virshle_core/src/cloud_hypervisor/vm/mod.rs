@@ -24,6 +24,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, Value};
 use std::fmt;
 
+// Socket
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 use pipelight_exec::Process;
@@ -194,6 +197,7 @@ impl Vm {
                 .build()
                 .into());
         }
+        self.set_vsock_permissions().await?;
 
         info!("[end] started vm {:#?}", self.name);
         Ok(())
@@ -254,13 +258,15 @@ impl Vm {
             }
 
             // Set loose permission on cloud-hypervisor socket.
+            #[cfg(not(debug_assertions))]
+            {
+                let mut perms = fs::metadata(&path)?.permissions();
+                perms.set_mode(0o774);
+                fs::set_permissions(&path, perms)?;
+            }
             #[cfg(debug_assertions)]
             Process::new()
-                .stdin(&format!("sudo chgrp users {}", &self.get_socket()?))
-                .run()?;
-            #[cfg(debug_assertions)]
-            Process::new()
-                .stdin(&format!("sudo chmod 774 {}", &self.get_socket()?))
+                .stdin(&format!("sudo chmod 774 {}", &socket))
                 .run()?;
         }
         Ok(())
@@ -331,6 +337,31 @@ impl Vm {
             error!("{}", &err_msg);
         }
 
+        Ok(())
+    }
+    /// Widden vsock permissions to allow ssh connection from the owning group.
+    ///
+    /// Socket is not created on ch proc start, but after vm boot.
+    /// So this function is to be used after vm boot.
+    async fn set_vsock_permissions(&self) -> Result<(), VirshleError> {
+        // Wait until socket is created
+        let socket = self.get_vsocket()?;
+        let path = Path::new(&socket);
+        while !path.exists() {
+            tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
+        }
+
+        // Set loose permission on vsocket.
+        #[cfg(not(debug_assertions))]
+        {
+            let mut perms = fs::metadata(&path)?.permissions();
+            perms.set_mode(0o774);
+            fs::set_permissions(&path, perms)?;
+        }
+        #[cfg(debug_assertions)]
+        Process::new()
+            .stdin(&format!("sudo chmod 774 {}", &socket))
+            .run()?;
         Ok(())
     }
 }

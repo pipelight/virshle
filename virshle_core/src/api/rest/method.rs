@@ -256,7 +256,26 @@ pub mod vm {
         Ok(vm)
     }
 
-    /// Get summarized information about a VM.
+    /// Get a VM definition.
+    pub async fn get(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_get(args).await?))
+    }
+    pub async fn _get(args: GetVmArgs) -> Result<Vm, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        Ok(vm)
+    }
+
+    /// Get vm info.
+    pub async fn get_info(Json(args): Json<GetVmArgs>) -> Result<Json<VmTable>, VirshleError> {
+        Ok(Json(_get_info(args).await?))
+    }
+    pub async fn _get_info(args: GetVmArgs) -> Result<VmTable, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        let table = VmTable::from(&vm).await?;
+        Ok(table)
+    }
+
+    /// Get summarized information about a VMs.
     pub async fn get_info_many(
         Json(args): Json<GetManyVmArgs>,
     ) -> Result<Json<Vec<VmTable>>, VirshleError> {
@@ -275,9 +294,20 @@ pub mod vm {
         let info = vm.get_ch_info().await?;
         Ok(info.into())
     }
+    pub async fn get_raw_ch_info(Json(args): Json<GetVmArgs>) -> Result<String, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        let info = vm.get_raw_ch_info().await?;
+        Ok(info.into())
+    }
+
     pub async fn ping_ch(Json(args): Json<GetVmArgs>) -> Result<(), VirshleError> {
         let vm = Vm::get_by_args(&args).await?;
         vm.ping_ch().await
+    }
+    pub async fn get_vsock_path(Json(args): Json<GetVmArgs>) -> Result<String, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        let path = vm.get_vsocket()?;
+        Ok(path)
     }
 }
 

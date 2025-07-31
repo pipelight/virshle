@@ -5,19 +5,28 @@
   pkgs,
   ...
 }:
-with lib; let
+with lib;
+with pkgs; let
   moduleName = "virshle";
+
   cfg = config.services.${moduleName};
-
-  # user = cfg.user ? "root";
-  user = "root";
-
+  user = cfg.user ? "root";
   logLevel = cfg.logLevel;
+
+  package = inputs.virshle.packages.${system}.default;
+  virshleProxyCommand = pkgs.writeShellScriptBin "virshleProxyCommand" ''
+    h=$1
+    p=$2
+    fn() {
+      vm_name=$(${pkgs.coreutils}/bin/echo $h | ${pkgs.gnused}/bin/sed -e "s/^vm\///");
+      vsock_path=$(${package}/bin/virshle vm get-vsock-path --name $vm_name);
+      ${pkgs.systemd}/lib/systemd/systemd-ssh-proxy vsock-mux$vsock_path $p
+    }
+    fn
+  '';
 in
   mkIf cfg.enable {
-    security.wrappers.virshle = with pkgs; let
-      package = inputs.virshle.packages.${system}.default;
-    in {
+    security.wrappers.virshle = {
       source = "${package}/bin/virshle";
       owner = "root";
       group = "wheel";
@@ -43,8 +52,7 @@ in
       ];
       wantedBy = ["multi-user.target"];
 
-      serviceConfig = with pkgs; let
-        package = inputs.virshle.packages.${system}.default;
+      serviceConfig = let
         verbosity =
           {
             "error" = "";
@@ -89,8 +97,24 @@ in
       };
     };
 
-    environment.systemPackages = with pkgs; [
+    environment.systemPackages = [
       # Network manager
-      inputs.virshle.packages.${system}.default
+      package
+      virshleProxyCommand
     ];
+
+    programs.ssh = with lib; {
+      systemd-ssh-proxy.enable = true;
+      # Enable ssh-vsock communication on host side.
+      extraConfig = mkAfter ''
+        ## Virshle special command
+        Host vm/*
+          ProxyCommand ${virshleProxyCommand}/bin/virshleProxyCommand %h %p
+          ProxyUseFdpass yes
+          CheckHostIP no
+          # Disable all kinds of host identity checks, since these addresses are generally ephemeral.
+          StrictHostKeyChecking no
+          UserKnownHostsFile /dev/null
+      '';
+    };
   }

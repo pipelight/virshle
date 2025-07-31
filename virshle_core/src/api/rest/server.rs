@@ -68,6 +68,14 @@ impl NodeRestServer {
             .route(
                 "/vm/delete",
                 put(async move |params| method::vm::delete(params).await),
+            )
+            .route(
+                "/vm/definition",
+                post(async move |params| method::vm::get(params).await),
+            )
+            .route(
+                "/vm/get_vsock_path",
+                post(async move |params| method::vm::get_vsock_path(params).await),
             );
 
         // Virshle Bulk API
@@ -96,6 +104,10 @@ impl NodeRestServer {
             .route(
                 "/vm.info",
                 get(async move |params| method::vm::get_ch_info(params).await),
+            )
+            .route(
+                "/vm.info.raw",
+                get(async move |params| method::vm::get_raw_ch_info(params).await),
             )
             .route(
                 "/vmm.ping",

@@ -339,10 +339,20 @@ impl Vm {
         let response = rest.get(endpoint).await?;
 
         let data = &response.to_string().await?;
-        println!("{}", data);
-
         let data: VmInfoResponse = serde_json::from_str(&data)?;
         Ok(data)
+    }
+    pub async fn get_raw_ch_info(&self) -> Result<String, VirshleError> {
+        let endpoint = "/api/v1/vm.info";
+
+        let mut conn = Connection::from(self);
+        conn.open().await?;
+
+        let mut rest = RestClient::from(&mut conn);
+        let response = rest.get(endpoint).await?;
+
+        let data = &response.to_string().await?;
+        Ok(data.to_owned())
     }
     /// Return structured informations from the vm hypervisor.
     pub async fn ping_ch(&self) -> Result<(), VirshleError> {

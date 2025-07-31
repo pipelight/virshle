@@ -44,9 +44,7 @@ impl NodeServer {
         let path = format!("{MANAGED_DIR}/virshle.sock");
         Ok(path)
     }
-    /*
-     * Create a unix socket with custom permissions.
-     */
+    /// Create a unix socket with custom permissions.
     pub async fn make_socket() -> Result<UnixListener, VirshleError> {
         let socket = Self::get_socket()?;
         let path = PathBuf::from(socket);
