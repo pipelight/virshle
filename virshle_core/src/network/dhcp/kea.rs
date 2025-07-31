@@ -25,7 +25,7 @@ use crate::Vm;
 use std::collections::HashMap;
 
 // Error handling
-use log::{error, trace};
+use log::{debug, error, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
@@ -122,18 +122,18 @@ impl From<&Raw4Lease> for Lease {
 
 pub const LEASES_DIR: &'static str = "/var/lib/kea";
 
+#[serde_with::skip_serializing_none]
 #[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct KeaCommand {
     command: String,
     service: Vec<String>,
-    #[serde(skip)]
     arguments: Option<HashMap<String, String>>,
 }
+#[serde_with::skip_serializing_none]
 #[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct KeaBulkCommand {
     command: String,
     service: Vec<String>,
-    #[serde(skip)]
     arguments: Option<HashMap<String, HashMap<String, String>>>,
 }
 
@@ -201,6 +201,7 @@ impl KeaDhcp {
         let mut leases: Vec<Lease> = vec![];
         let response: Vec<RestResponse> =
             rest.post("/", Some(cmd.clone())).await?.to_value().await?;
+
         if let Some(inside) = response.first() {
             if let Some(arguments) = &inside.arguments {
                 leases = arguments.leases.iter().map(|e| Lease::from(e)).collect();
