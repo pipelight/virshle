@@ -77,7 +77,7 @@ in
           "HOME=${config.users.users.${cfg.user}.home}"
         ];
         ExecStartPre = [
-          "-${package}/virshle node init --all ${verbosity}"
+          "-${package}/bin/virshle node init --all ${verbosity}"
         ];
         ExecStart = "${package}/bin/virshle node serve ${verbosity}";
 
