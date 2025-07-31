@@ -153,10 +153,10 @@ impl Cli {
 
                     // Spinner
                     let node = Node::unwrap_or_default(cw_node).await?;
-                    let vm_name = format!("vm-{}", vm.name);
+                    let vm_name = format!("vm/{}", vm.name);
                     let message = format!(
                         "Created {} on node {}",
-                        vm_name.bold().blue(),
+                        vm.name.bold().blue(),
                         node.name.bold().green()
                     );
                     sp.stop_and_persist("✅", &message);
@@ -204,7 +204,7 @@ impl Cli {
 
                                 // Spinner
                                 let node = Node::unwrap_or_default(cw_node).await?;
-                                let vm_name = format!("vm-{}", vm.name);
+                                let vm_name = format!("vm/{}", vm.name);
                                 let message = format!(
                                     "Started {} on node {}",
                                     vm_name.bold().blue(),
@@ -229,7 +229,7 @@ impl Cli {
                                 let indent = " ".repeat(2);
                                 let vms_name: Vec<String> = vms
                                     .iter()
-                                    .map(|e| format!("{indent}vm-{}", e.name.bold().blue()))
+                                    .map(|e| format!("{indent}vm/{}", e.name.bold().blue()))
                                     .collect();
                                 let vms_name: String = vms_name.join("\n");
 
@@ -264,7 +264,7 @@ impl Cli {
 
                         // Spinner
                         let node = Node::unwrap_or_default(cw_node).await?;
-                        let vm_name = format!("vm-{}", vm.name);
+                        let vm_name = format!("vm/{}", vm.name);
                         let message = format!(
                             "Stopped {} on node {}",
                             vm_name.bold().blue(),
@@ -287,7 +287,7 @@ impl Cli {
                         let indent = " ".repeat(2);
                         let vms_name: Vec<String> = vms
                             .iter()
-                            .map(|e| format!("{indent}vm-{}", e.name.bold().blue()))
+                            .map(|e| format!("{indent}vm/{}", e.name.bold().blue()))
                             .collect();
                         let vms_name: String = vms_name.join("\n");
 
@@ -319,7 +319,7 @@ impl Cli {
 
                         // Spinner
                         let node = Node::unwrap_or_default(cw_node).await?;
-                        let vm_name = format!("vm-{}", vm.name);
+                        let vm_name = format!("vm/{}", vm.name);
                         let message = format!(
                             "Deleted {} on node {}",
                             vm_name.bold().blue(),
@@ -342,7 +342,7 @@ impl Cli {
                         let indent = " ".repeat(2);
                         let vms_name: Vec<String> = vms
                             .iter()
-                            .map(|e| format!("{indent}vm-{}", e.name.bold().blue()))
+                            .map(|e| format!("{indent}vm/{}", e.name.bold().blue()))
                             .collect();
                         let vms_name: String = vms_name.join("\n");
 

@@ -66,6 +66,7 @@ impl Vm {
 
                 let vm_insert_result: InsertResult<vm::ActiveModel> =
                     database::prelude::Vm::insert(vm.clone()).exec(&db).await?;
+                // TODO: handle insertion error when duplicate name or uuid.
                 self.id = Some(vm_insert_result.last_insert_id as u64);
 
                 // Junction table record

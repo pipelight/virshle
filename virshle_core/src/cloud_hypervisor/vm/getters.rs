@@ -408,7 +408,7 @@ impl Vm {
 
         match VirshleConfig::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
-                let hostname = format!("vm-{}", &self.name);
+                let hostname = &self.name.clone();
                 leases = kea_dhcp.get_leases_by_hostname(&hostname).await?;
             }
             _ => {}

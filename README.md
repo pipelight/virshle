@@ -153,7 +153,7 @@ Then, you can access your via **ssh**:
 - without network, on local node,
 
   ```sh
-  ssh vm-name.vsock
+  ssh vm/<vm_name>
   ```
 
 - with network,

@@ -69,6 +69,7 @@ impl VirshleConfig {
         Self::ensure_network().await?;
 
         Self::_clean_directories().await?;
+        Self::_clean_leases().await?;
         Ok(())
     }
     /// Ensure virshle working directories exists.
@@ -119,6 +120,17 @@ impl VirshleConfig {
     pub async fn ensure_database() -> Result<(), VirshleError> {
         database::connect_or_fresh_db().await?;
         info!("{} ensured virshle database.", "[init]".yellow(),);
+        Ok(())
+    }
+    /// Clean dhcp leases
+    pub async fn _clean_leases() -> Result<(), VirshleError> {
+        match VirshleConfig::get()?.dhcp {
+            Some(DhcpType::Kea(kea_dhcp)) => {
+                kea_dhcp.clean_leases().await?;
+            }
+            _ => {}
+        };
+        info!("{} delete unused leases", "[kea-dhcp]".yellow(),);
         Ok(())
     }
 }

@@ -105,7 +105,7 @@ impl InitData {
 
         if let Some(vm_data) = &self.vm_data {
             // Add hostname
-            let hostname = format!("vm-{}", vm_data.hostname);
+            let hostname = vm_data.hostname.clone();
             p_config += &unindent(&format!(
                 r#"
             [[pipelines.steps]]

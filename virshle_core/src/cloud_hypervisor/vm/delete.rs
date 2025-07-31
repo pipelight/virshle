@@ -179,8 +179,7 @@ impl Vm {
     pub async fn delete_leases(&self) -> Result<(), VirshleError> {
         match VirshleConfig::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
-                let hostname = format!("vm-{}", &self.name);
-                kea_dhcp.delete_ipv6_leases_by_name(&hostname).await?;
+                kea_dhcp.delete_ipv6_leases_by_name(&self.name).await?;
             }
             _ => {}
         };

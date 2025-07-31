@@ -520,8 +520,26 @@ pub mod vm {
                 let state = rest.connection.get_state().await?;
                 let message = format!("node {:#?} unreachable", node.name);
                 match state {
-                    ConnectionState::SshAuthError => warn!("{}", &message),
-                    ConnectionState::Unreachable => warn!("{}", &message),
+                    ConnectionState::SshAuthError => {
+                        let message = format!("node {:#?} ssh authenticaton rejected", node.name);
+                        warn!("{}", &message)
+                    }
+                    ConnectionState::Unreachable => {
+                        let message = format!("node {:#?} is unreachable", node.name);
+                        warn!("{}", &message)
+                    }
+                    ConnectionState::Down => {
+                        let message = format!("node {:#?} host is down", node.name);
+                        warn!("{}", &message)
+                    }
+                    ConnectionState::DaemonDown => {
+                        let message = format!("node {:#?} daemon is down", node.name);
+                        warn!("{}", &message)
+                    }
+                    ConnectionState::SocketNotFound => {
+                        let message = format!("node {:#?} no socket found", node.name);
+                        warn!("{}", &message)
+                    }
                     _ => {}
                 };
             }
