@@ -1,4 +1,4 @@
-{...}: {
+{inputs, ...}: {
   imports = [
     # module configuration options
     ./options.nix
@@ -9,5 +9,6 @@
     # virshle deps
     ./openvswitch.nix
     ./cloud-hypervisor.nix
+    inputs.pipelight.nixosModules.pipelight-init
   ];
 }

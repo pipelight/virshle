@@ -7,6 +7,7 @@
       url = "github:pipelight/virshle?ref=dev";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    pipelight.url = "github:pipelight/pipelight";
   };
 
   outputs = {

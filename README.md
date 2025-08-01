@@ -7,14 +7,15 @@
 
 Virshle is a single command line utility to manage multiple virtual machines.
 
-It works on top of
-[cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
-and
-[linux-kvm](https://linux-kvm.org/page/Main_Page)
-for machines virtualization,
-and makes extensive use of
-[openvswitch](https://github.com/openvswitch/ovs)
-for network configuration.
+- It works on top of [cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
+  and
+  [linux-kvm](https://linux-kvm.org/page/Main_Page)
+  for machines virtualization,
+- Makes extensive use of
+  [openvswitch](https://github.com/openvswitch/ovs)
+  for network configuration.
+- Use [pipelight-init](https://github.com/pipelight/pipelight) for fast
+  vm provisioning on boot.
 
 ## Getting started.
 

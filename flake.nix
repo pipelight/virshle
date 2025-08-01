@@ -6,6 +6,7 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
     flake-parts.url = "github:hercules-ci/flake-parts";
+    pipelight.url = "github:pipelight/pipelight";
   };
 
   outputs = {
@@ -14,6 +15,7 @@
     rust-overlay,
     flake-utils,
     flake-parts,
+    ...
   } @ inputs:
     flake-parts.lib.mkFlake {
       inherit inputs;
@@ -22,6 +24,7 @@
         nixosModules = rec {
           default = virshle;
           virshle = ./modules/default.nix;
+          nixos-generator = ./modules/nixos-generator/default.nix;
         };
       };
       systems =
