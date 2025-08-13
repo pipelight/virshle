@@ -142,16 +142,40 @@ but rather
 [pipelight-init](https://github.com/pipelight/pipelight)
 which shines when it comes to provisioning speed.
 
+You can add user data to the Vm on creation or upon start up.
+
+- From a simple file.
+
+```toml
+# user-data.toml
+[ssh]
+[[ssh.user]]
+name = "anon"
+authorized_keys = [
+  "ssh-ed25519 AAAAC3NzXXX",
+]
+```
+
+- With the following command
+
 ```sh
 # Pattern
+v vm create --template <template_name> --user_data <user_data_filepath>
+v vm start --id <vm_id>
+
+# or
+v vm create --template <template_name>
 v vm start --id <vm_id> --user_data <user_data_filepath>
+
 # Example
+v vm create --template xs --user_data user_data.toml
+#or
 v vm start --id 1 --user_data user_data.toml
 ```
 
 Then, you can access your via **ssh**:
 
-- without network, on local node,
+- On your local node and without any network configuration (vsock),
 
   ```sh
   ssh vm/<vm_name>
@@ -240,7 +264,7 @@ services.virshle = {
 ```
 
 See [docs/install.md](https://github.com/pipelight/virshle/blob/master/docs/install.md)
-for other distributions.
+for in depth nixos installation and **other distributions**.
 
 ## Alternatives
 

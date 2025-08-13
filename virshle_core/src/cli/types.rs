@@ -40,16 +40,16 @@ pub enum Crud {
     #[command(arg_required_else_help = true)]
     Create(CreateArgs),
     /// Starts/Restart a virtual machine.
-    #[command(arg_required_else_help = true)]
+    #[command(alias = "on", arg_required_else_help = true)]
     Start(StartArgs),
     /// Removes(destroy) a virtual machine.
-    #[command(arg_required_else_help = true)]
-    Rm(VmArgs),
+    #[command(alias = "rm", arg_required_else_help = true)]
+    Delete(VmArgs),
     /// Stops a virtual machine.
-    #[command(arg_required_else_help = true)]
+    #[command(alias = "off", arg_required_else_help = true)]
     Stop(VmArgs),
-    /// Parse a virtual machine toml configuration.
 
+    /// Parse a virtual machine toml configuration.
     #[command(arg_required_else_help = true)]
     Config(VmArgs),
 
@@ -110,8 +110,8 @@ pub struct CreateArgs {
     #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
     pub template: Option<String>,
 
+    // It links the VM to the provided account on the local node database.
     /// Pass user data to VM.
-    /// It links the VM to the provided account on node database
     #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
 
@@ -165,8 +165,8 @@ pub struct StartArgs {
     )]
     pub attach: bool,
 
+    // It links the VM to the provided account on the local node database.
     /// Pass user data to VM.
-    /// It links the VM to the provided account on node database
     #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
 

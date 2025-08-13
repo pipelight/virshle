@@ -1,7 +1,6 @@
 # Install on NixOs (with flakes).
 
 When using nixos, you can enable the module by adding those lines to your configuration.
-
 Add the repo url to your configuration.
 
 ```nix
@@ -21,9 +20,19 @@ services.virshle = {
   enable = true;
   logLevel = "info";
   # The user to run the node as.
-  user = "anon";
+  user = "anon"; #default to root.
 };
 ```
+
+You may want to create an alias to ease command line usage.
+
+```sh
+alias v='virshle'
+```
+
+> [!WARNING]
+> You'll face a small compilation time due to virshle and pipelight
+> not being precompiled in any official repository.
 
 ## Custom storage.
 
@@ -42,7 +51,7 @@ systemd.tmpfiles.rules = [
 For fine vm network control, you can add a host network configuration like the following
 [`modules/networking.nix`](https://github.com/pipelight/virshle/modules/config.nix).
 
-# Install on other Linux distributions (Debian).
+# Install on FHS Linux distributions (Arch/Debian).
 
 Install the binary from source with cargo.
 
@@ -52,7 +61,7 @@ cargo install --git https://github.com/pipelight/virshle
 
 Then create a default systemd unit like the following:
 [virshle.service](https://github.com/pipelight/virshle/scripts/virshle.service)
-to run virshle in the background on server boot.
+to start a virshle node in the background on server boot.
 
 ## Dependencies
 
@@ -75,8 +84,11 @@ It is a software that will run the vm as a process.
 wget https://github.com/cloud-hypervisor/cloud-hypervisor/releases/latest/download/cloud-hypervisor
 sudo chmod +x cloud-hypervisor
 
-# Add capacity to manipulate host network.
-sudo setcap cap_net_admin+ep ./cloud-hypervisor
+# Tips:
+# Add capability to manipulate host network,
+# to run the node as a non root user.
+# !Do not work for now.!
+# sudo setcap cap_net_admin+ep ./cloud-hypervisor
 
 # Move to folder in PATH
 sudo mv cloud-hypervisor /usr/local/bin/
@@ -85,7 +97,8 @@ sudo mv cloud-hypervisor /usr/local/bin/
 
 Copy or symlink the firmware files for direct kernel boot.
 Must be available at
-`/run/cloud-hypervisor/hypervisor-fw` or
+`/run/cloud-hypervisor/hypervisor-fw`
+or
 `/run/cloud-hypervisor/CLOUDVH.fd`
 
 ```sh
@@ -105,13 +118,13 @@ sudo apt-get install openvswitch-switch
 
 ```
 
-and open database permission so that
-the required user
-can manipulate the host network.
-
 ```sh
+# Tips:
+# Open database permission so that a non root user
+# can manipulate the host network.
+# !Do not work for now.!
 chown root:users /var/run/openvswitch
 chmod -R 774 /var/run/openvswitch`
 ```
 
-See the [installation instructions](https://docs.openvswitch.org/en/latest/intro/install)
+Or see the openvswitch [installation instructions](https://docs.openvswitch.org/en/latest/intro/install)

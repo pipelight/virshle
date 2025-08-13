@@ -242,6 +242,7 @@ impl Vm {
                     let cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
                     Process::new()
                         .stdin(&cmd)
+                        .term()
                         .orphan()
                         .background()
                         .detach()

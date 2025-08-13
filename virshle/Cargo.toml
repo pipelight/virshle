@@ -16,30 +16,23 @@ name = "virshle"
 path = "src/main.rs"
 doc = false
 
-[[build]]
-name = "virshle-autocomplete"
-path = "src/build.rs"
-doc = false
-
 [dependencies]
-# cli = { path = "../cli" }
+miette = { workspace = true, features = ["fancy"] }
+log.workspace = true
+
+tokio = { version = "1.40.0", features = ["full"] }
+
 virshle_core = { path = "../virshle_core" }
 virshle_error = { path = "../virshle_error" }
-miette = { version = "7.2.0", features = ["fancy"] }
-log = "0.4.22"
-serde = { version = "1.0.210", features = ["derive"] }
-env_logger = "0.11.5"
-tokio = { version = "1.40.0", features = ["full"] }
+
+
+[build-dependencies]
+miette = { workspace = true, features = ["fancy"] }
+log.workspace = true
+
+tokio.workspace = true
+
 clap = "4.5.20"
 clap_complete = "4.5.33"
 
-[build-dependencies]
-# cli = { path = "../cli" }
 virshle_core = { path = "../virshle_core/" }
-miette = { version = "7.2.0", features = ["fancy"] }
-log = "0.4.22"
-serde = { version = "1.0.210", features = ["derive"] }
-env_logger = "0.11.5"
-tokio = { version = "1.40.0", features = ["full"] }
-clap = "4.5.20"
-clap_complete = "4.5.33"

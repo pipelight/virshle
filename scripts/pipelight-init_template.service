@@ -1,0 +1,20 @@
+# /etc/systemd/system/pipelight-init_net_post.service
+
+[Unit]
+After=network.target
+ConditionPathExists=/pipelight-init
+Description=Run pipelight as a cloud-init replacement.
+
+[Service]
+ExecStart=/usr/bin/pipelight run init_net_post --attach -vvv
+
+Group=users
+StandardError=journal+console
+StandardInput=null
+StandardOutput=journal+console
+Type=oneshot
+User=root
+WorkingDirectory=/pipelight-init
+
+[Install]
+WantedBy=multi-user.target

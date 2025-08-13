@@ -301,7 +301,7 @@ impl Cli {
                         sp.stop_and_persist("✅", &message);
                     }
                 }
-                Crud::Rm(args) => {
+                Crud::Delete(args) => {
                     let cw_node = args.current_workgin_node.node;
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner

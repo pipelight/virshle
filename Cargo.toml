@@ -16,3 +16,15 @@ members = [
   "virshle_error",
 
 ]
+
+[workspace.dependencies]
+
+thiserror = "2.0.12"
+miette = "7.2.0"
+log = "0.4.22"
+env_logger = "0.11.5"
+
+pipelight_error = "0.2.14"
+bon = "3.5.1"
+
+tokio = { version = "1.40.0", features = ["full"] }

@@ -31,15 +31,18 @@ pub struct VmTable {
     #[tabled(display("display_id"))]
     pub id: Option<u64>,
     pub name: String,
+
     pub vcpu: u64,
     #[tabled(display("display_vram"))]
     pub vram: u64,
+
     #[tabled(display("display_state"))]
     pub state: VmState,
-    #[tabled(display("display_ips"))]
-    pub ips: Vec<IpAddr>,
+
     #[tabled(display("display_some_disks_short"))]
     pub disk: Option<Vec<DiskInfo>>,
+    #[tabled(display("display_ips"))]
+    pub ips: Option<Vec<IpAddr>>,
 
     #[tabled(display("display_some_datetime"))]
     pub created_at: Option<NaiveDateTime>,
@@ -54,7 +57,11 @@ pub struct VmTable {
 impl VmTable {
     pub async fn from(vm: &Vm) -> Result<Self, VirshleError> {
         let tmp = vm.get_info().await?;
-        let ips = tmp.leases.iter().map(|e| e.address).collect();
+
+        let ips = tmp
+            .leases
+            .map(|inner| inner.iter().map(|e| e.address).collect());
+
         let table = VmTable {
             id: vm.id,
             name: vm.name.to_owned(),
@@ -108,6 +115,30 @@ impl VmTable {
     }
     pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
         let mut res = Table::new(&items);
+
+        // Ips
+        let some_ips: Vec<_> = items
+            .clone()
+            .into_iter()
+            .map(|e| e.ips)
+            // Has some leases
+            .filter(|e| e.is_some())
+            .collect();
+        if some_ips.is_empty() {
+            res.with(Remove::column(ByColumnName::new("ips")));
+        }
+
+        // Account
+        let some_account: Vec<_> = items
+            .into_iter()
+            .map(|e| e.account_uuid)
+            // Belongs to an account
+            .filter(|e| e.is_some())
+            .collect();
+        if some_account.is_empty() {
+            res.with(Remove::column(ByColumnName::new("account_uuid")));
+        }
+
         if log_enabled!(Level::Trace) {
         } else if log_enabled!(Level::Debug) {
         } else if log_enabled!(Level::Info) {
@@ -117,14 +148,15 @@ impl VmTable {
             res.with(Remove::column(ByColumnName::new("account_uuid")));
             res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("created_at")));
+            res.with(Remove::column(ByColumnName::new("updated_at")));
         } else if log_enabled!(Level::Error) {
             res.with(Remove::column(ByColumnName::new("account_uuid")));
             res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("created_at")));
+            res.with(Remove::column(ByColumnName::new("updated_at")));
             res.with(Remove::column(ByColumnName::new("disk")));
             res.with(Remove::column(ByColumnName::new("ips")));
         }
-        res.with(Remove::column(ByColumnName::new("updated_at")));
         res.with(Style::rounded());
         println!("{}", res);
         Ok(())
@@ -151,7 +183,7 @@ mod test {
                 vram: 4_200_000,
                 state: VmState::Created,
                 uuid: Uuid::new_v4(),
-                ips: vec![],
+                ips: None,
                 ..Default::default()
             },
             VmTable {
@@ -161,7 +193,7 @@ mod test {
                 vram: 4_200_000,
                 state: VmState::Running,
                 uuid: Uuid::new_v4(),
-                ips: vec![],
+                ips: None,
                 ..Default::default()
             },
         ];

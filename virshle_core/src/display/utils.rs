@@ -110,9 +110,12 @@ pub fn display_some_disks_short(disks: &Option<Vec<DiskInfo>>) -> String {
     }
     res
 }
-pub fn display_ips(ips: &Vec<IpAddr>) -> String {
-    let ips: Vec<String> = ips.iter().map(|e| e.to_string()).collect();
-    let res = ips.join("\n");
+pub fn display_ips(ips: &Option<Vec<IpAddr>>) -> String {
+    let mut res = "".to_owned();
+    if let Some(ips) = ips {
+        let ips: Vec<String> = ips.iter().map(|e| e.to_string()).collect();
+        res = ips.join("\n");
+    }
     format!("{}", res)
 }
 

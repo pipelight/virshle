@@ -261,7 +261,7 @@ impl Vm {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct VmInfo {
     pub state: VmState,
-    pub leases: Vec<Lease>,
+    pub leases: Option<Vec<Lease>>,
     pub account_uuid: Option<Uuid>,
 }
 
@@ -370,7 +370,7 @@ impl Vm {
     pub async fn get_info(&self) -> Result<VmInfo, VirshleError> {
         let res = VmInfo {
             state: self.get_state().await?,
-            leases: self.get_leases().await?,
+            leases: self.get_leases().await.ok(),
             account_uuid: self.get_account_uuid().await.ok(),
         };
         Ok(res)
@@ -402,7 +402,8 @@ impl Vm {
         };
         Ok(state)
     }
-    /// Return vm leases
+    /// Return vm leases,
+    /// or error out if nothing found
     pub async fn get_leases(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut leases: Vec<Lease> = vec![];
 
@@ -413,12 +414,22 @@ impl Vm {
             }
             _ => {}
         };
-        Ok(leases)
+        if leases.is_empty() {
+            let message = format!("Couldn't find a lease for vm: {}", self.name);
+            let help = "Are you sure the VM has already requested an address from kea-dhcp";
+            let err = LibError::builder().msg(&message).help(&help).build();
+            Err(err.into())
+        } else {
+            Ok(leases)
+        }
     }
     /// Return vm ips,
     /// or an empty vec if nothing found.
     pub async fn get_ips(&self) -> Result<Vec<IpAddr>, VirshleError> {
-        let ips = self.get_leases().await?.iter().map(|e| e.address).collect();
+        let mut ips = vec![];
+        if let Some(leases) = self.get_leases().await.ok() {
+            ips = leases.iter().map(|e| e.address).collect();
+        }
         Ok(ips)
     }
 
