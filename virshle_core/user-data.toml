@@ -4,7 +4,7 @@
 uuid = "6cff9c9c-8713-40ca-b950-669bae24d9c9"
 [account.user]
 name = "anon"
-public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHftzi3MZD09dJTNM4BfxpkfnqxyKiBk8smdQzA1ores"
+public_key = "ssh-ed25519 AAAAC3N"
 
 
 #######################
@@ -12,6 +12,4 @@ public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHftzi3MZD09dJTNM4BfxpkfnqxyKi
 [ssh]
 [[ssh.user]]
 name = "anon"
-authorized_keys = [
-  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHftzK3MZD0idJTNM4BfxpkfnqxyKiBk8smdQzA1ores",
-]
+authorized_keys = ["ssh-ed25519 AAAAC3N"]
