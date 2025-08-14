@@ -570,13 +570,8 @@ pub mod vm {
         rest.ping_url("/api/v1/node/ping");
         rest.open().await?;
         rest.ping().await?;
-        conn.close().await?;
 
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1/ch");
-        rest.open().await?;
-
         let res: String = rest
             .post(
                 "/vm.info.raw",
@@ -610,13 +605,8 @@ pub mod vm {
         rest.ping_url("/api/v1/node/ping");
         rest.open().await?;
         rest.ping().await?;
-        conn.close().await?;
 
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1/ch");
-        rest.open().await?;
-
         let res: VmInfoResponse = rest
             .post(
                 "/vm.info",
