@@ -191,6 +191,7 @@ impl<'a> Rest for RestClient<'a> {
             // Timeout reponse and return succesfully if a response is sent,
             // Wether it is a succesful response or an error message.
             let time: u64 = 1000;
+            // let time: u64 = 5000;
 
             let response = handle.sender.send_request(request.to_owned());
             let response = timeout(time::Duration::from_millis(time), response)

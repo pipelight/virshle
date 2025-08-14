@@ -74,6 +74,10 @@ impl NodeRestServer {
                 post(async move |params| method::vm::get(params).await),
             )
             .route(
+                "/vm/info",
+                post(async move |params| method::vm::get_info(params).await),
+            )
+            .route(
                 "/vm/get_vsock_path",
                 post(async move |params| method::vm::get_vsock_path(params).await),
             );
@@ -103,15 +107,15 @@ impl NodeRestServer {
             // Vm
             .route(
                 "/vm.info",
-                get(async move |params| method::vm::get_ch_info(params).await),
+                post(async move |params| method::vm::get_ch_info(params).await),
             )
             .route(
                 "/vm.info.raw",
-                get(async move |params| method::vm::get_raw_ch_info(params).await),
+                post(async move |params| method::vm::get_raw_ch_info(params).await),
             )
             .route(
                 "/vmm.ping",
-                get(async move |params| method::vm::ping_ch(params).await),
+                post(async move |params| method::vm::ping_ch(params).await),
             );
 
         let app = Router::new()

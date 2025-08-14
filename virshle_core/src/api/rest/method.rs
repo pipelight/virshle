@@ -291,11 +291,13 @@ pub mod vm {
     /// from the underlying cloud-hypervisor process.
     pub async fn get_ch_info(Json(args): Json<GetVmArgs>) -> Result<VmInfoResponse, VirshleError> {
         let vm = Vm::get_by_args(&args).await?;
+        vm.ping_ch().await?;
         let info = vm.get_ch_info().await?;
         Ok(info.into())
     }
     pub async fn get_raw_ch_info(Json(args): Json<GetVmArgs>) -> Result<String, VirshleError> {
         let vm = Vm::get_by_args(&args).await?;
+        vm.ping_ch().await?;
         let info = vm.get_raw_ch_info().await?;
         Ok(info.into())
     }

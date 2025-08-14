@@ -221,6 +221,7 @@ pub mod vm {
                 .await?
                 .to_value()
                 .await?;
+            conn.close();
 
             info!(
                 "[end] created vm {:#?} from template {:#?} on node {:#?}",
@@ -254,6 +255,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         info!("[end] deleted vm {:#?} on node {:#?}", vm.name, node.name);
 
@@ -281,6 +283,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         let vms_name = vms
             .iter()
@@ -313,6 +316,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         info!("[end] started vm {:#?} on node {:#?}", vm.name, node.name);
 
@@ -341,6 +345,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         let vms_name = vms
             .iter()
@@ -374,6 +379,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         let vms_name = vms
             .iter()
@@ -405,6 +411,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         info!(
             "[end] shutted down vm {:#?} on node {:#?}",
@@ -440,6 +447,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         info!(
             "[end] fetched info on vm {:#?} on node {:#?}",
@@ -475,6 +483,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         info!(
             "[end] fetched info on vm {:#?} on node {:#?}",
@@ -550,7 +559,7 @@ pub mod vm {
     pub async fn get_raw_ch_info(
         args: GetVmArgs,
         node_name: Option<String>,
-    ) -> Result<(), VirshleError> {
+    ) -> Result<String, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] fetching CH info for a vm on node {:#?}", node.name);
@@ -561,11 +570,16 @@ pub mod vm {
         rest.ping_url("/api/v1/node/ping");
         rest.open().await?;
         rest.ping().await?;
+        conn.close().await?;
 
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1/ch");
+        rest.open().await?;
+
         let res: String = rest
             .post(
-                "/vm.info",
+                "/vm.info.raw",
                 Some(GetVmArgs {
                     uuid: args.uuid,
                     id: args.id,
@@ -579,13 +593,13 @@ pub mod vm {
         conn.close();
         info!("[end] fetched CH info for a vm on node {:#?}", node.name);
 
-        Ok(())
+        Ok(res)
     }
 
     pub async fn get_ch_info(
         args: GetVmArgs,
         node_name: Option<String>,
-    ) -> Result<(), VirshleError> {
+    ) -> Result<VmInfoResponse, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] fetching CH info for a vm on node {:#?}", node.name);
@@ -596,8 +610,13 @@ pub mod vm {
         rest.ping_url("/api/v1/node/ping");
         rest.open().await?;
         rest.ping().await?;
+        conn.close().await?;
 
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1/ch");
+        rest.open().await?;
+
         let res: VmInfoResponse = rest
             .post(
                 "/vm.info",
@@ -613,8 +632,7 @@ pub mod vm {
         conn.close();
 
         info!("[end] fetched CH info for a vm on node {:#?}", node.name);
-
-        Ok(())
+        Ok(res)
     }
     pub async fn get_vsock_path(
         args: GetVmArgs,
@@ -643,6 +661,7 @@ pub mod vm {
             .await?
             .to_value()
             .await?;
+        conn.close();
 
         info!("[end] fetched info on a vm on node {:#?}", node.name);
         Ok(path)

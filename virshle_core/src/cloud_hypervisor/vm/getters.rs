@@ -363,6 +363,7 @@ impl Vm {
 
         let mut rest = RestClient::from(&mut conn);
         rest.ping_url("/api/v1/vmm.ping");
+        rest.open().await;
         rest.ping().await
     }
 
