@@ -27,6 +27,8 @@ use crate::http_request::{Rest, RestClient};
 use crate::Vm;
 use std::collections::HashMap;
 
+use serde_with::skip_serializing_none;
+
 // Error handling
 use log::{debug, error, trace};
 use miette::{IntoDiagnostic, Result};
@@ -70,10 +72,11 @@ pub enum RawLease {
 pub struct Raw4Lease {
     #[serde(rename = "ip-address")]
     address: Ipv4Addr,
-    #[serde(rename = "hw-address")]
+    #[serde(default, rename = "hw-address")]
     hwaddr: Option<String>, // MacAddr
     #[serde(rename = "valid-lft")]
     valid_lifetime: u64,
+    #[serde(default)]
     hostname: Option<String>,
     state: u64,
     #[serde(rename = "subnet-id")]
@@ -85,12 +88,13 @@ pub struct Raw4Lease {
 pub struct Raw6Lease {
     #[serde(rename = "ip-address")]
     address: Ipv6Addr,
-    #[serde(rename = "hw-address")]
+    #[serde(default, rename = "hw-address")]
     hwaddr: Option<String>, // MacAddr
     #[serde(rename = "valid-lft")]
     valid_lifetime: u64,
     #[serde(rename = "type")]
     _type: String,
+    #[serde(default)]
     hostname: Option<String>,
     state: u64,
     #[serde(rename = "subnet-id")]
@@ -133,20 +137,19 @@ impl From<&Raw6Lease> for Lease {
 }
 impl From<&Raw4Lease> for Lease {
     fn from(e: &Raw4Lease) -> Self {
-        let hostname: String = if let Some(hostname) = &e.hostname {
-            if let Some(val) = hostname.strip_suffix(".") {
-                val.to_owned()
+        let mut hostname: String = "default".to_owned();
+        if let Some(val) = &e.hostname {
+            if let Some(val) = val.strip_suffix(".") {
+                hostname = val.to_owned();
             } else {
-                hostname.to_owned()
+                hostname = hostname.to_owned();
             }
-        } else {
-            "default".to_owned()
-        };
-        let macaddr: String = if let Some(hwaddr) = &e.hwaddr {
-            hwaddr.to_owned()
-        } else {
-            MacAddr6::nil().to_string()
-        };
+        }
+        let mut macaddr: String = MacAddr6::nil().to_string();
+        if let Some(hwaddr) = &e.hwaddr {
+            macaddr = hwaddr.to_owned();
+        }
+
         Lease {
             address: IpAddr::V4(e.address),
             hostname,
