@@ -113,15 +113,14 @@ impl From<&RawLease> for Lease {
 }
 impl From<&Raw6Lease> for Lease {
     fn from(e: &Raw6Lease) -> Self {
-        let hostname: String = if let Some(hostname) = &e.hostname {
-            if let Some(val) = hostname.strip_suffix(".") {
-                val.to_owned()
-            } else {
-                hostname.to_owned()
+        let mut hostname: String = "default".to_owned();
+        if let Some(val) = &e.hostname {
+            if let Some(val) = val.strip_suffix(".") {
+                hostname = val.to_owned();
             }
-        } else {
-            "default".to_owned()
-        };
+            hostname = hostname.to_owned();
+        }
+
         let macaddr: String = if let Some(hwaddr) = &e.hwaddr {
             hwaddr.to_owned()
         } else {
@@ -141,10 +140,10 @@ impl From<&Raw4Lease> for Lease {
         if let Some(val) = &e.hostname {
             if let Some(val) = val.strip_suffix(".") {
                 hostname = val.to_owned();
-            } else {
-                hostname = hostname.to_owned();
             }
+            hostname = hostname.to_owned();
         }
+
         let mut macaddr: String = MacAddr6::nil().to_string();
         if let Some(hwaddr) = &e.hwaddr {
             macaddr = hwaddr.to_owned();
@@ -342,10 +341,6 @@ impl KeaDhcp {
             service: vec!["dhcp6".to_owned()],
             ..Default::default()
         };
-
-        let response = rest.post("/", Some(cmd.clone())).await?.to_string().await?;
-
-        println!("{:#?}", response);
 
         let mut leases: Vec<RawLease> = vec![];
         let response: Vec<RestResponse> =
