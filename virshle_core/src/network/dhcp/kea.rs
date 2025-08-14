@@ -146,7 +146,9 @@ impl From<&Raw4Lease> for Lease {
 
         let mut macaddr: String = MacAddr6::nil().to_string();
         if let Some(hwaddr) = &e.hwaddr {
-            macaddr = hwaddr.to_owned();
+            if !hwaddr.is_empty() {
+                macaddr = hwaddr.to_owned();
+            }
         }
 
         Lease {
@@ -366,9 +368,15 @@ impl KeaDhcp {
             .iter()
             .map(|e| e.name.clone())
             .collect();
+        println!("{:#?}", vms);
 
         // Get leases
         let mut leases = self._get_ipv4_leases().await?;
+
+        for e in leases.clone() {
+            println!("{:#?}", Lease::from(&e));
+            println!("{:#?}", self.to_vm_name(&Lease::from(&e)));
+        }
 
         // Remove leases if no corresponding vm name
         leases = leases
@@ -377,7 +385,7 @@ impl KeaDhcp {
             .map(|e| e.to_owned())
             .collect();
 
-        self._delete_ipv4_leases(leases).await?;
+        // self._delete_ipv4_leases(leases).await?;
         Ok(())
     }
     /// Remove leases if associated vm doesn't exist.
@@ -392,6 +400,11 @@ impl KeaDhcp {
         // Get leases
         let mut leases = self._get_ipv6_leases().await?;
 
+        for e in leases.clone() {
+            println!("{:#?}", Lease::from(&e));
+            println!("{:#?}", self.to_vm_name(&Lease::from(&e)));
+        }
+
         // Remove leases if no corresponding vm name
         leases = leases
             .into_iter()
@@ -399,7 +412,7 @@ impl KeaDhcp {
             .map(|e| e.to_owned())
             .collect();
 
-        self._delete_ipv6_leases(leases).await?;
+        // self._delete_ipv6_leases(leases).await?;
         Ok(())
     }
 

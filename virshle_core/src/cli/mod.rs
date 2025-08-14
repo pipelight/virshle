@@ -235,12 +235,20 @@ impl Cli {
 
                                 // Spinner
                                 let node = Node::unwrap_or_default(cw_node).await?;
-                                let message = format!(
-                                    "Started [{}] on node {}",
-                                    vms_name,
-                                    node.name.bold().green()
-                                );
-                                sp.stop_and_persist("✅", &message);
+                                if !vms_name.is_empty() {
+                                    let message = format!(
+                                        "Started [\n{}\n] on node {}",
+                                        vms_name,
+                                        node.name.bold().green()
+                                    );
+                                    sp.stop_and_persist("✅", &message);
+                                } else {
+                                    let message = format!(
+                                        "No vm started on node {}",
+                                        node.name.bold().green()
+                                    );
+                                    sp.stop_and_persist("✅", &message);
+                                }
                             }
                         }
                     };

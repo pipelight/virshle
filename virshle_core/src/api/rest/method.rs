@@ -10,6 +10,9 @@ use hyper::{body::Bytes, StatusCode};
 use std::str::FromStr;
 use std::vec::Vec;
 
+// Global vars
+use std::sync::{Arc, Mutex};
+
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -158,10 +161,21 @@ pub mod vm {
         args: GetManyVmArgs,
         user_data: Option<UserData>,
     ) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_many_by_args(&args).await?;
-        for vm in &mut vms {
-            vm.start(user_data.clone(), None).await?;
+        let vms: Vec<Vm> = Vm::get_many_by_args(&args).await?;
+
+        let mut tasks = vec![];
+        for vm in vms.clone() {
+            tasks.push(tokio::spawn({
+                let user_data = user_data.clone();
+                async move {
+                    let mut vm = vm.clone();
+                    vm.start(user_data, None).await
+                }
+            }));
         }
+        let res = futures::future::join_all(tasks).await;
+        // Return Successful and Failed.
+        for result in res {}
         Ok(vms)
     }
 

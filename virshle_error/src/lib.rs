@@ -100,6 +100,12 @@ pub enum VirshleError {
     #[error(transparent)]
     #[diagnostic(code(env::error))]
     EnvError(#[from] std::env::VarError),
+
+    // Env var error
+    // Mainly use to get ssh_auth_agent socket.
+    #[error(transparent)]
+    #[diagnostic(code(future::error))]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 /**
