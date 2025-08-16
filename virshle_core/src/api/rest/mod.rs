@@ -23,3 +23,8 @@ pub struct GetManyVmArgs {
 pub struct CreateVmArgs {
     pub template_name: Option<String>,
 }
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct CreateManyVmArgs {
+    pub ntimes: Option<u8>,
+    pub template_name: Option<String>,
+}

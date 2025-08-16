@@ -1,5 +1,5 @@
 // Process
-use pipelight_exec::{Process, Status};
+use crate::exec::exec_cmds;
 
 // Filesystem
 // use tokio::fs::{self, File};
@@ -72,28 +72,8 @@ pub fn shellexpand(relpath: &str) -> Result<String, VirshleError> {
 }
 
 pub fn make_empty_file(path: &str) -> Result<(), VirshleError> {
-    let commands = vec![format!("dd if=/dev/null of={path} bs=1M seek=10")];
-    for cmd in commands {
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.state.status {
-            Some(Status::Failed) => {
-                let message = format!("[disk]: couldn't create empty file.");
-                let help = format!(
-                    "{} -> {} ",
-                    &res.io.stdin.unwrap().trim(),
-                    &res.io.stderr.unwrap().trim()
-                );
-                error!("{}:{}", &message, &help);
-            }
-            _ => {
-                let message = format!("[disk]: created empty file.");
-                let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                trace!("{}:{}", &message, &help);
-            }
-        };
-    }
+    let cmds = vec![format!("dd if=/dev/null of={path} bs=1M seek=10")];
+    exec_cmds("disk", cmds)?;
     Ok(())
 }
 /// Create a sparse file.
@@ -115,27 +95,8 @@ pub fn _make_empty_file(path: &str, block_size: &str, file_size: &str) -> Result
 }
 /// Create a vfat partition on empty file.
 pub fn format_to_vfat(path: &str) -> Result<(), VirshleError> {
-    let commands = vec![format!("mkfs.vfat -F 32 -n INIT {path}")];
-    for cmd in commands {
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-        match res.state.status {
-            Some(Status::Failed) => {
-                let message = format!("[disk]: couldn't format file to vfat.");
-                let help = format!(
-                    "{} -> {} ",
-                    &res.io.stdin.unwrap().trim(),
-                    &res.io.stderr.unwrap().trim()
-                );
-                error!("{}:{}", &message, &help);
-            }
-            _ => {
-                let message = format!("[disk]: formated init disk to vfat.");
-                let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                trace!("{}:{}", &message, &help);
-            }
-        };
-    }
+    let cmds = vec![format!("mkfs.vfat -F 32 -n INIT {path}")];
+    exec_cmds("disk", cmds)?;
     Ok(())
 }
 
@@ -145,39 +106,19 @@ pub fn mount(source: &str, target: &str) -> Result<(), VirshleError> {
     umount(target).ok();
     fs::create_dir_all(&target)?;
 
-    let mut commands = vec![];
+    let mut cmds = vec![];
 
     // Mount need root priviledge
     #[cfg(debug_assertions)]
-    commands.push(format!(
+    cmds.push(format!(
         "sudo mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
     ));
     #[cfg(not(debug_assertions))]
-    commands.push(format!(
+    cmds.push(format!(
         "mount -t vfat -o loop -o gid=users -o umask=007 {source} {target}"
     ));
 
-    for cmd in commands {
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.state.status {
-            Some(Status::Failed) => {
-                let message = format!("[disk]: couldn't mount init disk.");
-                let help = format!(
-                    "{} -> {} ",
-                    &res.io.stdin.unwrap().trim(),
-                    &res.io.stderr.unwrap().trim()
-                );
-                error!("{}:{}", &message, &help);
-            }
-            _ => {
-                let message = format!("[disk]: mounted init disk.");
-                let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                trace!("{}:{}", &message, &help);
-            }
-        };
-    }
+    exec_cmds("disk", cmds)?;
     Ok(())
 }
 /// Mount filesystem with ffi bindings.
@@ -220,36 +161,15 @@ pub fn _mount(source: &str, target: &str) -> Result<(), VirshleError> {
 
 /// Unmount init disk from host filesystem.
 pub fn umount(path: &str) -> Result<(), VirshleError> {
-    let mut commands = vec![];
+    let mut cmds = vec![];
 
     // Umount need root priviledge
     #[cfg(debug_assertions)]
-    commands.push(format!("sudo umount {path}"));
+    cmds.push(format!("sudo umount {path}"));
     #[cfg(not(debug_assertions))]
-    commands.push(format!("umount {path}"));
+    cmds.push(format!("umount {path}"));
 
-    for cmd in commands {
-        let mut proc = Process::new();
-        let res = proc.stdin(&cmd).run()?;
-
-        match res.state.status {
-            Some(Status::Failed) => {
-                let message = format!("[disk]: couldn't unmount init disk.");
-                let help = format!(
-                    "{} -> {} ",
-                    &res.io.stdin.unwrap().trim(),
-                    &res.io.stderr.unwrap().trim()
-                );
-                error!("{}:{}", &message, &help);
-                return Err(LibError::builder().msg(&message).help(&help).build().into());
-            }
-            _ => {
-                let message = format!("[disk]: unmounted init disk.");
-                let help = format!("{}", &res.io.stdin.unwrap().trim(),);
-                trace!("{}:{}", &message, &help);
-            }
-        };
-    }
+    exec_cmds("disk", cmds)?;
 
     // Clean mount points
     fs::remove_dir_all(&path)?;

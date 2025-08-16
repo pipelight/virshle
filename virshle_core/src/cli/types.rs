@@ -104,11 +104,15 @@ pub struct InitArgs {
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CreateArgs {
     #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
-        conflicts_with = "template",
+        conflicts_with = "template", hide=true
     )]
     pub file: Option<String>,
     #[arg(short, long, value_name = "TEMPLATE_NAME", conflicts_with = "file")]
     pub template: Option<String>,
+
+    /// How many vm to create
+    #[arg(short, value_name = "INTEGER")]
+    pub ntimes: Option<u8>,
 
     // It links the VM to the provided account on the local node database.
     /// Pass user data to VM.

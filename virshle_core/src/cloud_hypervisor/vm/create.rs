@@ -141,7 +141,7 @@ impl Vm {
                     // bridge must be of type "system"
                     NetType::MacVTap(v) => {
                         // Create macvtap device
-                        ip::tap::create_macvtap(&port_name)?;
+                        ip::macvtap::create(&port_name)?;
                         ip::up(&port_name)?;
                     }
                 };

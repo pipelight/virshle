@@ -107,7 +107,7 @@ path = "~/Iso/nixos.efi.img"
 
 [[template.vm.net]]
 name = "main"
-[template.vm.net.type.mac_v_tap]
+[template.vm.net.type.macvtap]
 ```
 
 Then only can you create a machine from that template.
@@ -189,7 +189,7 @@ Then, you can access your via **ssh**:
   # /etc/virshle/config.toml
   [[template.vm.net]]
   name = "main"
-  [template.vm.net.type.mac_v_tap]
+  [template.vm.net.type.macvtap]
   ```
 
   ```sh

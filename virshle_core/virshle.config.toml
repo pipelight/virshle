@@ -49,7 +49,7 @@ name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
-[template.vm.net.type.mac_v_tap]
+[template.vm.net.type.macvtap]
 
 [[template.vm]]
 name = "xxs-dpdk"

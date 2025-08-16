@@ -368,15 +368,15 @@ impl KeaDhcp {
             .iter()
             .map(|e| e.name.clone())
             .collect();
-        println!("{:#?}", vms);
+        // println!("{:#?}", vms);
 
         // Get leases
         let mut leases = self._get_ipv4_leases().await?;
 
-        for e in leases.clone() {
-            println!("{:#?}", Lease::from(&e));
-            println!("{:#?}", self.to_vm_name(&Lease::from(&e)));
-        }
+        // for e in leases.clone() {
+        //     println!("{:#?}", Lease::from(&e));
+        //     println!("{:#?}", self.to_vm_name(&Lease::from(&e)));
+        // }
 
         // Remove leases if no corresponding vm name
         leases = leases

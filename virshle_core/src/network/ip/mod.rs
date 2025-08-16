@@ -1,4 +1,5 @@
 pub mod fd;
+pub mod macvtap;
 pub mod tap;
 
 use crate::network::utils;
@@ -24,7 +25,7 @@ use super::InterfaceState;
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct IpInterface {
     #[serde(rename = "ifindex")]
-    pub index: Option<u64>,
+    pub index: u64,
     #[serde(rename = "ifname")]
     pub name: String,
     #[serde(rename = "address")]

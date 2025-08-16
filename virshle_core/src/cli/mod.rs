@@ -21,7 +21,8 @@ use spinoff::{spinners, Color, Spinner};
 
 // Rest API client
 use crate::api::{rest::client, rest::method, NodeServer};
-use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
+use crate::api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
+use pipelight_exec::Status;
 
 // Logger
 use env_logger::Builder;
@@ -131,9 +132,6 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
-                    // Spinner
-                    let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
-
                     // Set working node
                     let cw_node = args.current_workgin_node.node;
 
@@ -141,25 +139,56 @@ impl Cli {
                     if let Some(user_data_filepath) = args.user_data {
                         user_data = Some(UserData::from_file(&user_data_filepath)?);
                     }
-                    // Create a vm from template.
-                    let vm = client::vm::create(
-                        CreateVmArgs {
-                            template_name: args.template,
-                        },
-                        cw_node.clone(),
-                        user_data,
-                    )
-                    .await?;
 
-                    // Spinner
-                    let node = Node::unwrap_or_default(cw_node).await?;
-                    let vm_name = format!("vm/{}", vm.name);
-                    let message = format!(
-                        "Created {} on node {}",
-                        vm.name.bold().blue(),
-                        node.name.bold().green()
-                    );
-                    sp.stop_and_persist("✅", &message);
+                    match args.ntimes {
+                        Some(v) => {
+                            // Spinner
+                            let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
+                            // Create a vm from template.
+                            let vm: HashMap<Status, Vec<Vm>> = client::vm::create_many(
+                                CreateManyVmArgs {
+                                    template_name: args.template,
+                                    ntimes: args.ntimes,
+                                },
+                                cw_node.clone(),
+                                user_data,
+                            )
+                            .await?;
+
+                            // Spinner
+                            let node = Node::unwrap_or_default(cw_node).await?;
+                            let vm_name = format!("vm/{}", vm.name);
+                            let message = format!(
+                                "Created {} on node {}",
+                                vm.name.bold().blue(),
+                                node.name.bold().green()
+                            );
+                            sp.stop_and_persist("✅", &message);
+                        }
+                        None => {
+                            // Spinner
+                            let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
+                            // Create a vm from template.
+                            let vm = client::vm::create(
+                                CreateVmArgs {
+                                    template_name: args.template,
+                                },
+                                cw_node.clone(),
+                                user_data,
+                            )
+                            .await?;
+
+                            // Spinner
+                            let node = Node::unwrap_or_default(cw_node).await?;
+                            let vm_name = format!("vm/{}", vm.name);
+                            let message = format!(
+                                "Created {} on node {}",
+                                vm.name.bold().blue(),
+                                node.name.bold().green()
+                            );
+                            sp.stop_and_persist("✅", &message);
+                        }
+                    }
                 }
                 Crud::Start(args) => {
                     // Set working node
@@ -216,7 +245,7 @@ impl Cli {
                                 let mut sp =
                                     Spinner::new(spinners::Toggle5, "Starting vms...", None);
 
-                                let vms = client::vm::start_many(
+                                let vms: HashMap<Status, Vec<Vm>> = client::vm::start_many(
                                     GetManyVmArgs {
                                         vm_state: args.state,
                                         account_uuid: args.account,

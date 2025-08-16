@@ -9,17 +9,17 @@ Nixos users can find an example of host network configuration at
 
 ## MacVTap
 
-The fastest way to add networking connectivity to a VM is with a `mac_v_tap`.
+The fastest way to add networking connectivity to a VM is with a `macvtap`.
 Add the following network configuration to a vm template.
 
 ```toml
 [[template.vm.net]]
 name = "main"
-[template.vm.net.type.mac_v_tap]
+[template.vm.net.type.macvtap]
 ```
 
 It uses the linux network [ip](https://www.man7.org/linux/man-pages/man8/ip.8.html) command
-to create a mac_v_tap interface that will be bound to the VM.
+to create a macvtap interface that will be bound to the VM.
 
 No need for a bridge here, the upstream router gives ips and network access to the VM.
 

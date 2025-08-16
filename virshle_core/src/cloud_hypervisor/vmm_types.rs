@@ -11,7 +11,7 @@
 use super::{vm::NetType, Disk, Vm};
 use crate::{
     config::VirshleConfig,
-    network::{dhcp::DhcpType, ip::fd, utils},
+    network::{dhcp::DhcpType, ip, utils},
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
@@ -142,7 +142,7 @@ pub struct NetConfig {
 
     // tap
     pub tap: Option<String>,
-    pub fd: Option<Vec<i32>>,
+    pub fds: Option<Vec<i32>>,
 
     // dpdk
     pub vhost_mode: Option<VhostMode>,
@@ -295,6 +295,14 @@ impl VmConfig {
                 }
 
                 match &net._type {
+                    NetType::MacVTap(_) => {
+                        // let port_name = format!("vm-{}--{}", e.name, net.name);
+                        // let fd = ip::macvtap::get_fd(&port_name)?;
+                        // net_configs.push(NetConfig {
+                        //     fds: Some(vec![fd]),
+                        //     ..Default::default()
+                        // });
+                    }
                     NetType::Vhost(_) => {
                         net_configs.push(NetConfig {
                             mac: Some(utils::uuid_to_mac(&e.uuid).to_string()),
@@ -324,29 +332,14 @@ impl VmConfig {
                             // num_queues: Some(e.vcpu * 2),
                             ..Default::default()
                         });
-
-                        // external Tap via file descriptor
-                        // let fd = fd::get_fd(&port_name).unwrap();
-                        // net_configs.push(NetConfig {
-                        //     fd: Some(vec![fd]),
-                        //     ..Default::default()
-                        // });
-                    }
-                    NetType::MacVTap(_) => {
-                        // external Tap via name
-                        let tap_name = utils::unix_name(&port_name);
-                        net_configs.push(NetConfig {
-                            //tap
-                            tap: Some(tap_name),
-
-                            // multiqueue support
-                            num_queues: Some(2),
-                            ..Default::default()
-                        });
                     }
                 }
             }
-            config.net = Some(net_configs);
+            if !net_configs.is_empty() {
+                config.net = Some(net_configs);
+            } else {
+                config.net = None;
+            }
         }
         // config
         Ok(config)

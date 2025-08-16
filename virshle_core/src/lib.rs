@@ -24,6 +24,8 @@ pub use cloud_hypervisor::{Vm, VmInfo, VmState, VmTemplate};
 pub mod connection;
 pub mod http_request;
 
+pub mod exec;
+
 // Host network manipulation.
 pub mod network;
 pub use network::{ip, ovs};

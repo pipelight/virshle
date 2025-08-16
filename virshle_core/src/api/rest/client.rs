@@ -152,9 +152,10 @@ pub mod node {
 }
 pub mod vm {
     use super::*;
-    use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
+    use crate::api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
     use crate::cloud_hypervisor::vmm_types::VmInfoResponse;
     use crate::cloud_hypervisor::VmConfigPlus;
+    use pipelight_exec::Status;
 
     /// Get a hashmap/dict of all vms per (reachable) node.
     /// - node: the node name set in the virshle config file.
@@ -228,6 +229,71 @@ pub mod vm {
                 vm.name, template_name, node.name
             );
             Ok(vm)
+        } else {
+            Err(LibError::builder()
+                .msg("Couldn't create a Vm")
+                .help("A template name was not provided.")
+                .build()
+                .into())
+        }
+    }
+    /// Create a virtual machine on a given node.
+    ///
+    /// # Arguments
+    ///
+    /// * `args` - a struct containing node name, vm template name,
+    ///     and how many vms to create.
+    /// * `vm_config_plus`: additional vm configuration to store in db.
+    ///
+    pub async fn create_many(
+        args: CreateManyVmArgs,
+        node_name: Option<String>,
+        user_data: Option<UserData>,
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+
+        // Create a vm from template.
+        if let Some(template_name) = args.template_name.clone() {
+            info!(
+                "[start] creating new vm from template {:#?} on node {:#?}",
+                template_name, node.name
+            );
+            let mut conn = Connection::from(&node);
+            let mut rest = RestClient::from(&mut conn);
+            rest.base_url("/api/v1");
+            rest.ping_url("/api/v1/node/ping");
+            rest.open().await?;
+            rest.ping().await?;
+
+            let res: HashMap<Status, Vec<Vm>> = rest
+                .put("/vm/create.many", Some((args, user_data)))
+                .await?
+                .to_value()
+                .await?;
+            conn.close();
+
+            // Log response.
+            for (k, v) in res.iter() {
+                match k {
+                    Status::Succeeded => {
+                        let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                        let vms_name = vms_name.join(" ");
+                        info!(
+                            "[end] created vms [{}] from template {:#?} on node {:#?}",
+                            vms_name, template_name, node.name
+                        );
+                    }
+                    Status::Failed => {
+                        info!(
+                            "[end] couldn't create vms from template {:#?} on node {:#?}",
+                            template_name, node.name
+                        );
+                    }
+                    _ => {}
+                }
+            }
+            Ok(res)
         } else {
             Err(LibError::builder()
                 .msg("Couldn't create a Vm")
@@ -328,7 +394,7 @@ pub mod vm {
         args: GetManyVmArgs,
         node_name: Option<String>,
         user_data: Option<UserData>,
-    ) -> Result<Vec<Vm>, VirshleError> {
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] starting many vms on node {:#?}", node.name);
@@ -340,21 +406,33 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let vms: Vec<Vm> = rest
+        let res: HashMap<Status, Vec<Vm>> = rest
             .put("/vm/start.many", Some((args.clone(), user_data.clone())))
             .await?
             .to_value()
             .await?;
         conn.close();
 
-        let vms_name = vms
-            .iter()
-            .map(|e| e.name.to_owned())
-            .collect::<Vec<String>>()
-            .join(",");
-        info!("[end] started vms:\n[{vms_name}] on node {:#?}", node.name);
-
-        Ok(vms)
+        // Log response.
+        for (k, v) in res.iter() {
+            match k {
+                Status::Succeeded => {
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("[end] started vms [{}] on node {:#?}", vms_name, node.name);
+                }
+                Status::Failed => {
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!(
+                        "[end] couldn't start vms [{}] on node {:#?}",
+                        vms_name, node.name
+                    );
+                }
+                _ => {}
+            }
+        }
+        Ok(res)
     }
 
     /// Bulk operation

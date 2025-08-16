@@ -86,6 +86,10 @@ impl NodeRestServer {
         let api_v1_bulk = Router::new()
             // Vm
             .route(
+                "/vm/create.many",
+                put(async move |params| method::vm::create_many(params).await),
+            )
+            .route(
                 "/vm/start.many",
                 put(async move |params| method::vm::start_many(params).await),
             )

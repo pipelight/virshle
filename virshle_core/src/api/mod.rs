@@ -1,7 +1,7 @@
 pub mod rest;
 
 pub use rest::{client, method, NodeRestServer};
-pub use rest::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
+pub use rest::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
 
 // Socket
 use std::fs;

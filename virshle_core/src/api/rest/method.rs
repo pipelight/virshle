@@ -35,6 +35,7 @@ use crate::http_request::{Rest, RestClient};
 // Error handling
 use log::{error, info, warn};
 use miette::{Diagnostic, IntoDiagnostic, Result};
+use tokio::task::JoinError;
 use virshle_error::{LibError, VirshleError, WrapError};
 
 pub mod node {
@@ -105,10 +106,10 @@ pub mod template {
 }
 
 pub mod vm {
-    use pipelight_exec::Finder;
+    use pipelight_exec::{Finder, Status};
 
     use super::*;
-    use crate::api::{CreateVmArgs, GetManyVmArgs, GetVmArgs};
+    use crate::api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
     use crate::cloud_hypervisor::VmConfigPlus;
 
     /// Return every VM on node.
@@ -118,6 +119,48 @@ pub mod vm {
     }
     pub async fn _get_all(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
         Vm::get_many_by_args(&args).await
+    }
+
+    /// Start a vm and return it.
+    pub async fn create_many(
+        Json((args, user_data)): Json<(CreateManyVmArgs, Option<UserData>)>,
+    ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
+        Ok(Json(_create_many(args, user_data).await?))
+    }
+    pub async fn _create_many(
+        args: CreateManyVmArgs,
+        user_data: Option<UserData>,
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        let config = VirshleConfig::get()?;
+        if args.template_name.is_some() && args.ntimes.is_some() {
+            let template = config.get_template(&args.template_name.unwrap())?;
+
+            let mut tasks = vec![];
+            let mut vms = vec![];
+            for i in args.ntimes {
+                Node::can_create_vm(&template).await?;
+                let mut vm = Vm::from(&template)?;
+                vms.push(vm.clone());
+
+                tasks.push(tokio::spawn({
+                    let user_data = user_data.clone();
+                    async move {
+                        let mut vm = vm.clone();
+                        vm.create(user_data).await
+                    }
+                }));
+            }
+            let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+                futures::future::join_all(tasks).await;
+            let response = vm_bulk_results_to_response(vms, results)?;
+            Ok(response)
+        } else {
+            Err(LibError::builder()
+                .msg("Couldn't create Vm")
+                .help("No valid template provided")
+                .build()
+                .into())
+        }
     }
 
     /// Create a VM on node.
@@ -139,7 +182,7 @@ pub mod vm {
             Node::can_create_vm(&template).await?;
 
             let mut vm = Vm::from(&template)?;
-            vm.create(user_data).await?;
+            vm = vm.create(user_data).await?;
             Ok(vm)
         } else {
             Err(LibError::builder()
@@ -149,18 +192,16 @@ pub mod vm {
                 .into())
         }
     }
-    /*
-     * Start a vm and return it.
-     */
+    /// Start a vm and return it.
     pub async fn start_many(
         Json((args, user_data)): Json<(GetManyVmArgs, Option<UserData>)>,
-    ) -> Result<Json<Vec<Vm>>, VirshleError> {
+    ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
         Ok(Json(_start_many(args, user_data).await?))
     }
     pub async fn _start_many(
         args: GetManyVmArgs,
         user_data: Option<UserData>,
-    ) -> Result<Vec<Vm>, VirshleError> {
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
         let vms: Vec<Vm> = Vm::get_many_by_args(&args).await?;
 
         let mut tasks = vec![];
@@ -173,10 +214,10 @@ pub mod vm {
                 }
             }));
         }
-        let res = futures::future::join_all(tasks).await;
-        // Return Successful and Failed.
-        for result in res {}
-        Ok(vms)
+        let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+            futures::future::join_all(tasks).await;
+        let response = vm_bulk_results_to_response(vms, results)?;
+        Ok(response)
     }
 
     /*
@@ -227,15 +268,27 @@ pub mod vm {
     /// Delete a vm and return it.
     pub async fn delete_many(
         Json(args): Json<GetManyVmArgs>,
-    ) -> Result<Json<Vec<Vm>>, VirshleError> {
+    ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
         Ok(Json(_delete_many(args).await?))
     }
-    pub async fn _delete_many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_many_by_args(&args).await?;
-        for vm in &mut vms {
-            vm.delete().await?;
+    pub async fn _delete_many(
+        args: GetManyVmArgs,
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        let vms = Vm::get_many_by_args(&args).await?;
+
+        let mut tasks = vec![];
+        for vm in vms.clone() {
+            tasks.push(tokio::spawn({
+                async move {
+                    let vm = vm.clone();
+                    vm.delete().await
+                }
+            }));
         }
-        Ok(vms)
+        let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+            futures::future::join_all(tasks).await;
+        let response = vm_bulk_results_to_response(vms, results)?;
+        Ok(response)
     }
     // Delete a vm and return it.
     pub async fn delete(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
@@ -324,6 +377,53 @@ pub mod vm {
         let vm = Vm::get_by_args(&args).await?;
         let path = vm.get_vsocket()?;
         Ok(path)
+    }
+    /// Convert bulk operations result like start.many
+    /// into HashMap of successful and failed operations.
+    pub fn vm_bulk_results_to_response(
+        vms: Vec<Vm>,
+        results: Vec<Result<Result<Vm, VirshleError>, JoinError>>,
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        let mut response: HashMap<Status, Vec<Vm>> =
+            HashMap::from([(Status::Succeeded, vec![]), (Status::Failed, vec![])]);
+        for res in results {
+            match res? {
+                Err(e) => {}
+                Ok(vm) => response.get_mut(&Status::Succeeded).unwrap().push(vm),
+            }
+        }
+        let failed: Vec<Vm> = vms
+            .iter()
+            .filter(|e| !response.get_mut(&Status::Succeeded).unwrap().contains(e))
+            .map(|e| e.to_owned())
+            .collect();
+        response.get_mut(&Status::Failed).unwrap().extend(failed);
+
+        Ok(response)
+    }
+
+    pub fn log_response(tag: &str, response: HashMap<Status, Vec<Vm>>) -> Result<(), VirshleError> {
+        // Log response.
+        for (k, v) in response.iter() {
+            match k {
+                Status::Succeeded => {
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!(
+                        "[end] created vms [{}] from template {:#?} on node {:#?}",
+                        vms_name, template_name, node.name
+                    );
+                }
+                Status::Failed => {
+                    info!(
+                        "[end] couldn't create vms from template {:#?} on node {:#?}",
+                        template_name, node.name
+                    );
+                }
+                _ => {}
+            }
+        }
+        Ok(())
     }
 }
 

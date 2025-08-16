@@ -13,9 +13,13 @@ pub use init::{InitData, UserData, VmData};
 pub use template::VmTemplate;
 
 use super::vmm_types::VmConfig;
+use crate::network::ip;
 
 // Time
 use chrono::{DateTime, NaiveDateTime, Utc};
+
+use std::fs::File;
+use std::os::fd::{AsFd, AsRawFd, RawFd};
 
 // Serde
 use convert_case::{Case, Casing};
@@ -88,6 +92,9 @@ pub struct VmNet {
 pub enum NetType {
     Vhost(Vhost),
     Tap(Tap),
+    // Can't pass macvtap through the Cloud-hypervisor http API.
+    // Must be deprecated because actual ch implementation sucks!
+    #[serde(rename = "macvtap")]
     MacVTap(Tap),
 }
 impl fmt::Display for NetType {
@@ -95,7 +102,7 @@ impl fmt::Display for NetType {
         let string = match self {
             NetType::Vhost(v) => "vhost".to_owned(),
             NetType::Tap(v) => "tap".to_owned(),
-            NetType::MacVTap(v) => "mac_v_tap".to_owned(),
+            NetType::MacVTap(v) => "macvtap".to_owned(),
         };
         write!(f, "{}", string)
     }
@@ -167,7 +174,7 @@ impl Vm {
         &mut self,
         user_data: Option<UserData>,
         attach: Option<bool>,
-    ) -> Result<(), VirshleError> {
+    ) -> Result<Vm, VirshleError> {
         info!("[start] starting vm {:#?}", self.name);
 
         // Create ressources
@@ -200,7 +207,7 @@ impl Vm {
         self.set_vsock_permissions().await?;
 
         info!("[end] started vm {:#?}", self.name);
-        Ok(())
+        Ok(self.to_owned())
     }
     /// Start or Restart a VMM.
     async fn start_vmm(&self, attach: Option<bool>) -> Result<(), VirshleError> {
@@ -208,9 +215,9 @@ impl Vm {
         self.delete_ch_proc()?;
 
         #[cfg(debug_assertions)]
-        let cmd = format!("sudo cloud-hypervisor");
+        let mut cmd = format!("cloud-hypervisor");
         #[cfg(not(debug_assertions))]
-        let cmd = format!("cloud-hypervisor");
+        let mut cmd = format!("cloud-hypervisor");
 
         // If we can't establish connection to socket,
         // this means cloud-hypervisor is dead.
@@ -219,10 +226,11 @@ impl Vm {
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
         rest.ping_url("/api/v1/vmm.ping");
+
         if rest.open().await.is_err() || rest.ping().await.is_err() {
             match attach {
                 Some(true) => {
-                    let cmd = format!(
+                    cmd = format!(
                         "kitty \
                             --title ttyS0@vm-{} \
                             --hold sh -c \"{} --api-socket {}\"",
@@ -236,18 +244,17 @@ impl Vm {
                         .background()
                         .detach()
                         .run()?;
-                    info!("Launching: {}", &cmd);
+                    info!("launching: {:#?}", &cmd);
                 }
                 _ => {
-                    let cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
+                    cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
                     Process::new()
                         .stdin(&cmd)
-                        .term()
                         .orphan()
                         .background()
                         .detach()
                         .run()?;
-                    info!("Launching: {}", &cmd);
+                    info!("launching: {:#?}", &cmd);
                 }
             };
 
@@ -317,9 +324,7 @@ impl Vm {
         Ok(())
     }
 
-    /*
-     * Bring the virtual machine up.
-     */
+    /// Bring the virtual machine up.
     async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
         let config = VmConfig::from(self).await?;
         trace!("{:#?}", config);
