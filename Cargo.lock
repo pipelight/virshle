@@ -5852,6 +5852,7 @@ dependencies = [
  "toml 0.9.5",
  "tower",
  "tower-http",
+ "tracing",
  "unindent",
  "url",
  "users",

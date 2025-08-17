@@ -1,5 +1,7 @@
 mod types;
+mod utils;
 pub use types::*;
+use virshle_error::VirshleError;
 
 use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
@@ -132,8 +134,10 @@ impl Cli {
              */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
+                    let tag = "create";
                     // Set working node
                     let cw_node = args.current_workgin_node.node;
+                    let node = Node::unwrap_or_default(cw_node.clone()).await?;
 
                     let mut user_data = None;
                     if let Some(user_data_filepath) = args.user_data {
@@ -143,9 +147,9 @@ impl Cli {
                     match args.ntimes {
                         Some(v) => {
                             // Spinner
-                            let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
+                            let mut sp = Spinner::new(spinners::Toggle5, "Creating vms...", None);
                             // Create a vm from template.
-                            let vm: HashMap<Status, Vec<Vm>> = client::vm::create_many(
+                            let res: HashMap<Status, Vec<Vm>> = client::vm::create_many(
                                 CreateManyVmArgs {
                                     template_name: args.template,
                                     ntimes: args.ntimes,
@@ -156,47 +160,37 @@ impl Cli {
                             .await?;
 
                             // Spinner
-                            let node = Node::unwrap_or_default(cw_node).await?;
-                            let vm_name = format!("vm/{}", vm.name);
-                            let message = format!(
-                                "Created {} on node {}",
-                                vm.name.bold().blue(),
-                                node.name.bold().green()
-                            );
-                            sp.stop_and_persist("✅", &message);
+                            utils::print_response_bulk_op(&mut sp, tag, &node.name, &res)?;
                         }
                         None => {
                             // Spinner
                             let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
+
                             // Create a vm from template.
-                            let vm = client::vm::create(
+                            let res: Result<Vm, VirshleError> = client::vm::create(
                                 CreateVmArgs {
                                     template_name: args.template,
                                 },
                                 cw_node.clone(),
                                 user_data,
                             )
-                            .await?;
-
+                            .await;
                             // Spinner
-                            let node = Node::unwrap_or_default(cw_node).await?;
-                            let vm_name = format!("vm/{}", vm.name);
-                            let message = format!(
-                                "Created {} on node {}",
-                                vm.name.bold().blue(),
-                                node.name.bold().green()
-                            );
-                            sp.stop_and_persist("✅", &message);
+                            utils::print_response_op(&mut sp, tag, &node.name, &res)?;
                         }
                     }
                 }
                 Crud::Start(args) => {
+                    let tag = "start";
                     // Set working node
                     let cw_node = args.vm_args.current_workgin_node.node.clone();
+                    let node = Node::unwrap_or_default(cw_node.clone()).await?;
+
                     let user_data: Option<UserData> = match args.user_data {
                         Some(path) => Some(UserData::from_file(&path)?),
                         None => None,
                     };
+
                     match args.attach {
                         true => {
                             let args = args.vm_args;
@@ -220,7 +214,7 @@ impl Cli {
                                     Spinner::new(spinners::Toggle5, "Starting vm...", None);
 
                                 // Rest API
-                                let vm = client::vm::start(
+                                let res: Result<Vm, VirshleError> = client::vm::start(
                                     GetVmArgs {
                                         id: args.id,
                                         uuid: args.uuid,
@@ -229,23 +223,14 @@ impl Cli {
                                     cw_node.clone(),
                                     user_data,
                                 )
-                                .await?;
-
+                                .await;
                                 // Spinner
-                                let node = Node::unwrap_or_default(cw_node).await?;
-                                let vm_name = format!("vm/{}", vm.name);
-                                let message = format!(
-                                    "Started {} on node {}",
-                                    vm_name.bold().blue(),
-                                    node.name.bold().green()
-                                );
-                                sp.stop_and_persist("✅", &message);
+                                utils::print_response_op(&mut sp, tag, &node.name, &res)?;
                             } else if args.state.is_some() || args.account.is_some() {
                                 // Spinner
                                 let mut sp =
                                     Spinner::new(spinners::Toggle5, "Starting vms...", None);
-
-                                let vms: HashMap<Status, Vec<Vm>> = client::vm::start_many(
+                                let res: HashMap<Status, Vec<Vm>> = client::vm::start_many(
                                     GetManyVmArgs {
                                         vm_state: args.state,
                                         account_uuid: args.account,
@@ -254,42 +239,21 @@ impl Cli {
                                     user_data,
                                 )
                                 .await?;
-
-                                let indent = " ".repeat(2);
-                                let vms_name: Vec<String> = vms
-                                    .iter()
-                                    .map(|e| format!("{indent}vm/{}", e.name.bold().blue()))
-                                    .collect();
-                                let vms_name: String = vms_name.join("\n");
-
-                                // Spinner
-                                let node = Node::unwrap_or_default(cw_node).await?;
-                                if !vms_name.is_empty() {
-                                    let message = format!(
-                                        "Started [\n{}\n] on node {}",
-                                        vms_name,
-                                        node.name.bold().green()
-                                    );
-                                    sp.stop_and_persist("✅", &message);
-                                } else {
-                                    let message = format!(
-                                        "No vm started on node {}",
-                                        node.name.bold().green()
-                                    );
-                                    sp.stop_and_persist("✅", &message);
-                                }
+                                utils::print_response_bulk_op(&mut sp, "start", &node.name, &res)?;
                             }
                         }
                     };
                 }
                 Crud::Stop(args) => {
+                    let tag = "shutdown";
                     // Set working node
                     let cw_node = args.current_workgin_node.node;
+                    let node = Node::unwrap_or_default(cw_node.clone()).await?;
+
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
-                        let mut sp = Spinner::new(spinners::Toggle5, "Stopping vm...", None);
-
-                        let vm = client::vm::shutdown(
+                        let mut sp = Spinner::new(spinners::Toggle5, "Shutting down vm...", None);
+                        let res: Result<Vm, VirshleError> = client::vm::shutdown(
                             GetVmArgs {
                                 id: args.id,
                                 uuid: args.uuid,
@@ -297,22 +261,13 @@ impl Cli {
                             },
                             cw_node.clone(),
                         )
-                        .await?;
-
+                        .await;
                         // Spinner
-                        let node = Node::unwrap_or_default(cw_node).await?;
-                        let vm_name = format!("vm/{}", vm.name);
-                        let message = format!(
-                            "Stopped {} on node {}",
-                            vm_name.bold().blue(),
-                            node.name.bold().green()
-                        );
-                        sp.stop_and_persist("✅", &message);
+                        utils::print_response_op(&mut sp, tag, &node.name, &res)?;
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
-                        let mut sp = Spinner::new(spinners::Toggle5, "Stopping vms...", None);
-
-                        let vms = client::vm::shutdown_many(
+                        let mut sp = Spinner::new(spinners::Toggle5, "Shutting down vms...", None);
+                        let res = client::vm::shutdown_many(
                             GetManyVmArgs {
                                 vm_state: args.state,
                                 account_uuid: args.account,
@@ -320,31 +275,21 @@ impl Cli {
                             cw_node.clone(),
                         )
                         .await?;
-
-                        let indent = " ".repeat(2);
-                        let vms_name: Vec<String> = vms
-                            .iter()
-                            .map(|e| format!("{indent}vm/{}", e.name.bold().blue()))
-                            .collect();
-                        let vms_name: String = vms_name.join("\n");
-
                         // Spinner
-                        let node = Node::unwrap_or_default(cw_node).await?;
-                        let message = format!(
-                            "Stopped [{}] on node {}",
-                            vms_name,
-                            node.name.bold().green()
-                        );
-                        sp.stop_and_persist("✅", &message);
+                        utils::print_response_bulk_op(&mut sp, "shutdown", &node.name, &res)?;
                     }
                 }
                 Crud::Delete(args) => {
+                    let tag = "delete";
+                    // Set working node
                     let cw_node = args.current_workgin_node.node;
+                    let node = Node::unwrap_or_default(cw_node.clone()).await?;
+
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vm...", None);
 
-                        let vm = client::vm::delete(
+                        let res: Result<Vm, VirshleError> = client::vm::delete(
                             GetVmArgs {
                                 id: args.id,
                                 uuid: args.uuid,
@@ -352,22 +297,14 @@ impl Cli {
                             },
                             cw_node.clone(),
                         )
-                        .await?;
-
+                        .await;
                         // Spinner
-                        let node = Node::unwrap_or_default(cw_node).await?;
-                        let vm_name = format!("vm/{}", vm.name);
-                        let message = format!(
-                            "Deleted {} on node {}",
-                            vm_name.bold().blue(),
-                            node.name.bold().green()
-                        );
-                        sp.stop_and_persist("✅", &message);
+                        utils::print_response_op(&mut sp, tag, &node.name, &res)?;
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vms...", None);
 
-                        let vms = client::vm::delete_many(
+                        let res: HashMap<Status, Vec<Vm>> = client::vm::delete_many(
                             GetManyVmArgs {
                                 vm_state: args.state,
                                 account_uuid: args.account,
@@ -375,22 +312,7 @@ impl Cli {
                             cw_node.clone(),
                         )
                         .await?;
-
-                        let indent = " ".repeat(2);
-                        let vms_name: Vec<String> = vms
-                            .iter()
-                            .map(|e| format!("{indent}vm/{}", e.name.bold().blue()))
-                            .collect();
-                        let vms_name: String = vms_name.join("\n");
-
-                        // Spinner
-                        let node = Node::unwrap_or_default(cw_node).await?;
-                        let message = format!(
-                            "Deleted [\n{}\n] on node {}",
-                            vms_name,
-                            node.name.bold().green()
-                        );
-                        sp.stop_and_persist("✅", &message);
+                        utils::print_response_bulk_op(&mut sp, tag, &node.name, &res)?;
                     }
                 }
                 Crud::Ls(args) => {

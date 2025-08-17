@@ -184,7 +184,8 @@ impl<'a> Rest for RestClient<'a> {
         let request = Request::builder()
             .uri(self.get_ping_url())
             .method("GET")
-            .header("Host", "localhost")
+            // .header("Host", "localhost")
+            .header("server", "Virshle API")
             .body(Full::new(Bytes::new()))?;
 
         if let Some(handle) = &mut self.handle {
@@ -216,7 +217,8 @@ impl<'a> Rest for RestClient<'a> {
         let request = Request::builder()
             .uri(&endpoint)
             .method("GET")
-            .header("Host", "localhost")
+            // .header("Host", "localhost")
+            .header("server", "Virshle API")
             .body(Full::new(Bytes::new()));
 
         self.send(&endpoint, &request?).await
@@ -230,7 +232,8 @@ impl<'a> Rest for RestClient<'a> {
         let request = Request::builder()
             .uri(&endpoint)
             .method("POST")
-            .header("Host", "localhost")
+            // .header("Host", "localhost")
+            .header("server", "Virshle API")
             .header("Content-Type", "application/json");
 
         let request = match body {
@@ -250,7 +253,8 @@ impl<'a> Rest for RestClient<'a> {
         let request = Request::builder()
             .uri(&endpoint)
             .method("PUT")
-            .header("Host", "localhost")
+            // .header("Host", "localhost")
+            .header("server", "Virshle API")
             .header("Content-Type", "application/json");
 
         let request = match body {

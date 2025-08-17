@@ -10,6 +10,8 @@ use crate::{Node, NodeInfo, Vm, VmInfo, VmState, VmTemplate};
 use std::str::FromStr;
 use uuid::Uuid;
 
+use owo_colors::OwoColorize;
+
 // Error handling
 use log::{error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
@@ -273,26 +275,7 @@ pub mod vm {
                 .await?;
             conn.close();
 
-            // Log response.
-            for (k, v) in res.iter() {
-                match k {
-                    Status::Succeeded => {
-                        let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                        let vms_name = vms_name.join(" ");
-                        info!(
-                            "[end] created vms [{}] from template {:#?} on node {:#?}",
-                            vms_name, template_name, node.name
-                        );
-                    }
-                    Status::Failed => {
-                        info!(
-                            "[end] couldn't create vms from template {:#?} on node {:#?}",
-                            template_name, node.name
-                        );
-                    }
-                    _ => {}
-                }
-            }
+            log_response("create", &node.name, &res)?;
             Ok(res)
         } else {
             Err(LibError::builder()
@@ -332,7 +315,7 @@ pub mod vm {
     pub async fn delete_many(
         args: GetManyVmArgs,
         node_name: Option<String>,
-    ) -> Result<Vec<Vm>, VirshleError> {
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] deleting many vms on node {:#?}", node.name);
@@ -344,21 +327,15 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let vms: Vec<Vm> = rest
+        let res: HashMap<Status, Vec<Vm>> = rest
             .put("/vm/delete.many", Some(args.clone()))
             .await?
             .to_value()
             .await?;
         conn.close();
 
-        let vms_name = vms
-            .iter()
-            .map(|e| e.name.to_owned())
-            .collect::<Vec<String>>()
-            .join(",");
-        info!("[end] deleted vms:\n[{vms_name}] on node {:#?}", node.name);
-
-        Ok(vms)
+        log_response("delete", &node.name, &res)?;
+        Ok(res)
     }
     /// Start a virtual machine on a node.
     pub async fn start(
@@ -413,25 +390,7 @@ pub mod vm {
             .await?;
         conn.close();
 
-        // Log response.
-        for (k, v) in res.iter() {
-            match k {
-                Status::Succeeded => {
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!("[end] started vms [{}] on node {:#?}", vms_name, node.name);
-                }
-                Status::Failed => {
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!(
-                        "[end] couldn't start vms [{}] on node {:#?}",
-                        vms_name, node.name
-                    );
-                }
-                _ => {}
-            }
-        }
+        log_response("start", &node.name, &res)?;
         Ok(res)
     }
 
@@ -440,7 +399,7 @@ pub mod vm {
     pub async fn shutdown_many(
         args: GetManyVmArgs,
         node_name: Option<String>,
-    ) -> Result<Vec<Vm>, VirshleError> {
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] shutting down many vms on node {:#?}", node.name);
@@ -452,24 +411,15 @@ pub mod vm {
         rest.open().await?;
         rest.ping().await?;
 
-        let vms: Vec<Vm> = rest
-            .put("/vm/shutdown", Some(args.clone()))
+        let res: HashMap<Status, Vec<Vm>> = rest
+            .put("/vm/shutdown.many", Some(args.clone()))
             .await?
             .to_value()
             .await?;
         conn.close();
 
-        let vms_name = vms
-            .iter()
-            .map(|e| e.name.to_owned())
-            .collect::<Vec<String>>()
-            .join(",");
-        info!(
-            "[end] shutted down vms:\n[{vms_name}] on node {:#?}",
-            node.name
-        );
-
-        Ok(vms)
+        log_response("shutdown", &node.name, &res)?;
+        Ok(res)
     }
     /// Stop a virtual machine on a node.
     pub async fn shutdown(args: GetVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
@@ -733,5 +683,32 @@ pub mod vm {
 
         info!("[end] fetched info on a vm on node {:#?}", node.name);
         Ok(path)
+    }
+
+    /// Log response
+    pub fn log_response(
+        tag: &str,
+        node: &str,
+        response: &HashMap<Status, Vec<Vm>>,
+    ) -> Result<(), VirshleError> {
+        let tag = format!("[{tag}]");
+        for (k, v) in response.iter() {
+            match k {
+                Status::Failed => {
+                    let tag = tag.red();
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("{tag} failed for vms [{}] on node {node}", vms_name);
+                }
+                Status::Succeeded => {
+                    let tag = tag.green();
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("{tag} succedded for vms [{}] on node {node}", vms_name);
+                }
+                _ => {}
+            }
+        }
+        Ok(())
     }
 }

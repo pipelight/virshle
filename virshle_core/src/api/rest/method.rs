@@ -32,6 +32,7 @@ use crate::config::VirshleConfig;
 use crate::connection::{Connection, ConnectionHandle, ConnectionState};
 use crate::http_request::{Rest, RestClient};
 
+use owo_colors::OwoColorize;
 // Error handling
 use log::{error, info, warn};
 use miette::{Diagnostic, IntoDiagnostic, Result};
@@ -106,7 +107,7 @@ pub mod template {
 }
 
 pub mod vm {
-    use pipelight_exec::{Finder, Status};
+    pub use pipelight_exec::{Finder, Status};
 
     use super::*;
     use crate::api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
@@ -119,48 +120,6 @@ pub mod vm {
     }
     pub async fn _get_all(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
         Vm::get_many_by_args(&args).await
-    }
-
-    /// Start a vm and return it.
-    pub async fn create_many(
-        Json((args, user_data)): Json<(CreateManyVmArgs, Option<UserData>)>,
-    ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
-        Ok(Json(_create_many(args, user_data).await?))
-    }
-    pub async fn _create_many(
-        args: CreateManyVmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        let config = VirshleConfig::get()?;
-        if args.template_name.is_some() && args.ntimes.is_some() {
-            let template = config.get_template(&args.template_name.unwrap())?;
-
-            let mut tasks = vec![];
-            let mut vms = vec![];
-            for i in args.ntimes {
-                Node::can_create_vm(&template).await?;
-                let mut vm = Vm::from(&template)?;
-                vms.push(vm.clone());
-
-                tasks.push(tokio::spawn({
-                    let user_data = user_data.clone();
-                    async move {
-                        let mut vm = vm.clone();
-                        vm.create(user_data).await
-                    }
-                }));
-            }
-            let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
-                futures::future::join_all(tasks).await;
-            let response = vm_bulk_results_to_response(vms, results)?;
-            Ok(response)
-        } else {
-            Err(LibError::builder()
-                .msg("Couldn't create Vm")
-                .help("No valid template provided")
-                .build()
-                .into())
-        }
     }
 
     /// Create a VM on node.
@@ -192,7 +151,58 @@ pub mod vm {
                 .into())
         }
     }
+    /// Create many vms and return them.
+    pub async fn create_many(
+        Json((args, user_data)): Json<(CreateManyVmArgs, Option<UserData>)>,
+    ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
+        Ok(Json(_create_many(args, user_data).await?))
+    }
+    pub async fn _create_many(
+        args: CreateManyVmArgs,
+        user_data: Option<UserData>,
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        let config = VirshleConfig::get()?;
+        if args.template_name.is_some() && args.ntimes.is_some() {
+            let template = config.get_template(&args.template_name.unwrap())?;
+
+            let mut tasks = vec![];
+            let mut vms = vec![];
+            for i in 0..args.ntimes.unwrap() {
+                Node::can_create_vm(&template).await?;
+                let mut vm = Vm::from(&template)?;
+                tasks.push(tokio::spawn({
+                    let user_data = user_data.clone();
+                    async move {
+                        let mut vm = vm.clone();
+                        vm.create(user_data).await
+                    }
+                }));
+            }
+            let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+                futures::future::join_all(tasks).await;
+            let response = vm_bulk_results_to_response(vms, results)?;
+            log_response_op("create", &response)?;
+            Ok(response)
+        } else {
+            Err(LibError::builder()
+                .msg("Couldn't create Vm")
+                .help("No valid template provided")
+                .build()
+                .into())
+        }
+    }
     /// Start a vm and return it.
+    pub async fn start(
+        Json((args, user_data)): Json<(GetVmArgs, Option<UserData>)>,
+    ) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_start(args, user_data).await?))
+    }
+    pub async fn _start(args: GetVmArgs, user_data: Option<UserData>) -> Result<Vm, VirshleError> {
+        let mut vm = Vm::get_by_args(&args).await?;
+        vm.start(user_data.clone(), None).await?;
+        Ok(vm)
+    }
+    /// Start multiple vm and return them.
     pub async fn start_many(
         Json((args, user_data)): Json<(GetManyVmArgs, Option<UserData>)>,
     ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
@@ -202,10 +212,10 @@ pub mod vm {
         args: GetManyVmArgs,
         user_data: Option<UserData>,
     ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        let vms: Vec<Vm> = Vm::get_many_by_args(&args).await?;
+        let mut vms: Vec<Vm> = Vm::get_many_by_args(&args).await?;
 
         let mut tasks = vec![];
-        for vm in vms.clone() {
+        for mut vm in vms.clone() {
             tasks.push(tokio::spawn({
                 let user_data = user_data.clone();
                 async move {
@@ -217,22 +227,10 @@ pub mod vm {
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
         let response = vm_bulk_results_to_response(vms, results)?;
+        log_response_op("start", &response)?;
         Ok(response)
     }
 
-    /*
-     * Start a vm and return it.
-     */
-    pub async fn start(
-        Json((args, user_data)): Json<(GetVmArgs, Option<UserData>)>,
-    ) -> Result<Json<Vm>, VirshleError> {
-        Ok(Json(_start(args, user_data).await?))
-    }
-    pub async fn _start(args: GetVmArgs, user_data: Option<UserData>) -> Result<Vm, VirshleError> {
-        let mut vm = Vm::get_by_args(&args).await?;
-        vm.start(user_data.clone(), None).await?;
-        Ok(vm)
-    }
     /*
      * TODO:
      * It should forward vm tty to user tty or ssh session!
@@ -264,6 +262,15 @@ pub mod vm {
 
         Ok(())
     }
+    /// Delete a vm and return it.
+    pub async fn delete(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
+        Ok(Json(_delete(args).await?))
+    }
+    pub async fn _delete(args: GetVmArgs) -> Result<Vm, VirshleError> {
+        let vm = Vm::get_by_args(&args).await?;
+        vm.delete().await?;
+        Ok(vm)
+    }
 
     /// Delete a vm and return it.
     pub async fn delete_many(
@@ -288,31 +295,10 @@ pub mod vm {
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
         let response = vm_bulk_results_to_response(vms, results)?;
+        log_response_op("delete", &response)?;
         Ok(response)
     }
-    // Delete a vm and return it.
-    pub async fn delete(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
-        Ok(Json(_delete(args).await?))
-    }
-    pub async fn _delete(args: GetVmArgs) -> Result<Vm, VirshleError> {
-        let vm = Vm::get_by_args(&args).await?;
-        vm.delete().await?;
-        Ok(vm)
-    }
 
-    /// Shutdown a vm and return the VM strutct.
-    pub async fn shutdown_many(
-        Json(args): Json<GetManyVmArgs>,
-    ) -> Result<Json<Vec<Vm>>, VirshleError> {
-        Ok(Json(_shutdown_many(args).await?))
-    }
-    pub async fn _shutdown_many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let mut vms = Vm::get_many_by_args(&args).await?;
-        for vm in &mut vms {
-            vm.shutdown().await?;
-        }
-        Ok(vms)
-    }
     /// Shutdown a vm and return the VM strutct.
     pub async fn shutdown(Json(args): Json<GetVmArgs>) -> Result<Json<Vm>, VirshleError> {
         Ok(Json(_shutdown(args).await?))
@@ -321,6 +307,31 @@ pub mod vm {
         let vm = Vm::get_by_args(&args).await?;
         vm.shutdown().await.ok();
         Ok(vm)
+    }
+    /// Shutdown a vm and return the VM strutct.
+    pub async fn shutdown_many(
+        Json(args): Json<GetManyVmArgs>,
+    ) -> Result<Json<HashMap<Status, Vec<Vm>>>, VirshleError> {
+        Ok(Json(_shutdown_many(args).await?))
+    }
+    pub async fn _shutdown_many(
+        args: GetManyVmArgs,
+    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        let vms = Vm::get_many_by_args(&args).await?;
+        let mut tasks = vec![];
+        for vm in vms.clone() {
+            tasks.push(tokio::spawn({
+                async move {
+                    let vm = vm.clone();
+                    vm.shutdown().await
+                }
+            }));
+        }
+        let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+            futures::future::join_all(tasks).await;
+        let response = vm_bulk_results_to_response(vms, results)?;
+        log_response_op("shutdown", &response)?;
+        Ok(response)
     }
 
     /// Get a VM definition.
@@ -389,36 +400,53 @@ pub mod vm {
         for res in results {
             match res? {
                 Err(e) => {}
-                Ok(vm) => response.get_mut(&Status::Succeeded).unwrap().push(vm),
+                Ok(vm) => {
+                    response.get_mut(&Status::Succeeded).unwrap().push(vm);
+                }
             }
         }
+
+        // Vm not contained in Result::Ok() or by deduction in Err().
+        // Can't do a comparison on Vm to Vm because some actions mutates
+        // the vm so it will always return a false so we must use the Vm uuid.
+        let succeeded_uuid: Vec<Uuid> = response
+            .get(&Status::Succeeded)
+            .unwrap()
+            .iter()
+            .map(|e| e.uuid)
+            .collect();
         let failed: Vec<Vm> = vms
             .iter()
-            .filter(|e| !response.get_mut(&Status::Succeeded).unwrap().contains(e))
+            .filter(|e| !succeeded_uuid.contains(&e.uuid))
             .map(|e| e.to_owned())
             .collect();
-        response.get_mut(&Status::Failed).unwrap().extend(failed);
 
+        response.get_mut(&Status::Failed).unwrap().extend(failed);
         Ok(response)
     }
-
-    pub fn log_response(tag: &str, response: HashMap<Status, Vec<Vm>>) -> Result<(), VirshleError> {
-        // Log response.
+    /// Log response
+    pub fn log_response_op(
+        tag: &str,
+        response: &HashMap<Status, Vec<Vm>>,
+    ) -> Result<(), VirshleError> {
+        let tag = format!("[bulk-op][{tag}]");
         for (k, v) in response.iter() {
             match k {
-                Status::Succeeded => {
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!(
-                        "[end] created vms [{}] from template {:#?} on node {:#?}",
-                        vms_name, template_name, node.name
-                    );
-                }
                 Status::Failed => {
-                    info!(
-                        "[end] couldn't create vms from template {:#?} on node {:#?}",
-                        template_name, node.name
-                    );
+                    let tag = tag.red();
+                    if !v.is_empty() {
+                        let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                        let vms_name = vms_name.join(" ");
+                        info!("{tag} failed for vms [{}]", vms_name);
+                    }
+                }
+                Status::Succeeded => {
+                    let tag = tag.green();
+                    if !v.is_empty() {
+                        let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                        let vms_name = vms_name.join(" ");
+                        info!("{tag} succeeded for vms [{}]", vms_name);
+                    }
                 }
                 _ => {}
             }
@@ -437,5 +465,16 @@ impl IntoResponse for Vm {
     fn into_response(self) -> axum::response::Response {
         let json = serde_json::to_string(&self).unwrap();
         json.into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::vm::*;
+    use super::*;
+
+    // #[test]
+    fn test_bulk_result_to_response() -> Result<()> {
+        Ok(())
     }
 }

@@ -175,7 +175,7 @@ impl Vm {
         user_data: Option<UserData>,
         attach: Option<bool>,
     ) -> Result<Vm, VirshleError> {
-        info!("[start] starting vm {:#?}", self.name);
+        info!("[op][begin] starting vm {:#?}", self.name);
 
         // Create ressources
         self.add_init_disk(user_data)?;
@@ -206,7 +206,7 @@ impl Vm {
         }
         self.set_vsock_permissions().await?;
 
-        info!("[end] started vm {:#?}", self.name);
+        info!("[op][end] started vm {:#?}", self.name);
         Ok(self.to_owned())
     }
     /// Start or Restart a VMM.
@@ -282,8 +282,8 @@ impl Vm {
 
     /// Shut the virtual machine down and removes artifacts.
     /// Should silently fail when vm is already down.
-    pub async fn shutdown(&self) -> Result<(), VirshleError> {
-        info!("[start] stopping vm {:#?}", self.name);
+    pub async fn shutdown(&self) -> Result<Self, VirshleError> {
+        info!("[op][begin] stopping vm {:#?}", self.name);
 
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
@@ -305,11 +305,11 @@ impl Vm {
         // Remove network ports
         self.delete_networks()?;
 
-        info!("[end] stopped vm {:#?}", self.name);
-        Ok(())
+        info!("[op][end] stopped vm {:#?}", self.name);
+        Ok(self.to_owned())
     }
     pub async fn pause(&self) -> Result<(), VirshleError> {
-        info!("[start] pausing vm {:#?}", self.name);
+        info!("[op][begin] pausing vm {:#?}", self.name);
 
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
@@ -320,7 +320,7 @@ impl Vm {
         let endpoint = "/vm.pause";
         let response = rest.put::<()>(endpoint, None).await?;
 
-        info!("[end] paused vm {:#?}", self.name);
+        info!("[op][end] paused vm {:#?}", self.name);
         Ok(())
     }
 
