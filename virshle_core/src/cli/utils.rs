@@ -29,7 +29,6 @@ pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {
         verbosity.to_string().to_lowercase(),
         "mio=error,sqlx=error,russh=error"
     );
-    #[cfg(debug_assertions)]
     let builder = FmtSubscriber::builder()
         .with_max_level(verbosity)
         // .with_file(false)
