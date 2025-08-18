@@ -22,7 +22,7 @@ in
     boot = {
       kernelModules = ["openvswitch"];
       kernel.sysctl = {
-        "vm.nr_hugepages" = mkIf cfg.dpdk.enable (mkBefore 4096);
+        "vm.nr_hugepages" = mkIf cfg.dpdk.enable (mkOptionDefault 4096);
       };
     };
 

@@ -9,8 +9,8 @@ use serde::Serialize;
 use serde_json::{from_slice, Value};
 
 // Error Handling
-use log::{debug, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::{debug, info, trace};
 use virshle_error::{LibError, VirshleError, VirshleErrorResponse, WrapError};
 
 #[derive(Debug)]
@@ -42,6 +42,7 @@ impl Response {
         let value: String = String::from_utf8(data.to_vec())?;
         Ok(value)
     }
+    #[tracing::instrument]
     pub async fn to_value<T>(self) -> Result<T, VirshleError>
     where
         T: DeserializeOwned + std::fmt::Debug,

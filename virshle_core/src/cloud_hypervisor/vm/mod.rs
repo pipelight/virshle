@@ -5,6 +5,7 @@ pub mod from;
 pub mod getters;
 pub mod init;
 pub mod template;
+pub mod to_vmm_types;
 
 // Reexports
 pub use account::Account;
@@ -12,8 +13,8 @@ pub use getters::VmInfo;
 pub use init::{InitData, UserData, VmData};
 pub use template::VmTemplate;
 
-use super::vmm_types::VmConfig;
 use crate::network::ip;
+use to_vmm_types::VmConfig;
 
 // Time
 use chrono::{DateTime, NaiveDateTime, Utc};

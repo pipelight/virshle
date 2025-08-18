@@ -20,16 +20,21 @@ use tokio::spawn;
 use tokio::task::JoinHandle;
 
 // Serde
+use derivative::Derivative;
 use serde::de::DeserializeOwned;
 
 use std::future::Future;
 // Error Handling
-use log::{debug, error, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::{debug, error, info, trace};
 use virshle_error::{LibError, VirshleError, WrapError};
 
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct RestClient<'a> {
+    #[derivative(Debug = "ignore")]
     pub connection: &'a mut Connection,
+    #[derivative(Debug = "ignore")]
     handle: Option<StreamHandle>,
     pub base_url: Option<String>,
     ping_url: Option<String>,
@@ -133,6 +138,8 @@ impl<'a> Rest for RestClient<'a> {
         }
         Ok(self)
     }
+
+    #[tracing::instrument]
     async fn send(
         &mut self,
         endpoint: &str,
@@ -179,7 +186,6 @@ impl<'a> Rest for RestClient<'a> {
         // A running cloud-hypervisor process can be clunky
         // and wait forever after a handshake so we test http response
         // duration.
-
         // Test ping endpoint response.
         let request = Request::builder()
             .uri(self.get_ping_url())

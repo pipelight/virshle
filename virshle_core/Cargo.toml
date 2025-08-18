@@ -7,8 +7,7 @@ edition = "2021"
 miette = { workspace = true, features = ["fancy"] }
 log.workspace = true
 env_logger.workspace = true
-
-tokio.workspace = true
+tokio = { workspace = true, features = ["mio", "tracing"] }
 bon.workspace = true
 
 virshle_error = { path = "../virshle_error" }
@@ -36,12 +35,7 @@ hyper = { version = "1.4.1", features = ["full"] }
 http-body-util = "0.1.2"
 hyper-util = "0.1.9"
 
-sea-orm = { version = "1.0.1", features = [
-  "runtime-tokio-rustls",
-  "sqlx-sqlite",
-  "with-json",
-  "macros",
-] }
+sea-orm = { version = "1.0.1", features = ["runtime-tokio-rustls", "sqlx-sqlite", "with-json", "macros", "debug-print"] }
 virshle_migration = { path = "../virshle_migration" }
 russh = "0.54.1"
 url = "2.5.2"
@@ -49,7 +43,7 @@ async-trait = "0.1.88"
 axum = { version = "0.8.3", features = ["json"] }
 
 # Cli
-clap-verbosity-flag = "3.0.2"
+clap-verbosity-flag = { version = "3.0.2", features = ["tracing"] }
 clap = "4.5.20"
 macaddr = { version = "1.0.1", features = ["serde", "serde_std"] }
 futures = "0.3.31"
@@ -89,6 +83,9 @@ bytes = "1.10.1"
 sys-mount = { version = "3.0.1", features = ["loop"] }
 command-fds = "0.3.2"
 tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["ansi", "env-filter"] }
+tracing-log = "0.2.0"
+derivative = "2.2.0"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

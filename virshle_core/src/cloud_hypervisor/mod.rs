@@ -7,10 +7,9 @@ mod definition;
 mod disk;
 mod rand;
 pub mod vm;
-pub mod vmm_types;
 
 pub use definition::{Definition, Template};
 pub use disk::{Disk, DiskInfo, DiskTemplate, InitDisk};
+pub use vm::to_vmm_types::{VmConfig, VmState};
 pub use vm::{Account, Vm, VmConfigPlus, VmData, VmInfo, VmNet, VmTemplate};
 pub use vm::{InitData, UserData};
-pub use vmm_types::{VmConfig, VmState};

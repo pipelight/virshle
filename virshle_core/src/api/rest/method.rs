@@ -23,8 +23,9 @@ use crate::config::{Node, NodeInfo};
 use crate::display::{VmTable, VmTemplateTable};
 // Hypervisor
 use crate::cli::{CreateArgs, VmArgs};
-use crate::cloud_hypervisor::{
-    vmm_types::VmInfoResponse, UserData, Vm, VmInfo, VmState, VmTemplate,
+use crate::cloud_hypervisor::vm::{
+    to_vmm_types::{VmInfoResponse, VmState},
+    UserData, Vm, VmInfo, VmTemplate,
 };
 use crate::config::VirshleConfig;
 
@@ -391,6 +392,7 @@ pub mod vm {
     }
     /// Convert bulk operations result like start.many
     /// into HashMap of successful and failed operations.
+    #[tracing::instrument]
     pub fn vm_bulk_results_to_response(
         vms: Vec<Vm>,
         results: Vec<Result<Result<Vm, VirshleError>, JoinError>>,

@@ -8,7 +8,7 @@
 * to be sent to cloud-hypervisor http api,
 * in just a few lines.
 */
-use super::{vm::NetType, Disk, Vm};
+use super::{Disk, NetType, Vm};
 use crate::{
     config::VirshleConfig,
     network::{dhcp::DhcpType, ip, utils},
@@ -94,6 +94,7 @@ pub struct MemoryConfig {
     pub size: u64,
     pub shared: bool,
     pub hugepages: bool,
+    pub mergeable: bool,
 
     #[serde(default)]
     pub hugepage_size: Option<u64>,
@@ -216,7 +217,8 @@ impl VmConfig {
             memory: MemoryConfig {
                 size: mem_size,
                 shared: false,
-                hugepages: true,
+                hugepages: false,
+                mergeable: true,
                 // hugepage_size: Some(2048),
                 // hotplug_size: Some(mem_size),
                 ..Default::default()

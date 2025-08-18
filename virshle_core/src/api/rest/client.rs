@@ -155,7 +155,7 @@ pub mod node {
 pub mod vm {
     use super::*;
     use crate::api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
-    use crate::cloud_hypervisor::vmm_types::VmInfoResponse;
+    use crate::cloud_hypervisor::vm::to_vmm_types::VmInfoResponse;
     use crate::cloud_hypervisor::VmConfigPlus;
     use pipelight_exec::Status;
 

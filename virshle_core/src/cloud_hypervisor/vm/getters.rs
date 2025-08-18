@@ -9,7 +9,7 @@ use tabled::{Table, Tabled};
 
 // Cloud Hypervisor
 use crate::cli::VmArgs;
-use crate::cloud_hypervisor::vmm_types::{VmConfig, VmInfoResponse, VmState};
+use crate::cloud_hypervisor::vm::to_vmm_types::{VmConfig, VmInfoResponse, VmState};
 
 // Ips
 use crate::config::VirshleConfig;

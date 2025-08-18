@@ -28,7 +28,6 @@ use pipelight_exec::Status;
 
 // Logger
 use env_logger::Builder;
-use log::LevelFilter;
 
 // Error Handling
 use miette::{IntoDiagnostic, Result};
@@ -40,16 +39,8 @@ impl Cli {
         Ok(())
     }
     pub async fn switch(cli: Cli) -> Result<()> {
-        // Set verbosity
-        let verbosity = cli.verbose.log_level_filter();
-        // Disable sql logs
-        let value = format!(
-            "{},{}",
-            verbosity.to_string().to_lowercase(),
-            "sqlx=error,russh=error"
-        );
-        std::env::set_var("VIRSHLE_LOG", value);
-        Builder::from_env("VIRSHLE_LOG").init();
+        utils::set_tracer(&cli)?;
+        utils::set_logger(&cli)?;
 
         match cli.commands {
             /*
@@ -160,7 +151,8 @@ impl Cli {
                             .await?;
 
                             // Spinner
-                            utils::print_response_bulk_op(&mut sp, tag, &node.name, &res)?;
+                            let message = utils::print_response_bulk_op(tag, &node.name, &res)?;
+                            sp.stop_and_persist(&message, "");
                         }
                         None => {
                             // Spinner
@@ -176,7 +168,8 @@ impl Cli {
                             )
                             .await;
                             // Spinner
-                            utils::print_response_op(&mut sp, tag, &node.name, &res)?;
+                            let message = utils::print_response_op(tag, &node.name, &res)?;
+                            sp.stop_and_persist(&message, "");
                         }
                     }
                 }
@@ -225,7 +218,8 @@ impl Cli {
                                 )
                                 .await;
                                 // Spinner
-                                utils::print_response_op(&mut sp, tag, &node.name, &res)?;
+                                let logs = utils::print_response_op(tag, &node.name, &res)?;
+                                sp.stop_and_persist(&logs, "");
                             } else if args.state.is_some() || args.account.is_some() {
                                 // Spinner
                                 let mut sp =
@@ -239,7 +233,9 @@ impl Cli {
                                     user_data,
                                 )
                                 .await?;
-                                utils::print_response_bulk_op(&mut sp, "start", &node.name, &res)?;
+                                let message =
+                                    utils::print_response_bulk_op("start", &node.name, &res)?;
+                                sp.stop_and_persist(&message, "");
                             }
                         }
                     };
@@ -263,7 +259,8 @@ impl Cli {
                         )
                         .await;
                         // Spinner
-                        utils::print_response_op(&mut sp, tag, &node.name, &res)?;
+                        let message = utils::print_response_op(tag, &node.name, &res)?;
+                        sp.stop_and_persist(&message, "");
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Shutting down vms...", None);
@@ -276,7 +273,8 @@ impl Cli {
                         )
                         .await?;
                         // Spinner
-                        utils::print_response_bulk_op(&mut sp, "shutdown", &node.name, &res)?;
+                        let message = utils::print_response_bulk_op(tag, &node.name, &res)?;
+                        sp.stop_and_persist(&message, "");
                     }
                 }
                 Crud::Delete(args) => {
@@ -299,7 +297,8 @@ impl Cli {
                         )
                         .await;
                         // Spinner
-                        utils::print_response_op(&mut sp, tag, &node.name, &res)?;
+                        let message = utils::print_response_op(tag, &node.name, &res)?;
+                        sp.stop_and_persist(&message, "");
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vms...", None);
@@ -312,7 +311,8 @@ impl Cli {
                             cw_node.clone(),
                         )
                         .await?;
-                        utils::print_response_bulk_op(&mut sp, tag, &node.name, &res)?;
+                        let message = utils::print_response_bulk_op(tag, &node.name, &res)?;
+                        sp.stop_and_persist(&message, "");
                     }
                 }
                 Crud::Ls(args) => {
