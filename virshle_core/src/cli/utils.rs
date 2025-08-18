@@ -29,12 +29,18 @@ pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {
         verbosity.to_string().to_lowercase(),
         "mio=error,sqlx=error,russh=error"
     );
-    let subscriber = FmtSubscriber::builder()
+    #[cfg(debug_assertions)]
+    let builder = FmtSubscriber::builder()
         .with_max_level(verbosity)
         // .with_file(false)
-        .with_env_filter(EnvFilter::try_new(filter).unwrap())
-        .pretty()
-        .finish();
+        .with_env_filter(EnvFilter::try_new(filter).unwrap());
+
+    #[cfg(debug_assertions)]
+    let builder = builder.pretty();
+    #[cfg(not(debug_assertions))]
+    let builder = builder.compact();
+
+    let subscriber = builder.finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
     Ok(())
 }
