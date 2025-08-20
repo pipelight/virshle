@@ -1,7 +1,6 @@
 mod types;
 mod utils;
 pub use types::*;
-use virshle_error::VirshleError;
 
 use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
@@ -31,6 +30,7 @@ use env_logger::Builder;
 
 // Error Handling
 use miette::{IntoDiagnostic, Result};
+use virshle_error::{CastError, JsonError, VirshleError, WrapError};
 
 impl Cli {
     pub async fn run() -> Result<()> {
@@ -325,7 +325,17 @@ impl Cli {
                         cw_node,
                     )
                     .await?;
-                    VmTable::display_by_nodes(table).await?;
+                    match args.format.json {
+                        Some(true) => {
+                            let json: Vec<(Node, Vec<VmTable>)> = table
+                                .iter()
+                                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                                .collect();
+                            let string = serde_json::to_string_pretty(&json).unwrap();
+                            println!("{}", string);
+                        }
+                        _ => VmTable::display_by_nodes(table).await?,
+                    };
                 }
                 Crud::ChInfo(args) => {
                     // Set working node

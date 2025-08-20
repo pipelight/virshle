@@ -52,8 +52,8 @@ use serde::{Deserialize, Serialize};
 use std::future::Future;
 
 // Error Handling
-use log::{debug, trace};
 use miette::{Error, Result};
+use tracing::{debug, trace};
 use virshle_error::{ConnectionError, VirshleError, WrapError};
 
 /*
@@ -61,17 +61,13 @@ use virshle_error::{ConnectionError, VirshleError, WrapError};
 * For now, usage of known types in enumeration is preffered.
 */
 pub trait Streamable:
-    // tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sized
+// tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sized
 // tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sync
-tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send
-{
-}
+tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send {}
 // pub trait Streamable: hyper::rt::Read + hyper::rt::Write {}
 // pub trait Streamable: std::io::Read + std::io::Write {}
 
-/*
-* An enumeration of allowed stream types.
-*/
+/// An enumeration of allowed stream types.
 pub enum Stream {
     Ssh(ChannelStream<Msg>),
     Socket(UnixStream),

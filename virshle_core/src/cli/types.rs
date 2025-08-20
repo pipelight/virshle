@@ -18,6 +18,14 @@ pub struct CurrentWorkingNode {
     #[arg(long, value_name = "NODE_NAME")]
     pub node: Option<String>,
 }
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct OutputFormat {
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub json: Option<bool>,
+}
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
@@ -157,6 +165,9 @@ pub struct VmArgs {
 
     #[command(flatten)]
     pub current_workgin_node: CurrentWorkingNode,
+
+    #[command(flatten)]
+    pub format: OutputFormat,
 }
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
@@ -228,4 +239,7 @@ pub struct NodeLsArgs {
 
     #[command(flatten)]
     pub current_workgin_node: CurrentWorkingNode,
+
+    #[command(flatten)]
+    pub format: OutputFormat,
 }

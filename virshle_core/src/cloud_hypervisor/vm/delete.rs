@@ -28,6 +28,7 @@ use virshle_error::{CastError, LibError, VirshleError};
 impl Vm {
     /// Remove a vm definition from database.
     /// And delete vm resources and process.
+    #[tracing::instrument(skip_all)]
     pub async fn delete(&self) -> Result<Self, VirshleError> {
         // Remove process and artifacts.
         self.delete_ch_proc()?;
@@ -40,7 +41,7 @@ impl Vm {
         // Finally Remove db networks
         self.delete_db_record().await?;
 
-        info!("Deleted vm {}", self.name);
+        info!("deleted vm {}", self.name);
         Ok(self.to_owned())
     }
 

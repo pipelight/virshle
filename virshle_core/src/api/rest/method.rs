@@ -427,6 +427,7 @@ pub mod vm {
         Ok(response)
     }
     /// Log response
+    #[tracing::instrument(skip(response), name = "bulk op")]
     pub fn log_response_op(
         tag: &str,
         response: &HashMap<Status, Vec<Vm>>,

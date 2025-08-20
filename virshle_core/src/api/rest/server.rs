@@ -24,6 +24,7 @@ use sysinfo::System;
 
 // Error handling
 use miette::{Diagnostic, IntoDiagnostic, Result};
+use tracing::info;
 use virshle_error::{LibError, VirshleError, WrapError};
 
 pub struct NodeRestServer;
@@ -142,14 +143,16 @@ impl NodeRestServer {
     /// Run REST api.
     pub async fn run() -> Result<(), VirshleError> {
         let app = NodeRestServer::make_router().await?;
-        loop {
-            tokio_scoped::scope(|s| {
-                s.spawn(async {
-                    let listener = NodeServer::make_socket().await.unwrap();
-                    axum::serve(listener, app.clone()).await;
-                });
-            })
-        }
+        let socket_path = NodeServer::get_socket()?;
+
+        info!("Server listening on socket {}", &socket_path);
+        tokio_scoped::scope(|s| {
+            s.spawn(async {
+                let listener = NodeServer::make_socket(&socket_path).await.unwrap();
+                axum::serve(listener, app.clone()).await;
+            });
+        });
+        Ok(())
     }
 }
 

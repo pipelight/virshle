@@ -171,13 +171,12 @@ impl Default for Vm {
 
 impl Vm {
     /// Start Vm
+    #[tracing::instrument(skip_all)]
     pub async fn start(
         &mut self,
         user_data: Option<UserData>,
         attach: Option<bool>,
     ) -> Result<Vm, VirshleError> {
-        info!("[op][begin] starting vm {:#?}", self.name);
-
         // Create ressources
         self.add_init_disk(user_data)?;
         self.create_networks()?;
@@ -207,7 +206,7 @@ impl Vm {
         }
         self.set_vsock_permissions().await?;
 
-        info!("[op][end] started vm {:#?}", self.name);
+        info!("started vm {:#?}", self.name);
         Ok(self.to_owned())
     }
     /// Start or Restart a VMM.
@@ -283,9 +282,8 @@ impl Vm {
 
     /// Shut the virtual machine down and removes artifacts.
     /// Should silently fail when vm is already down.
+    #[tracing::instrument(skip_all)]
     pub async fn shutdown(&self) -> Result<Self, VirshleError> {
-        info!("[op][begin] stopping vm {:#?}", self.name);
-
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
@@ -302,16 +300,15 @@ impl Vm {
 
         // Remove ch process
         self.delete_ch_proc()?;
-
         // Remove network ports
         self.delete_networks()?;
 
-        info!("[op][end] stopped vm {:#?}", self.name);
+        info!("stopped vm {}", self.name);
         Ok(self.to_owned())
     }
-    pub async fn pause(&self) -> Result<(), VirshleError> {
-        info!("[op][begin] pausing vm {:#?}", self.name);
 
+    #[tracing::instrument(skip_all)]
+    pub async fn pause(&self) -> Result<(), VirshleError> {
         let mut conn = Connection::from(self);
         let mut rest = RestClient::from(&mut conn);
         rest.base_url("/api/v1");
@@ -321,7 +318,7 @@ impl Vm {
         let endpoint = "/vm.pause";
         let response = rest.put::<()>(endpoint, None).await?;
 
-        info!("[op][end] paused vm {:#?}", self.name);
+        info!("paused vm {}", self.name);
         Ok(())
     }
 

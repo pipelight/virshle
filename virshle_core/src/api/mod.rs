@@ -21,17 +21,10 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub struct NodeServer;
 
 impl NodeServer {
-    /*
-     * Run REST api and gRPC on same socket.
-     */
+    /// Run REST api
+    /// TODO(): and gRPC on same socket.
     pub async fn run() -> Result<(), VirshleError> {
-        let rest_router = NodeRestServer::make_router().await?;
-
-        let app = Router::new().merge(rest_router);
-
-        let listener = Self::make_socket().await?;
-        axum::serve(listener, app).await?;
-
+        NodeRestServer::run().await?;
         Ok(())
     }
 }
@@ -45,9 +38,8 @@ impl NodeServer {
         Ok(path)
     }
     /// Create a unix socket with custom permissions.
-    pub async fn make_socket() -> Result<UnixListener, VirshleError> {
-        let socket = Self::get_socket()?;
-        let path = PathBuf::from(socket);
+    pub async fn make_socket(path: &str) -> Result<UnixListener, VirshleError> {
+        let path = PathBuf::from(path);
 
         // Remove old socket.
         let _ = tokio::fs::remove_file(&path).await;

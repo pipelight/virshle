@@ -52,6 +52,10 @@ in
         "socket.target"
         "ovs-vswitchd.service"
         "ovsdb.service"
+        # Dhcp
+        "kea-ctrl-agent.service"
+        "kea-dhcpv4-server.service"
+        "kea-dhcpv6-server.service"
       ];
       wantedBy = ["multi-user.target"];
 

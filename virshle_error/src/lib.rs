@@ -1,6 +1,6 @@
 use bon::bon;
 use miette::{Diagnostic, Report};
-pub use pipelight_error::{CastError, PipelightError, TomlError};
+pub use pipelight_error::{CastError, JsonError, PipelightError, TomlError};
 
 // Http
 use axum::{

@@ -36,12 +36,12 @@ use virshle_error::{CastError, LibError, VirshleError};
 impl Vm {
     /// Add vm config to database.
     /// Resources are not created there but rather on vm start.
+    #[tracing::instrument(skip_all)]
     pub async fn create(&mut self, user_data: Option<UserData>) -> Result<Self, VirshleError> {
-        info!("[op][begin] creating vm {:#?}", self.name);
         // Persist vm config into database
         self.create_db_record(user_data).await?;
 
-        info!("[op][end] created vm {:#?}", self.name);
+        info!("created vm {:#?}", self.name);
         Ok(self.to_owned())
     }
 
