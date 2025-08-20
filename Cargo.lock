@@ -5437,6 +5437,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-scoped"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4beb8ba13bc53ac53ce1d52b42f02e5d8060f0f42138862869beb769722b256"
+dependencies = [
+ "tokio",
+ "tokio-stream",
+]
+
+[[package]]
 name = "tokio-stream"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5847,6 +5857,7 @@ dependencies = [
  "log",
  "miette",
  "tokio",
+ "tracing",
  "virshle_core",
  "virshle_error",
 ]
@@ -5900,6 +5911,7 @@ dependencies = [
  "tabled",
  "tappers",
  "tokio",
+ "tokio-scoped",
  "toml 0.9.5",
  "tower",
  "tower-http",
@@ -5933,6 +5945,7 @@ dependencies = [
  "strum 0.27.1",
  "thiserror 2.0.12",
  "tokio",
+ "tracing",
  "url",
  "uuid",
 ]

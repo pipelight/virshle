@@ -5,8 +5,8 @@ use pipelight_exec::{Process, Status};
 use std::collections::HashMap;
 
 // Error handling
-use log::{error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
+use tracing::{error, info, trace, warn};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 pub fn exec_cmds(tag: &str, cmds: Vec<String>) -> Result<(), VirshleError> {

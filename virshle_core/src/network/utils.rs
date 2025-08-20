@@ -4,8 +4,8 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 // Error handling
-use log::{debug, info, trace};
 use miette::{IntoDiagnostic, Result};
+use tracing::{debug, info, trace};
 use virshle_error::{LibError, VirshleError};
 
 /*

@@ -28,3 +28,4 @@ axum = "0.8.4"
 csv = "1.3.1"
 log = "0.4.27"
 tokio.workspace = true
+tracing.workspace = true

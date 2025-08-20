@@ -30,8 +30,8 @@ use pipelight_exec::{Process, Status};
 use std::fs;
 
 // Error handling
-use log::{debug, info};
 use miette::{IntoDiagnostic, Result};
+use tracing::{debug, info};
 use virshle_error::{LibError, VirshleError};
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]

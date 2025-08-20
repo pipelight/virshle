@@ -8,8 +8,8 @@ use users::{get_current_uid, get_user_by_uid};
 use crate::api::NodeServer;
 
 // Error Handling
-use log::info;
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::info;
 use virshle_error::{LibError, VirshleError, WrapError};
 
 /*

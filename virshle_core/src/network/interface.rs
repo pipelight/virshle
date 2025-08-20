@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};
 
 // Error handling
-use log::{error, info};
 use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
+use tracing::{error, info};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 // pub trait Interface {

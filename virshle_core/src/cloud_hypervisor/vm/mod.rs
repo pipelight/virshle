@@ -47,8 +47,8 @@ use crate::connection::{Connection, ConnectionHandle, UnixConnection};
 use crate::http_request::{Rest, RestClient};
 
 // Error Handling
-use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
+use tracing::{debug, error, info, trace};
 use virshle_error::{LibError, VirshleError};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]

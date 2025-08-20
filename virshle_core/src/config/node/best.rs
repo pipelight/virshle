@@ -15,8 +15,8 @@ use crate::{
     config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION},
     VmTemplate,
 };
-use log::{error, info, warn};
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::{error, info, warn};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Node {

@@ -19,6 +19,7 @@ doc = false
 [dependencies]
 miette = { workspace = true, features = ["fancy"] }
 log.workspace = true
+tracing.workspace = true
 
 tokio = { version = "1.40.0", features = ["full"] }
 
@@ -29,6 +30,7 @@ virshle_error = { path = "../virshle_error" }
 [build-dependencies]
 miette = { workspace = true, features = ["fancy"] }
 log.workspace = true
+tracing.workspace = true
 
 tokio.workspace = true
 

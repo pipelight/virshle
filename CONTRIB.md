@@ -20,3 +20,10 @@ For the sake of speed resources are registered into a database,
 which one is not crucial for virshle functionning.
 The database acts like an index and can be generated from virshle managed files in
 `/var/lib/virshle/`
+
+## Rest API
+
+No need to sort Vms by id in rust code,
+because they are already sorted by id in the database.
+
+Structs returned by the API are sorted by id.

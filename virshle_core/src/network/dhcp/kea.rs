@@ -30,8 +30,8 @@ use std::collections::HashMap;
 use serde_with::skip_serializing_none;
 
 // Error handling
-use log::{debug, error, trace};
 use miette::{IntoDiagnostic, Result};
+use tracing::{debug, error, trace};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -368,15 +368,9 @@ impl KeaDhcp {
             .iter()
             .map(|e| e.name.clone())
             .collect();
-        // println!("{:#?}", vms);
 
         // Get leases
         let mut leases = self._get_ipv4_leases().await?;
-
-        // for e in leases.clone() {
-        //     println!("{:#?}", Lease::from(&e));
-        //     println!("{:#?}", self.to_vm_name(&Lease::from(&e)));
-        // }
 
         // Remove leases if no corresponding vm name
         leases = leases
@@ -385,7 +379,7 @@ impl KeaDhcp {
             .map(|e| e.to_owned())
             .collect();
 
-        // self._delete_ipv4_leases(leases).await?;
+        self._delete_ipv4_leases(leases).await?;
         Ok(())
     }
     /// Remove leases if associated vm doesn't exist.
@@ -400,11 +394,6 @@ impl KeaDhcp {
         // Get leases
         let mut leases = self._get_ipv6_leases().await?;
 
-        for e in leases.clone() {
-            println!("{:#?}", Lease::from(&e));
-            println!("{:#?}", self.to_vm_name(&Lease::from(&e)));
-        }
-
         // Remove leases if no corresponding vm name
         leases = leases
             .into_iter()
@@ -412,7 +401,7 @@ impl KeaDhcp {
             .map(|e| e.to_owned())
             .collect();
 
-        // self._delete_ipv6_leases(leases).await?;
+        self._delete_ipv6_leases(leases).await?;
         Ok(())
     }
 

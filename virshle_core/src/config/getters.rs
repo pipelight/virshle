@@ -7,8 +7,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // Error Handling
-use log::info;
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::info;
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
 impl VirshleConfig {

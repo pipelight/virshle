@@ -9,8 +9,8 @@ use macaddr::MacAddr6;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 // Error handling
-use log::{error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
+use tracing::{error, info, trace, warn};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 // Process

@@ -15,8 +15,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 // Error Handling
-use log::{error, info, trace, warn};
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::{error, info, trace, warn};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
 pub const CONFIG: Lazy<Arc<Mutex<VirshleConfig>>> =

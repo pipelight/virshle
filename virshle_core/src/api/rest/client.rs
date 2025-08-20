@@ -13,8 +13,8 @@ use uuid::Uuid;
 use owo_colors::OwoColorize;
 
 // Error handling
-use log::{error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
+use tracing::{error, info, trace, warn};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 // Hypervisor

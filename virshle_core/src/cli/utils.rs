@@ -27,7 +27,7 @@ pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {
     let filter = format!(
         "{},{}",
         verbosity.to_string().to_lowercase(),
-        "mio=error,sqlx=error,russh=error"
+        "mio=error,sqlx=error,russh=error,users=warn"
     );
     let builder = FmtSubscriber::builder()
         .with_max_level(verbosity)
@@ -51,7 +51,7 @@ pub fn set_logger(cli: &Cli) -> Result<(), VirshleError> {
     let filter = format!(
         "{},{}",
         verbosity.to_string().to_lowercase(),
-        "mio=error,sqlx=error,russh=error"
+        "mio=error,sqlx=error,russh=error,users=warn"
     );
     std::env::set_var("VIRSHLE_LOG", filter);
     Builder::from_env("VIRSHLE_LOG").init();
@@ -60,7 +60,7 @@ pub fn set_logger(cli: &Cli) -> Result<(), VirshleError> {
 }
 
 /// Print the result of an operation on a single vm.
-#[tracing::instrument]
+#[tracing::instrument(skip(res))]
 pub fn print_response_op(
     tag: &str,
     node: &str,
@@ -82,7 +82,7 @@ pub fn print_response_op(
     Ok(message.to_owned())
 }
 /// Print the result of an bulk operation on multiple vms.
-#[tracing::instrument]
+#[tracing::instrument(skip(res))]
 pub fn print_response_bulk_op(
     tag: &str,
     node: &str,

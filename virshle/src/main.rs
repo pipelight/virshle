@@ -2,8 +2,8 @@ use std::{process::ExitCode, u8};
 use virshle_core::cli::Cli;
 
 // Error Handling
-use log::trace;
 use miette::{IntoDiagnostic, MietteHandlerOpts, Result, RgbColors};
+use tracing::trace;
 
 /**
 The binary entrypoint.

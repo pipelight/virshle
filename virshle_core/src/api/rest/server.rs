@@ -142,9 +142,14 @@ impl NodeRestServer {
     /// Run REST api.
     pub async fn run() -> Result<(), VirshleError> {
         let app = NodeRestServer::make_router().await?;
-        let listener = NodeServer::make_socket().await?;
-        axum::serve(listener, app).await?;
-        Ok(())
+        loop {
+            tokio_scoped::scope(|s| {
+                s.spawn(async {
+                    let listener = NodeServer::make_socket().await.unwrap();
+                    axum::serve(listener, app.clone()).await;
+                });
+            })
+        }
     }
 }
 

@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 // Error Handling
-use log::{debug, error, info, trace, warn};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 /*

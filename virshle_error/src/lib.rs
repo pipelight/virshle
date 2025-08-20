@@ -10,8 +10,8 @@ use axum::{
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use log::error;
 use thiserror::Error;
+use tracing::error;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum VirshleError {
