@@ -34,14 +34,15 @@ Structs returned by the API are sorted by id.
 
 nix flake update --flake ./modules/test/virshle#default virshle
 nixos-rebuild build \
-      --flake "./modules/test/virshle#default" \
+      --flake "./templates/tests/virshle#default" \
       --log-format multiline-with-logs \
       --show-trace
 ```
 
 ```sh
+nix flake update --flake ./modules/test/virshle#default virshle
 nixos-rebuild build \
-      --flake "./modules/test/openvswitch#default" \
+      --flake "./modules/tests/openvswitch#default" \
       --log-format multiline-with-logs \
       --show-trace
 ```

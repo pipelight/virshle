@@ -26,6 +26,5 @@ commands = [
   """
   nixos-rebuild build \
   --flake './modules/tests/openvswitch#default' \
-  --override-input virshle ./
   """,
 ]
