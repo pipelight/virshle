@@ -27,3 +27,21 @@ No need to sort Vms by id in rust code,
 because they are already sorted by id in the database.
 
 Structs returned by the API are sorted by id.
+
+# Nixos Tests
+
+```sh
+
+nix flake update --flake ./modules/test/virshle#default virshle
+nixos-rebuild build \
+      --flake "./modules/test/virshle#default" \
+      --log-format multiline-with-logs \
+      --show-trace
+```
+
+```sh
+nixos-rebuild build \
+      --flake "./modules/test/openvswitch#default" \
+      --log-format multiline-with-logs \
+      --show-trace
+```

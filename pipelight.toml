@@ -2,7 +2,7 @@
 name = "test-nixosModule"
 
 [[pipelines.steps]]
-name = "run module tests"
+name = "run flake test"
 commands = [
   # Update flake deps
   "nix flake update --flake ./templates/tests",
@@ -10,6 +10,22 @@ commands = [
   """
   nixos-rebuild build \
   --flake './templates/tests#default' \
+  --override-input virshle ./
+  """,
+]
+
+[[pipelines]]
+name = "test-ovs-nixosModule"
+[[pipelines.steps]]
+
+name = "run openvswitch-afxdp tests"
+commands = [
+  # Update flake deps
+  "nix flake update --flake ./modules/tests/openvswitch",
+  # Build flake
+  """
+  nixos-rebuild build \
+  --flake './modules/tests/openvswitch#default' \
   --override-input virshle ./
   """,
 ]

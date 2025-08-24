@@ -5,6 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
     virshle = {
       url = "github:pipelight/virshle?ref=dev";
+      # url = "path:../../";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     pipelight.url = "github:pipelight/pipelight";
