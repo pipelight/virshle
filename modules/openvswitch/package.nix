@@ -9,11 +9,13 @@
   fetchFromGitHub,
   installShellFiles,
   iproute2,
+  ## Custom
   libbpf,
+  modulesPath,
+  #
   libcap_ng,
   libpcap,
   libtool,
-  libxdp,
   makeWrapper,
   nix-update-script,
   nixosTests,
@@ -27,14 +29,17 @@
   tcpdump,
   util-linux,
   which,
+  ...
 }:
 stdenv.mkDerivation rec {
-  pname = with lib;
-    mkMerge [
-      (mkIf withDPDK "openvswitch-dpdk")
-      (mkIf withAFXDP "openvswitch-afxdp")
-      (mkElse "openvswitch")
-    ];
+  pname = with lib; (
+    if withDPDK
+    then "openvswitch-dpdk"
+    else if withAFXDP
+    then "openvswitch-afxdp"
+    else "openvswitch"
+  );
+
   version = "3.5.0";
 
   src = fetchFromGitHub {
@@ -85,7 +90,6 @@ stdenv.mkDerivation rec {
     ])
     ++ (lib.optionals withAFXDP [
       libbpf
-      libxdp
     ]);
 
   preConfigure = "./boot.sh";

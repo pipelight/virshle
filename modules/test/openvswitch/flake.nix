@@ -21,14 +21,20 @@
           ../commons/hardware-configuration.nix
 
           # Install openvswitch custom package
-          ../../openvswitch/package.nix
 
           ({
             lib,
             config,
             inputs,
+            pkgs,
+            modulesPath,
             ...
-          }: {
+          }: let
+            openvswitch-afxdp = pkgs.callPackage ../../openvswitch/package.nix {inherit modulesPath;};
+          in {
+            environment.systemPackages = [
+              openvswitch-afxdp
+            ];
           })
         ];
       };
