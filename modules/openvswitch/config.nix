@@ -8,6 +8,9 @@
 with lib; let
   moduleName = "virshle";
   cfg = config.services.${moduleName};
+  openvswitch-afxdp = pkgs.callPackage ../../openvswitch/package.nix {
+    withAFXDP = true;
+  };
 in
   mkIf cfg.enable {
     # OpenVSwitch
@@ -15,6 +18,8 @@ in
       package =
         if cfg.dpdk.enable
         then pkgs.openvswitch-dpdk
+        else if cfg.afxdp.enable
+        then openvswitch-afxdp
         else pkgs.openvswitch;
       enable = true;
     };
@@ -49,6 +54,8 @@ in
       (
         if cfg.dpdk.enable
         then openvswitch-dpdk
+        else if cfg.afxdp.enable
+        then openvswitch-afxdp
         else openvswitch
       )
     ];

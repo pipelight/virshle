@@ -11,7 +11,7 @@
   iproute2,
   ## Custom
   libbpf,
-  modulesPath,
+  xdp-tools,
   #
   libcap_ng,
   libpcap,
@@ -29,7 +29,6 @@
   tcpdump,
   util-linux,
   which,
-  ...
 }:
 stdenv.mkDerivation rec {
   pname = with lib; (
@@ -90,6 +89,8 @@ stdenv.mkDerivation rec {
     ])
     ++ (lib.optionals withAFXDP [
       libbpf
+      xdp-tools
+      numactl
     ]);
 
   preConfigure = "./boot.sh";

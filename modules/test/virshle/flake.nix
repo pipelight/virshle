@@ -1,5 +1,5 @@
 {
-  description = "A flake to test openvswitch-afxdp";
+  description = "A flake to test virshle";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
   };
@@ -20,22 +20,21 @@
           ../commons/configuration.nix
           ../commons/hardware-configuration.nix
 
+          ../../default.nix
+
           ({
             lib,
             config,
             inputs,
             pkgs,
             ...
-          }: let
-            openvswitch = pkgs.callPackage ../../openvswitch/package.nix {};
-            openvswitch-afxdp = openvswitch.override {
-              withAFXDP = true;
+          }: {
+            services.virshle = {
+              enable = true;
+              afxdp.enable = true;
+              logLevel = "debug";
+              user = "anon";
             };
-          in {
-            environment.systemPackages = [
-              # openvswitch
-              openvswitch-afxdp
-            ];
           })
         ];
       };
