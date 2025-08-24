@@ -7,7 +7,8 @@
     ./config.nix
 
     # virshle deps
-    ./openvswitch.nix
+    ./openvswitch
+
     ./cloud-hypervisor.nix
     inputs.pipelight.nixosModules.pipelight-init
   ];
