@@ -32,7 +32,7 @@ Structs returned by the API are sorted by id.
 
 ```sh
 
-nix flake update --flake ./modules/test/virshle#default virshle
+nix flake update --flake ./templates/test/virshle virshle
 nixos-rebuild build \
       --flake "./templates/tests/virshle#default" \
       --log-format multiline-with-logs \
@@ -40,7 +40,7 @@ nixos-rebuild build \
 ```
 
 ```sh
-nix flake update --flake ./modules/test/virshle#default virshle
+nix flake update --flake ./modules/tests/openvswitch virshle
 nixos-rebuild build \
       --flake "./modules/tests/openvswitch#default" \
       --log-format multiline-with-logs \

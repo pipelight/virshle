@@ -31,7 +31,7 @@ in
       kernel.sysctl = {
         "vm.nr_hugepages" = mkIf cfg.dpdk.enable (mkOptionDefault 4096);
       };
-      kernelPackages = mkIF cfg.afxdp.enable (
+      kernelPackages = mkIf cfg.afxdp.enable (
         linuxPackagesFor
         (
           pkgs.linux.override {
