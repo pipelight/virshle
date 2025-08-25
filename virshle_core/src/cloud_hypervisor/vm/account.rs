@@ -18,53 +18,14 @@ use virshle_error::{LibError, VirshleError};
 pub struct Account {
     pub id: Option<i32>,
     pub uuid: Uuid,
-    pub user: Option<AccountUser>,
-}
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct AccountUser {
-    pub name: String,
-    pub public_key: String,
 }
 
+// Getters
 impl Account {
-    /*
-     * Create account record and persist into database.
-     */
-    async fn create_db_record(account: &mut Account) -> Result<Self, VirshleError> {
-        let record = database::entity::account::ActiveModel {
-            uuid: ActiveValue::Set(account.uuid.to_string()),
-            ..Default::default()
-        };
-
-        let db = connect_db().await?;
-
-        let res: InsertResult<account::ActiveModel> =
-            database::prelude::Account::insert(record).exec(&db).await?;
-        account.id = Some(res.last_insert_id);
-
-        Ok(account.to_owned())
-    }
-    /*
-     * Remove vm record from database.
-     */
-    pub async fn delete_db_record(&self) -> Result<Self, VirshleError> {
-        let db = connect_db().await?;
-        let record = database::prelude::Account::find()
-            .filter(database::entity::account::Column::Uuid.eq(self.uuid))
-            .one(&db)
-            .await?;
-        if let Some(record) = record {
-            database::prelude::Account::delete(record.into_active_model())
-                .exec(&db)
-                .await?;
-        }
-        Ok(self.to_owned())
-    }
+    #[tracing::instrument(skip_all, ret)]
     pub async fn get_or_create(&mut self) -> Result<Self, VirshleError> {
-        info!("[start] retrieve existing account");
         match Self::get_by_uuid(&self.uuid).await {
             Ok(v) => {
-                info!("[end] found existing account");
                 *self = v;
                 Ok(self.to_owned())
             }
@@ -91,5 +52,38 @@ impl Account {
                 return Err(LibError::builder().msg(&message).help(help).build().into());
             }
         }
+    }
+}
+
+// Database
+impl Account {
+    /// Create account record and persist into database.
+    async fn create_db_record(account: &mut Account) -> Result<Self, VirshleError> {
+        let record = database::entity::account::ActiveModel {
+            uuid: ActiveValue::Set(account.uuid.to_string()),
+            ..Default::default()
+        };
+
+        let db = connect_db().await?;
+
+        let res: InsertResult<account::ActiveModel> =
+            database::prelude::Account::insert(record).exec(&db).await?;
+        account.id = Some(res.last_insert_id);
+
+        Ok(account.to_owned())
+    }
+    /// Remove account record from database.
+    pub async fn delete_db_record(&self) -> Result<Self, VirshleError> {
+        let db = connect_db().await?;
+        let record = database::prelude::Account::find()
+            .filter(database::entity::account::Column::Uuid.eq(self.uuid))
+            .one(&db)
+            .await?;
+        if let Some(record) = record {
+            database::prelude::Account::delete(record.into_active_model())
+                .exec(&db)
+                .await?;
+        }
+        Ok(self.to_owned())
     }
 }
