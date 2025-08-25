@@ -93,7 +93,7 @@ pub struct InitDisk<'a> {
 
 impl<'a> From<&'a InitDisk<'a>> for Disk {
     fn from(e: &InitDisk) -> Self {
-        let disk_dir = e.vm.get_disk_dir().unwrap();
+        let disk_dir = e.vm.get_disks_dir().unwrap();
         let path = format!("{disk_dir}/pipelight-init");
         Self {
             name: "init".to_owned(),
@@ -128,7 +128,7 @@ impl InitDisk<'_> {
      * Create an init disk on host filesystem.
      */
     pub fn create(&self) -> Result<&Self, VirshleError> {
-        let disk_dir = self.vm.get_disk_dir()?;
+        let disk_dir = self.vm.get_disks_dir()?;
         let source = format!("{disk_dir}/pipelight-init");
         utils::make_empty_file(&source)?;
         utils::format_to_vfat(&source)?;
@@ -136,7 +136,7 @@ impl InitDisk<'_> {
     }
 
     pub fn mount(&self) -> Result<&Self, VirshleError> {
-        let disk_dir = self.vm.get_disk_dir()?;
+        let disk_dir = self.vm.get_disks_dir()?;
         let source = format!("{disk_dir}/pipelight-init");
 
         let mount_dir = self.vm.get_mount_dir()?;

@@ -240,7 +240,7 @@ v vm start --id <vm_id> --attach
 
 ### NixOs (with flakes).
 
-Add the repo url to your configuration.
+Add the repo url to your flake inputs.
 
 ```nix
 # flake.nix
@@ -249,6 +249,18 @@ inputs = {
       url = "github:pipelight/virshle";
   };
 };
+```
+
+Add the module to your configuration.
+
+```nix
+nixosConfiguration = {
+    default = pkgs.lib.nixosSystem {
+        modules = [
+            inputs.acceptxmr.nixosModules.default
+        ];
+    };
+}
 ```
 
 Enable the service.

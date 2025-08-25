@@ -86,6 +86,7 @@ in
         ExecStart = "${package}/bin/virshle node serve ${verbosity}";
 
         WorkingDirectory = "/var/lib/virshle";
+
         StandardInput = "null";
         StandardOutput = "journal+console";
         StandardError = "journal+console";
@@ -93,6 +94,9 @@ in
         AmbientCapabilities = [
           "CAP_SYS_ADMIN"
           "CAP_NET_ADMIN"
+
+          "CAP_NET_RAW"
+          "CAP_NET_BIND_SERVICE"
         ];
       };
     };

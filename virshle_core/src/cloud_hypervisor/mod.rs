@@ -4,7 +4,7 @@
 */
 
 mod definition;
-mod disk;
+pub mod disk;
 mod rand;
 pub mod vm;
 

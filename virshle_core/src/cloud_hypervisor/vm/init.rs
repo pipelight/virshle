@@ -114,7 +114,6 @@ impl InitData {
             "#
             ));
         }
-
         if let Some(user_data) = &self.user_data {
             for user in &user_data.user {
                 if let Some(ssh) = &user.ssh {

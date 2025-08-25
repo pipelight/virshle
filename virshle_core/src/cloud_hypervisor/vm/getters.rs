@@ -294,13 +294,16 @@ impl Vm {
         let path = format!("{MANAGED_DIR}/vm/{}/net/{}.sock", self.uuid, net.name);
         Ok(path)
     }
-    /*
-     * Return vm's disks directory path.
-     */
-    pub fn get_disk_dir(&self) -> Result<String, VirshleError> {
+    /// Return vm's disks directory path.
+    pub fn get_disks_dir(&self) -> Result<String, VirshleError> {
         let path = format!("{MANAGED_DIR}/vm/{}/disk", self.uuid);
         Ok(path)
     }
+    /// Get sum of vm disks size.
+    pub fn get_disks_size(&self) -> u64 {
+        self.disk.iter().map(|e| e.get_size().unwrap_or(0)).sum()
+    }
+
     /*
      * Return path where to mount vm pipelight-init disk to.
      *
