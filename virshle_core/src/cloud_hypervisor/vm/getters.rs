@@ -1,4 +1,5 @@
 use super::{Vm, VmNet, VmTemplate};
+use crate::cloud_hypervisor::disk;
 use crate::display::VmTable;
 use crate::network::dhcp::Lease;
 
@@ -461,6 +462,17 @@ impl Vm {
     pub fn get_default_mac(&self) -> Result<MacAddr6, VirshleError> {
         let mac_address = utils::uuid_to_mac(&self.uuid);
         Ok(mac_address)
+    }
+}
+
+impl VmTable {
+    /// Get sum of vm disks size.
+    pub fn get_disks_size(&self) -> u64 {
+        let mut size = 0;
+        if let Some(disks) = &self.disk {
+            size = disks.iter().map(|e| e.size.unwrap_or(0)).sum();
+        }
+        size
     }
 }
 
