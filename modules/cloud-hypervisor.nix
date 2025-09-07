@@ -30,7 +30,7 @@ in
       cloud-hypervisor #v0.46.0
 
       # Efi related?
-      OVMF-cloud-hypervisor
-      OVMF
+      # OVMF-cloud-hypervisor
+      # OVMF
     ];
   }
