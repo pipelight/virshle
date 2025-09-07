@@ -70,6 +70,8 @@ pub enum Crud {
     /// Return the path fo vm vsock
     #[command(arg_required_else_help = true, hide = true)]
     GetVsockPath(VmArgs),
+    #[command(arg_required_else_help = true, hide = true)]
+    GetListNames(VmArgs),
     /// Return the path fo vm vsock
     #[command(arg_required_else_help = true, hide = true)]
     Definition(VmArgs),

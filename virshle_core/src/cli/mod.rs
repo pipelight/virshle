@@ -395,6 +395,16 @@ impl Cli {
                     let path = vm.get_vsocket()?;
                     println!("{}", path);
                 }
+                Crud::GetListNames(args) => {
+                    let vm = Vm::get_many_by_args(&GetManyVmArgs {
+                        vm_state: args.state,
+                        ..Default::default()
+                    })
+                    .await?;
+                    let names: Vec<String> = vm.iter().map(|e| e.name.to_owned()).collect();
+                    let list = names.join("\n");
+                    println!("{}", list);
+                }
                 _ => {}
             },
             // _ => {}
