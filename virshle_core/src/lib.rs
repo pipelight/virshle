@@ -17,7 +17,7 @@ pub mod cli;
 
 // Interact with cloud hypervisor processes and API.
 pub mod cloud_hypervisor;
-pub use cloud_hypervisor::disk::utils::reverse_human_bytes;
+pub use cloud_hypervisor::disk::utils::{human_bytes, reverse_human_bytes};
 pub use cloud_hypervisor::Account;
 pub use cloud_hypervisor::{Vm, VmInfo, VmState, VmTemplate};
 

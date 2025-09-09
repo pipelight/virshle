@@ -67,7 +67,7 @@ name = "main"
 [[template.vm]]
 name = "xxs"
 vcpu = 1
-vram = "2GiB"
+vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"

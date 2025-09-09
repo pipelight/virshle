@@ -209,9 +209,7 @@ impl VmConfig {
         // Todo(): make those values dynamic
         let kernel = "/run/cloud-hypervisor/hypervisor-fw";
 
-        // Cloud-hypervisor takes ram in MiB
-        let vram: u64 = reverse_human_bytes(&e.vram)? * u64::pow(1024, 2);
-
+        let vram: u64 = reverse_human_bytes(&e.vram)?;
         let mut config = VmConfig {
             cpus: CpusConfig {
                 boot_vcpus: e.vcpu,
