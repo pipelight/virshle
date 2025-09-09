@@ -9,6 +9,7 @@
 * in just a few lines.
 */
 use super::{Disk, NetType, Vm};
+use crate::cloud_hypervisor::disk::utils::reverse_human_bytes;
 use crate::{
     config::VirshleConfig,
     network::{dhcp::DhcpType, ip, utils},
@@ -207,7 +208,10 @@ impl VmConfig {
     pub async fn from(e: &Vm) -> Result<Self, VirshleError> {
         // Todo(): make those values dynamic
         let kernel = "/run/cloud-hypervisor/hypervisor-fw";
-        let mem_size = e.vram * u64::pow(1024, 3);
+
+        // Cloud-hypervisor takes ram in MiB
+        let vram: u64 = reverse_human_bytes(&e.vram)? * u64::pow(1024, 2);
+
         let mut config = VmConfig {
             cpus: CpusConfig {
                 boot_vcpus: e.vcpu,
@@ -215,7 +219,7 @@ impl VmConfig {
                 ..Default::default()
             },
             memory: MemoryConfig {
-                size: mem_size,
+                size: vram,
                 shared: false,
                 hugepages: false,
                 mergeable: true,
@@ -230,7 +234,7 @@ impl VmConfig {
 
         // Memory management
         let balloon = BalloonConfig {
-            size: Some(e.vram / 2),
+            size: Some(vram / 2),
             deflate_on_oom: Some(true),
             free_page_reporting: Some(true),
         };

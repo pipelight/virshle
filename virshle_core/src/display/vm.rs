@@ -4,9 +4,8 @@ use crate::config::Node;
 use crate::connection::Uri;
 
 // Time
+use crate::cloud_hypervisor::disk::utils;
 use chrono::{DateTime, NaiveDateTime, Utc};
-
-use human_bytes::human_bytes;
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -33,8 +32,7 @@ pub struct VmTable {
     pub name: String,
 
     pub vcpu: u64,
-    #[tabled(display("display_vram"))]
-    pub vram: u64,
+    pub vram: String,
 
     #[tabled(display("display_state"))]
     pub state: VmState,
@@ -66,7 +64,7 @@ impl VmTable {
             id: vm.id,
             name: vm.name.to_owned(),
             vcpu: vm.vcpu,
-            vram: vm.vram,
+            vram: vm.vram.clone(),
             state: tmp.state,
             ips,
             disk: Some(DiskInfo::from_vec(&vm.disk)?),
@@ -180,7 +178,7 @@ mod test {
                 id: None,
                 name: "TestOs".to_owned(),
                 vcpu: 2,
-                vram: 4_200_000,
+                vram: "4GiB".to_owned(),
                 state: VmState::Created,
                 uuid: Uuid::new_v4(),
                 ips: None,
@@ -190,7 +188,7 @@ mod test {
                 id: None,
                 name: "NixOs".to_owned(),
                 vcpu: 2,
-                vram: 4_200_000,
+                vram: "4GiB".to_owned(),
                 state: VmState::Running,
                 uuid: Uuid::new_v4(),
                 ips: None,

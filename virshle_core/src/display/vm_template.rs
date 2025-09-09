@@ -1,5 +1,5 @@
 use super::utils::*;
-use crate::cloud_hypervisor::{DiskInfo, DiskTemplate, VmTemplate};
+use crate::cloud_hypervisor::{disk::utils, DiskInfo, DiskTemplate, VmTemplate};
 use crate::config::Node;
 use crate::connection::Uri;
 
@@ -21,8 +21,7 @@ use virshle_error::VirshleError;
 pub struct VmTemplateTable {
     pub name: String,
     pub vcpu: u64,
-    #[tabled(display("display_vram"))]
-    pub vram: u64,
+    pub vram: String,
     #[tabled(display("display_some_disks"))]
     pub disk: Option<Vec<DiskInfo>>,
 }
@@ -37,7 +36,7 @@ impl VmTemplateTable {
         let table = VmTemplateTable {
             name: vm.name.to_owned(),
             vcpu: vm.vcpu,
-            vram: vm.vram,
+            vram: vm.vram.clone(),
             disk: disks,
         };
         Ok(table)

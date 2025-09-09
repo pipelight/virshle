@@ -129,8 +129,7 @@ pub struct Vm {
     pub id: Option<u64>,
     pub name: String,
     pub vcpu: u64,
-    // vram in Gib
-    pub vram: u64,
+    pub vram: String,
     pub net: Option<Vec<VmNet>>,
     pub uuid: Uuid,
     pub disk: Vec<Disk>,
@@ -155,7 +154,7 @@ impl Default for Vm {
             name: random_name().unwrap(),
             vcpu: 1,
             // vram in Gib
-            vram: 2,
+            vram: "2GiB".to_owned(),
             net: None,
             uuid: Uuid::new_v4(),
             disk: vec![],

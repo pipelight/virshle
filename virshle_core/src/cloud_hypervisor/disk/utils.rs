@@ -16,8 +16,16 @@ use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
 
+pub fn human_bytes(num: &u64) -> Result<String, VirshleError> {
+    let mut res = human_bytes::human_bytes(num.to_owned() as f64);
+    res = res.replace(" ", "");
+    res = res.replace("_", "");
+    Ok(res)
+}
 /// Convert string to bytes.
 pub fn reverse_human_bytes(string: &str) -> Result<u64, VirshleError> {
+    let mut string = string.replace(" ", "");
+    string = string.replace("_", "");
     if string.strip_suffix("TiB").is_some() {
         let num: &str = string.trim_end_matches("TiB");
         let int: u64 = num.parse()?;
@@ -29,17 +37,17 @@ pub fn reverse_human_bytes(string: &str) -> Result<u64, VirshleError> {
         let int = int * u64::pow(1024, 3);
         Ok(int)
     } else if string.strip_suffix("MiB").is_some() {
-        let num: &str = string.trim_end_matches("GiB");
+        let num: &str = string.trim_end_matches("MiB");
         let int: u64 = num.parse()?;
         let int = int * u64::pow(1024, 2);
         Ok(int)
     } else if string.strip_suffix("KiB").is_some() {
-        let num: &str = string.trim_end_matches("GiB");
+        let num: &str = string.trim_end_matches("KiB");
         let int: u64 = num.parse()?;
         let int = int * u64::pow(1024, 1);
         Ok(int)
     } else if string.strip_suffix("B").is_some() {
-        let num: &str = string.trim_end_matches("GiB");
+        let num: &str = string.trim_end_matches("B");
         let int: u64 = num.parse()?;
         Ok(int)
     } else {

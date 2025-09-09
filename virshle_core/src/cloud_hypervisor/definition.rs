@@ -143,7 +143,7 @@ mod test {
             [[vm]]
             name = "default_xs"
             vcpu = 1
-            vram = 2
+            vram = "2GiB"
 
             [[vm.net]]
             [vm.net.tap]

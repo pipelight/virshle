@@ -42,7 +42,7 @@ impl Vm {
     pub fn from(e: &VmTemplate) -> Result<Self, VirshleError> {
         let mut vm = Vm {
             vcpu: e.vcpu,
-            vram: e.vram,
+            vram: e.vram.clone(),
             net: e.net.clone(),
             ..Default::default()
         };
@@ -182,7 +182,7 @@ mod test {
             name = "my_template"
 
             vcpu = 1
-            vram = 2
+            vram = "2GiB"
 
             [[disk]]
             name = "os"
@@ -203,7 +203,7 @@ mod test {
             uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
 
             vcpu = 1
-            vram = 2
+            vram = "2GiB"
 
             [[disk]]
             name = "os"

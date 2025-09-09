@@ -24,7 +24,7 @@ weight = 10
 [[template.vm]]
 name = "xxs-offline"
 vcpu = 1
-vram = 2
+vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -32,7 +32,7 @@ path = "~/Iso/nixos.xxs.efi.img"
 [[template.vm]]
 name = "xxs-tap"
 vcpu = 1
-vram = 2
+vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -43,7 +43,7 @@ name = "main"
 [[template.vm]]
 name = "xxs-macvtap"
 vcpu = 1
-vram = 2
+vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -54,7 +54,7 @@ name = "main"
 [[template.vm]]
 name = "xxs-dpdk"
 vcpu = 1
-vram = 2
+vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -67,7 +67,7 @@ name = "main"
 [[template.vm]]
 name = "xxs"
 vcpu = 1
-vram = 2
+vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -82,7 +82,7 @@ name = "main"
 [[template.vm]]
 name = "xs"
 vcpu = 1
-vram = 2
+vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xs.efi.img"
@@ -93,7 +93,7 @@ name = "main"
 [[template.vm]]
 name = "s"
 vcpu = 2
-vram = 4
+vram = "4GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.s.efi.img"
@@ -104,7 +104,7 @@ name = "main"
 [[template.vm]]
 name = "m"
 vcpu = 4
-vram = 8
+vram = "8GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.m.efi.img"
@@ -117,20 +117,20 @@ name = "main"
 # [[template.vm]]
 # name = "l"
 # vcpu = 6
-# vram = 10
+# vram = "10GiB"
 # [[template.vm.disk]]
 # name = "os"
 # path = "~/Iso/nixos.efi.img"
-# size = "150G"
+# size = "150GiB"
 #
 # [[template.vm]]
 # name = "xl"
 # vcpu = 8
-# vram = 16
+# vram = "16GiB"
 # [[template.vm.disk]]
 # name = "os"
 # path = "~/Iso/nixos.efi.img"
-# size = "180G"
+# size = "180GiB"
 
 #########################
 # Network

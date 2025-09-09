@@ -6,21 +6,19 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
-
-use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 
 use uuid::Uuid;
 
-use tokio::net::{UnixListener, UnixStream};
-
 use crate::api::{method, NodeServer};
 use crate::config::NodeInfo;
 
+// Socket
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use sysinfo::System;
+use tokio::net::{UnixListener, UnixStream};
 
 // Error handling
 use miette::{Diagnostic, IntoDiagnostic, Result};

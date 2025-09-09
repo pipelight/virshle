@@ -1,6 +1,7 @@
 use crate::Vm;
 use sysinfo::{Disks, System};
 
+use crate::cloud_hypervisor::disk::utils;
 use crate::config::MANAGED_DIR;
 use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
 
@@ -94,7 +95,10 @@ impl HostRam {
      */
     pub async fn get_reserved() -> Result<u64, VirshleError> {
         let vms = Vm::get_all().await?;
-        let total_ram: u64 = vms.iter().map(|e| e.vram * u64::pow(1024, 3)).sum();
+        let total_ram: u64 = vms
+            .iter()
+            .map(|e| utils::reverse_human_bytes(&e.vram).unwrap())
+            .sum();
         Ok(total_ram)
     }
     pub async fn get() -> Result<Self, VirshleError> {

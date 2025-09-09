@@ -16,7 +16,7 @@ use virshle_error::{LibError, VirshleError, WrapError};
 pub struct VmTemplate {
     pub name: String,
     pub vcpu: u64,
-    pub vram: u64,
+    pub vram: String,
     pub uuid: Option<Uuid>,
     pub disk: Option<Vec<DiskTemplate>>,
     pub net: Option<Vec<VmNet>>,

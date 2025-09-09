@@ -57,7 +57,7 @@ impl VirshleConfig {
             Ok(v) => v,
             Err(e) => {
                 let message = format!("Couldn't find a configuration file.",);
-                let help = format!("Create a configuration file at /etc/virshle/confi.toml");
+                let help = format!("Create a configuration file at /etc/virshle/config.toml");
                 let err = WrapError::builder()
                     .msg(&message)
                     .help(&help)

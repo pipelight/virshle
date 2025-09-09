@@ -11,8 +11,8 @@ use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATI
 
 use crossterm::{execute, style::Stylize, terminal::size};
 
+use crate::cloud_hypervisor::disk::utils::human_bytes;
 use crate::cloud_hypervisor::DiskInfo;
-use human_bytes::human_bytes;
 
 // Convert from B.
 pub fn display_some_bytes(bytes: &Option<u64>) -> String {
@@ -23,7 +23,7 @@ pub fn display_some_bytes(bytes: &Option<u64>) -> String {
     }
 }
 pub fn display_bytes(vram: &u64) -> String {
-    let res = human_bytes((vram.to_owned()) as f64);
+    let res = human_bytes(vram).unwrap();
     format!("{}", res)
 }
 
@@ -36,12 +36,12 @@ pub fn display_some_ram(ram: &Option<u64>) -> String {
     }
 }
 pub fn display_ram(ram: &u64) -> String {
-    let res = human_bytes((ram.to_owned()) as f64);
+    let res = human_bytes(ram).unwrap();
     format!("{}", res)
 }
 // Convert cloud-hypervisor ram from MiB.
 pub fn display_vram(vram: &u64) -> String {
-    let res = human_bytes((vram * u64::pow(1024, 3)) as f64);
+    let res = human_bytes(&(vram * u64::pow(1024, 3))).unwrap();
     format!("{}", res)
 }
 
@@ -78,7 +78,7 @@ pub fn display_some_disks(disks: &Option<Vec<DiskInfo>>) -> String {
         let mut summary: Vec<String> = vec![];
         for e in disks {
             if let Some(size) = e.size {
-                let size = human_bytes(size.to_owned() as f64);
+                let size = human_bytes(&size).unwrap();
 
                 let oneline = format!("{} -> {} ({size})", e.name, e.path);
                 summary.push(oneline);
@@ -97,7 +97,7 @@ pub fn display_some_disks_short(disks: &Option<Vec<DiskInfo>>) -> String {
         let mut summary: Vec<String> = vec![];
         for e in disks {
             if let Some(size) = e.size {
-                let size = human_bytes(size.to_owned() as f64);
+                let size = human_bytes(&size).unwrap();
 
                 let oneline = format!("{} ({size})", e.name);
                 summary.push(oneline);
@@ -234,7 +234,7 @@ impl RamTable {
     }
     pub fn display_some_ram_reserved(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {
-            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            let num = human_bytes(&num.unwrap()).unwrap();
             format!("{}", Self::add_color_reserved(&num, &percentage.unwrap()))
         } else {
             format!("")
@@ -254,7 +254,7 @@ impl RamTable {
     }
     pub fn display_some_ram_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {
-            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            let num = human_bytes(&num.unwrap()).unwrap();
             format!("{}", Self::add_color_used(&num, &percentage.unwrap()))
         } else {
             format!("")
@@ -295,7 +295,7 @@ impl HostDiskTable {
 
     pub fn display_some_disk_reserved(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {
-            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            let num = human_bytes(&num.unwrap()).unwrap();
             format!("{}", Self::add_color_reserved(&num, &percentage.unwrap()))
         } else {
             format!("")
@@ -316,7 +316,7 @@ impl HostDiskTable {
 
     pub fn display_some_disk_used(num: &Option<u64>, percentage: &Option<f64>) -> String {
         if num.is_some() && percentage.is_some() {
-            let num = human_bytes(num.unwrap().to_owned() as f64).to_string();
+            let num = human_bytes(&num.unwrap()).unwrap();
             format!("{}", Self::add_color_used(&num, &percentage.unwrap()))
         } else {
             format!("")
