@@ -86,10 +86,16 @@ tanjiro kamado
 
 yusuke murata
 
+## Psyren
+
+ageha yoshina
+hiryu asaga
+kyle tenjuin
+shao tenjuin
+
 ## Jjk
 
 gege akutami
-
 gojo satoru
 yuji itadori
 ryomen sukuna
@@ -100,6 +106,11 @@ nobara kugisaki
 eren jager
 mikasa ackermann
 armin arlert
+
+sasha braus
+jean kirschtein
+reiner braun
+
 erwin smith
 
 # Goat
@@ -136,9 +147,18 @@ ginny weasley
 neville longbottom
 draco malfoy
 
+# Series
+
+## The bear
+
+carmen berzatto
+richard jerimovich
+
 # Marvel
 
 miles morales
+
+norman osborn
 
 # Actors
 
@@ -159,12 +179,14 @@ don camillo
 # Others
 
 torvald linus
+
 thomas sankara
 killian mbappe
 stephan matala
-norman osborn
+
 thomas anderson
 dark vador
+
 ellen ripley
 
 # Bodybuilding

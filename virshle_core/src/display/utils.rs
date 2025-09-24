@@ -1,7 +1,7 @@
 use super::node::{CpuTable, HostDiskTable, RamTable};
 
 // Time
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 
 use owo_colors::OwoColorize;
 use std::net::IpAddr;
@@ -14,6 +14,20 @@ use crossterm::{execute, style::Stylize, terminal::size};
 use crate::cloud_hypervisor::disk::utils::human_bytes;
 use crate::cloud_hypervisor::DiskInfo;
 
+pub fn display_duration(delta: &TimeDelta) -> String {
+    let mut parsed: String = "".to_owned();
+    let days = delta.num_days();
+    let hours = delta.num_hours();
+    let minutes = delta.num_minutes();
+    if days > 0 {
+        parsed += &format!("{days} days");
+    } else if hours > 0 {
+        parsed += &format!("{hours} hours");
+    } else {
+        parsed += &format!("{minutes} minutes");
+    }
+    parsed
+}
 // Convert from B.
 pub fn display_some_bytes(bytes: &Option<u64>) -> String {
     if let Some(bytes) = bytes {

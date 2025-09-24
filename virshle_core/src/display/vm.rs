@@ -5,7 +5,7 @@ use crate::connection::Uri;
 
 // Time
 use crate::cloud_hypervisor::disk::utils;
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -42,16 +42,27 @@ pub struct VmTable {
     #[tabled(display("display_ips"))]
     pub ips: Option<Vec<IpAddr>>,
 
-    #[tabled(display("display_some_datetime"))]
-    pub created_at: Option<NaiveDateTime>,
-    #[tabled(display("display_some_datetime"))]
-    pub updated_at: Option<NaiveDateTime>,
+    #[tabled(display("display_datetime"))]
+    pub created_at: NaiveDateTime,
+    #[tabled(display("display_datetime"))]
+    pub updated_at: NaiveDateTime,
 
     pub uuid: Uuid,
     #[tabled(display("display_account_uuid"))]
     pub account_uuid: Option<Uuid>,
 }
 
+impl VmTable {
+    pub fn display_age(&self) -> Result<String, VirshleError> {
+        Ok(display_duration(&self.age()?))
+    }
+    pub fn age(&self) -> Result<TimeDelta, VirshleError> {
+        let now: NaiveDateTime = Utc::now().naive_utc();
+        let created = self.created_at;
+        let age = now - created;
+        Ok(age)
+    }
+}
 impl VmTable {
     pub async fn from(vm: &Vm) -> Result<Self, VirshleError> {
         let tmp = vm.get_info().await?;
@@ -68,8 +79,8 @@ impl VmTable {
             state: tmp.state,
             ips,
             disk: Some(DiskInfo::from_vec(&vm.disk)?),
-            created_at: Some(vm.created_at),
-            updated_at: Some(vm.updated_at),
+            created_at: vm.created_at,
+            updated_at: vm.updated_at,
             uuid: vm.uuid,
             account_uuid: tmp.account_uuid,
         };
@@ -103,7 +114,6 @@ impl VmTable {
             let header = node.get_header()?;
             VmTable::display_w_header(table, &header);
         }
-
         Ok(())
     }
     pub fn display_w_header(items: Vec<Self>, header: &str) -> Result<(), VirshleError> {
