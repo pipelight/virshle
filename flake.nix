@@ -24,7 +24,7 @@
         nixosModules = rec {
           default = virshle;
           virshle = ./modules/default.nix;
-          nixos-generator = ./modules/nixos-generator/default.nix;
+          nixos-generator = ./modules/nixos-generator;
         };
       };
       systems =
@@ -43,7 +43,33 @@
         };
       in {
         devShells.default = pkgs.callPackage ./shell.nix {};
-        packages.default = pkgs.callPackage ./package.nix {};
+        packages = {
+          default = pkgs.callPackage ./package.nix {};
+          disk-images = rec {
+            default = xxs;
+            xxs = inputs.nixos-generators.nixosGenerate {
+              format = "raw-efi";
+              modules = [
+                inputs.virshle.nixosModule.nixos-generators
+                {virtualisation.diskSize = 20 * 1024;}
+              ];
+            };
+            xs = inputs.nixos-generators.nixosGenerate {
+              format = "raw-efi";
+              modules = [
+                inputs.virshle.nixosModule.nixos-generators
+                {virtualisation.diskSize = 50 * 1024;}
+              ];
+            };
+            s = inputs.nixos-generators.nixosGenerate {
+              format = "raw-efi";
+              modules = [
+                inputs.virshle.nixosModule.nixos-generators
+                {virtualisation.diskSize = 80 * 1024;}
+              ];
+            };
+          };
+        };
       };
     };
 }

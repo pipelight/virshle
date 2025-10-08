@@ -275,6 +275,32 @@ services.virshle = {
 };
 ```
 
+## Build a disk image.
+
+### Minimal image
+
+```nix
+
+```
+
+### Custom image
+
+You can of course create custom disk image by importing
+the base module onto a vm configuration.
+
+```nix
+xxs = inputs.nixos-generators.nixosGenerate {
+  format = "raw-efi";
+  modules = [
+    inputs.virshle.nixosModule.nixos-generators
+    {virtualisation.diskSize = 20 * 1024;}
+    # Add your modules
+    ./my/custom/config
+
+  ];
+};
+```
+
 See [docs/install.md](https://github.com/pipelight/virshle/blob/master/docs/install.md)
 for in depth nixos installation and **other distributions**.
 

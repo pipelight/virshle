@@ -6,10 +6,15 @@
     # virshle
     ./config.nix
 
-    # virshle deps
-    ./openvswitch
+    ##########################
+    ### Virshle dependencies
 
+    ## Virtual machines management
     ./cloud-hypervisor.nix
-    inputs.pipelight.nixosModules.pipelight-init
+
+    ## Network management
+    ./openvswitch
+    # DHCP - Automatic ip address attribution
+    ./dhcp/kea.nix
   ];
 }
