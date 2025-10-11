@@ -239,14 +239,14 @@ pub fn patch_vm_and_main_switches() -> Result<(), VirshleError> {
     let vm_bridge_name = "br0";
     let main_bridge_name = OvsBridge::get_main_switch()?.name;
 
-    let patch1 = format!("patch_{main_bridge_name}_{vm_bridge_name}");
-    let patch2 = format!("patch_{vm_bridge_name}_{main_bridge_name}");
+    let patch_main = format!("patch_{vm_bridge_name}");
+    let patch_vm = format!("patch_{main_bridge_name}");
 
     // - add patch cable to main switch (1/2)
-    request::OvsRequest::interface(&patch1)
+    request::OvsRequest::interface(&patch_main)
         ._type(request::OvsInterfaceType::Patch)
         .bridge(&main_bridge_name)
-        .peer(&patch2)
+        .peer(&patch_vm)
         .create()
         .build()
         .exec()?;
@@ -258,10 +258,10 @@ pub fn patch_vm_and_main_switches() -> Result<(), VirshleError> {
         .exec()?;
 
     // - add patch cable to vm switch (2/2)
-    request::OvsRequest::interface(&patch2)
+    request::OvsRequest::interface(&patch_vm)
         .bridge(&vm_bridge_name)
         ._type(request::OvsInterfaceType::Patch)
-        .peer(&patch1)
+        .peer(&patch_main)
         .create()
         .build()
         .exec()?;
