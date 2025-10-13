@@ -2,7 +2,7 @@
   description = "A flake that uses virshle module";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     virshle = {
       url = "github:pipelight/virshle?ref=dev";
       # url = "path:../../";
