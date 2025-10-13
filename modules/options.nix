@@ -16,7 +16,8 @@ in {
       type = types.enum ["error" "warn" "info" "debug" "trace"];
     };
 
-    dhcp.enable = mkEnableOption "Enable kea dhcp with custom configuration for ${moduleName}.";
+    # Create a default configuration for kea dhcp.
+    dhcp.defaultConfig = mkEnableOption "Enable kea dhcp with custom configuration for ${moduleName}.";
 
     # Virshle only runs well as root.
     # This options sets the user environment and permissions.

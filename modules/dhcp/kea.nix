@@ -13,7 +13,7 @@
   nsdPort = config.services.nsd.port;
 in
   with lib;
-    mkIf cfg.dhcp.enable {
+    mkIf cfg.dhcp.defaultConfig {
       ## DhcpV6
       environment.systemPackages = with pkgs; [
         # dnsmasq

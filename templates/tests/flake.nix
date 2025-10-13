@@ -39,6 +39,7 @@
           }: {
             services.virshle = {
               enable = true;
+              dhcp.defaultConfig = true;
             };
           })
           ###################################
