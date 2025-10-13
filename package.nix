@@ -30,15 +30,15 @@ pkgs.rustPlatform.buildRustPackage rec {
     openssl
     pkg-config
 
-    # rust vmm uses latest stable and oxalica tend to lag behind.break
-    # so we temporary force use of beta.
     (rust-bin.fromRustupToolchainFile ./rust-toolchain.toml)
   ];
 
-  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+  LIBCLANG_PATH = lib.makeLibraryPath [pkgs.llvmPackages.libclang.lib];
+  # LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+  # LIBCLANG_PATH = lib.getLib pkgs.llvmPackages.libclang.lib;
 
-  postInstall = with lib; ''
-    installShellCompletion --cmd ${pname}\
+  postInstall = ''
+    installShellCompletion --cmd ${pname} \
       --bash ./autocompletion/${pname}.bash \
       --fish ./autocompletion/${pname}.fish \
       --zsh  ./autocompletion/_${pname}
