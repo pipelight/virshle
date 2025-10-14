@@ -77,6 +77,7 @@ in
             # preferred-lifetime = -1;
             # valid-lifetime = -1;
             #```
+
             # The vm never tries to speak to dhcp again.
             # So dhcp can lose track of lease!
             expired-leases-processing = {
@@ -185,6 +186,12 @@ in
           Group = "users";
           UMask = mkForce "0007";
 
+          # Is reloaded when network is reloaded
+          # to bind the fresh interfaces.
+          WantedBy = ["network.target"];
+          # Starts only after interfaces creation.
+          After = ["network.target"];
+
           # Do not store tmp files in private dir.
           DynamicUser = mkForce false;
           # Set file permissions
@@ -208,8 +215,8 @@ in
         };
       in {
         kea-ctrl-agent.serviceConfig = serviceConfig;
-        kea-dhcp-ddns-server.serviceConfig = serviceConfig;
         kea-dhcp6-server.serviceConfig = serviceConfig;
         kea-dhcp4-server.serviceConfig = serviceConfig;
+        kea-dhcp-ddns-server.serviceConfig = serviceConfig;
       };
     }

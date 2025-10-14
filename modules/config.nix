@@ -25,8 +25,8 @@ in
   {
     ## Working dir
     systemd.tmpfiles.rules = lib.mkDefault [
-      "Z '/var/lib/crotui' 2774 ${cfg.user} users - -"
-      "d '/var/lib/crotui' 2774 ${cfg.user} users - -"
+      "Z '/var/lib/virshle' 2774 ${cfg.user} users - -"
+      "d '/var/lib/virshle' 2774 ${cfg.user} users - -"
     ];
 
     security.wrappers.virshle = {
@@ -57,7 +57,7 @@ in
         "kea-dhcpv4-server.service"
         "kea-dhcpv6-server.service"
       ];
-      wantedBy = ["multi-user.target"];
+      wantedBy = ["socket.target"];
 
       serviceConfig = let
         verbosity =

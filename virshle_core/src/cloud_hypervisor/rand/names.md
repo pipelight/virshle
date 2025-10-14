@@ -44,6 +44,8 @@ karin kurosaki
 tatsuki arisawa
 keigo asano
 inoue orihime
+uryu ishida
+ryuken ishida
 
 ### shinigami
 
