@@ -1,28 +1,17 @@
 {
   lib,
   config,
-  inputs,
   pkgs,
   ...
 }:
 with lib; let
   moduleName = "virshle";
   cfg = config.services.${moduleName};
-  openvswitch-afxdp =
-    pkgs.callPackage ./package.nix
-    {
-      withAFXDP = true;
-    };
 in
   mkIf cfg.enable {
     # OpenVSwitch
     virtualisation.vswitch = {
-      package =
-        if cfg.dpdk.enable
-        then pkgs.openvswitch-dpdk
-        else if cfg.afxdp.enable
-        then openvswitch-afxdp
-        else pkgs.openvswitch;
+      package = pkgs.openvswitch;
       enable = true;
     };
 
@@ -31,26 +20,6 @@ in
       kernel.sysctl = {
         "vm.nr_hugepages" = mkIf cfg.dpdk.enable (mkOptionDefault 4096);
       };
-      kernelPackages = mkIf cfg.afxdp.enable (
-        linuxPackagesFor
-        (
-          pkgs.linux.override {
-            structuredExtraConfig = with lib.kernel; {
-              # https://docs.openvswitch.org/en/latest/intro/install/afxdp/
-              # Required
-              CONFIG_BPF = "y";
-              CONFIG_BPF_SYSCALL = "y";
-              CONFIG_XDP_SOCKETS = "y";
-              # Performance
-              CONFIG_BPF_JIT = "y";
-              CONFIG_HAVE_EBPF_JIT = "y";
-              # Debugging
-              CONFIG_XDP_SOCKETS_DIAG = "y";
-            };
-            ignoreConfigErrors = true;
-          }
-        )
-      );
     };
 
     ## Module
@@ -73,12 +42,6 @@ in
 
     environment.systemPackages = with pkgs; [
       # Network manager
-      (
-        if cfg.dpdk.enable
-        then openvswitch-dpdk
-        else if cfg.afxdp.enable
-        then openvswitch-afxdp
-        else openvswitch
-      )
+      openvswitch
     ];
   }

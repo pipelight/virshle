@@ -13,7 +13,7 @@
     ./cloud-hypervisor.nix
 
     ## Network management
-    # ./openvswitch
+    ./openvswitch
     # DHCP - Automatic ip address attribution
     ./dhcp/kea.nix
   ];
