@@ -4,12 +4,14 @@
   inputs,
   pkgs,
   ...
-}: let
+}:
+with lib; let
   moduleName = "virshle";
 
   cfg = config.services.${moduleName};
 
   package = inputs.virshle.packages.${pkgs.system}.default;
+
   virshleProxyCommand = pkgs.writeShellScriptBin "virshleProxyCommand" ''
     h=$1
     p=$2
@@ -21,7 +23,7 @@
     fn
   '';
 in
-  lib.mkIf cfg.enable
+  mkIf cfg.enable
   {
     ## Working dir
     systemd.tmpfiles.rules = lib.mkDefault [
