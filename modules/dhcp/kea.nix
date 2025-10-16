@@ -11,6 +11,10 @@
   cfg = config.services.${moduleName};
   nsdEnabled = config.services.nsd.enable;
   nsdPort = config.services.nsd.port;
+
+  # Service listening ports.
+  keaDDnsPort = 53010;
+  keaCtrlPort = 5547;
 in
   with lib;
     mkIf cfg.dhcp.defaultConfig {
@@ -23,7 +27,7 @@ in
       services.kea = {
         ctrl-agent = {
           settings = {
-            http-port = 5547;
+            http-port = keaCtrlPort;
             control-sockets = {
               dhcp4 = {
                 socket-type = "unix";
@@ -97,7 +101,7 @@ in
             dhcp-ddns = {
               enable-updates = true;
               server-ip = "::1";
-              server-port = 53001;
+              server-port = keaDDnsPort;
             };
             ddns-update-on-renew = true;
             ddns-qualifying-suffix = "vm";
@@ -138,7 +142,7 @@ in
             dhcp-ddns = {
               enable-updates = true;
               server-ip = "::1";
-              server-port = 53001;
+              server-port = keaDDnsPort;
             };
             ddns-update-on-renew = true;
             ddns-qualifying-suffix = "vm";
@@ -153,7 +157,7 @@ in
             };
 
             dns-server-timeout = 500;
-            port = 53001;
+            port = keaDDnsPort;
             ip-address = "::1";
             forward-ddns = {
               ddns-domains = [
