@@ -14,10 +14,7 @@ in
       package = pkgs.openvswitch;
       enable = true;
     };
-
-    boot = {
-      kernelModules = ["openvswitch"];
-    };
+    boot.kernelModules = ["openvswitch"];
 
     ## Module
     systemd.tmpfiles.rules = [
