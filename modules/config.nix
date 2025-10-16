@@ -59,7 +59,7 @@ in
         "kea-dhcpv4-server.service"
         "kea-dhcpv6-server.service"
       ];
-      wantedBy = ["socket.target"];
+      wantedBy = ["multi-user.target"];
 
       serviceConfig = let
         verbosity =
