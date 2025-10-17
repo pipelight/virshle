@@ -1,9 +1,4 @@
-{
-  lib,
-  pkgs,
-  ...
-}:
-with lib; {
+{...}: {
   networking = {
     networkmanager.enable = false;
     interfaces = {
