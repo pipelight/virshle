@@ -93,6 +93,9 @@ in
         StandardOutput = "journal+console";
         StandardError = "journal+console";
 
+        # Ensure orphans are not killed
+        KillMode = "process";
+
         AmbientCapabilities = [
           "CAP_SYS_ADMIN"
           "CAP_NET_ADMIN"
