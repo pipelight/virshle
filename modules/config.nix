@@ -29,6 +29,8 @@ in
     systemd.tmpfiles.rules = lib.mkDefault [
       "Z '/var/lib/virshle' 2774 ${cfg.user} users - -"
       "d '/var/lib/virshle' 2774 ${cfg.user} users - -"
+      "Z '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
+      "d '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
     ];
 
     security.wrappers.virshle = {
@@ -113,7 +115,6 @@ in
     ];
 
     programs.ssh = {
-      systemd-ssh-proxy.enable = true;
       # Enable ssh-vsock communication on host side.
       extraConfig = lib.mkAfter ''
         ## Virshle special command

@@ -26,7 +26,10 @@
     pkgs = import nixpkgs {
       inherit system overlays;
     };
-  in rec {
+    specialArgs = {
+      inherit inputs;
+    };
+  in {
     nixosModules = rec {
       default = virshle;
       virshle = ./modules/default.nix;
@@ -35,40 +38,21 @@
     devShells.${system}.default = pkgs.callPackage ./shell.nix {};
     packages.${system} = {
       default = pkgs.callPackage ./package.nix {};
-      vm_xxs = inputs.nixos-generators.nixosGenerate {
+      vm_all_sizes = inputs.nixos-generators.nixosGenerate {
         inherit pkgs;
+        inherit specialArgs;
         format = "raw-efi";
         modules = [
+          ./modules/make-disk-images
           ./modules/nixos-generators
-          inputs.pipelight.nixosModules.pipelight-init
-          {
-            virtualisation.diskSize = 20 * 1024;
-            services.pipelight-init.enable = true;
-          }
         ];
       };
-      vm_xs = inputs.nixos-generators.nixosGenerate {
+      vm_base = inputs.nixos-generators.nixosGenerate {
         inherit pkgs;
+        inherit specialArgs;
         format = "raw-efi";
         modules = [
           ./modules/nixos-generators
-          inputs.pipelight.nixosModules.pipelight-init
-          {
-            virtualisation.diskSize = 50 * 1024;
-            services.pipelight-init.enable = true;
-          }
-        ];
-      };
-      vm_s = inputs.nixos-generators.nixosGenerate {
-        inherit pkgs;
-        format = "raw-efi";
-        modules = [
-          ./modules/nixos-generators
-          inputs.pipelight.nixosModules.pipelight-init
-          {
-            virtualisation.diskSize = 80 * 1024;
-            services.pipelight-init.enable = true;
-          }
         ];
       };
     };

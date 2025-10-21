@@ -1,18 +1,77 @@
 [[pipelines]]
-name = "test-nixosModule"
+name = "build:disk:base"
 
 [[pipelines.steps]]
-name = "run flake test"
+name = "build base disk image"
 commands = [
   # Update flake deps
-  "nix flake update --flake ./templates/tests",
+  "nix flake update",
   # Build flake
   """
-  nixos-rebuild build \
-  --flake './templates/tests#default' \
-  --override-input virshle ./
+  nix build ".#vm_base" \
+  --out-link ./result_vm_base \
+  --show-trace \
+  """,
+  """
+  cp \ 
+  ./result_vm_base/nixos.img \
+  ~/Iso/nixos.base.efi.img
+  """,
+  # Set permissions
+  "chmod +x ~/Iso/nixos.base.efi.img",
+  "chmod +w ~/Iso/nixos.base.efi.img",
+]
+
+[[pipelines]]
+name = "build:disk:all"
+
+[[pipelines.steps]]
+name = "build base disk image"
+commands = [
+  #xxs
+  """
+  cp \
+  ~/Iso/nixos.base.efi.img \
+  ~/Iso/nixos.xxs.efi.img
+  """,
+  """
+  dd \
+  if=/dev/null \
+  of=/home/anon/Iso/nixos.xxs.efi.img \
+  count=0 bs=1G seek=20
+  """,
+  #xs
+  """
+  cp \
+  ~/Iso/nixos.base.efi.img \
+  ~/Iso/nixos.xs.efi.img
+  """,
+  """
+  dd \
+  if=/dev/null \
+  of=~/Iso/nixos.xs.efi.img \
+  count=0 bs=1G seek=50
+  """,
+  """
+  cp \
+  ~/Iso/nixos.base.efi.img \
+  ~/Iso/nixos.s.efi.img
+  """,
+  """
+  dd \
+  if=/dev/null \
+  of=~/Iso/nixos.s.efi.img \
+  count=0 bs=1G seek=80,
   """,
 ]
+[[pipelines.steps]]
+name = "copy disk images to cache"
+commands = [
+  "cp ./result_vm_xxs/nixos.img /var/lib/virshle/cache/nixos.xxs.efi.img",
+  "cp ./result_vm_xs/nixos.img /var/lib/virshle/cache/nixos.xs.efi.img",
+  "cp ./result_vm_s/nixos.img /var/lib/virshle/cache/nixos.s.efi.img",
+]
+
 
 [[pipelines]]
 name = "test-ovs-nixosModule"
@@ -26,5 +85,21 @@ commands = [
   """
   nixos-rebuild build \
   --flake './modules/tests/openvswitch#default' \
+  """,
+]
+
+[[pipelines]]
+name = "test-nixosModule"
+
+[[pipelines.steps]]
+name = "run flake test"
+commands = [
+  # Update flake deps
+  "nix flake update --flake ./templates/tests",
+  # Build flake
+  """
+  nixos-rebuild build \
+  --flake './templates/tests#default' \
+  --override-input virshle ./
   """,
 ]

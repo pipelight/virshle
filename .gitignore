@@ -5,6 +5,7 @@
 
 # Nixos
 /result
+/result*
 .direnv
 
 ## Rust
