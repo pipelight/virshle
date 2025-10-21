@@ -7,6 +7,10 @@
     flake-utils.url = "github:numtide/flake-utils";
     flake-parts.url = "github:hercules-ci/flake-parts";
     pipelight.url = "github:pipelight/pipelight";
+    nixos-generators = {
+      url = "github:nix-community/nixos-generators";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -16,60 +20,57 @@
     flake-utils,
     flake-parts,
     ...
-  } @ inputs:
-    flake-parts.lib.mkFlake {
-      inherit inputs;
-    } {
-      flake = {
-        nixosModules = rec {
-          default = virshle;
-          virshle = ./modules/default.nix;
-          nixos-generator = ./modules/nixos-generator;
-        };
+  } @ inputs: let
+    system = "x86_64-linux";
+    overlays = [(import rust-overlay)];
+    pkgs = import nixpkgs {
+      inherit system overlays;
+    };
+  in rec {
+    nixosModules = rec {
+      default = virshle;
+      virshle = ./modules/default.nix;
+      nixos-generators = ./modules/nixos-generators;
+    };
+    devShells.${system}.default = pkgs.callPackage ./shell.nix {};
+    packages.${system} = {
+      default = pkgs.callPackage ./package.nix {};
+      vm_xxs = inputs.nixos-generators.nixosGenerate {
+        inherit pkgs;
+        format = "raw-efi";
+        modules = [
+          ./modules/nixos-generators
+          inputs.pipelight.nixosModules.pipelight-init
+          {
+            virtualisation.diskSize = 20 * 1024;
+            services.pipelight-init.enable = true;
+          }
+        ];
       };
-      systems =
-        flake-utils.lib.allSystems;
-      perSystem = {
-        config,
-        self,
-        inputs,
-        pkgs,
-        system,
-        ...
-      }: let
-        overlays = [(import rust-overlay)];
-        pkgs = import nixpkgs {
-          inherit system overlays;
-        };
-      in {
-        devShells.default = pkgs.callPackage ./shell.nix {};
-        packages = {
-          default = pkgs.callPackage ./package.nix {};
-          disk-images = rec {
-            default = xxs;
-            xxs = inputs.nixos-generators.nixosGenerate {
-              format = "raw-efi";
-              modules = [
-                inputs.virshle.nixosModule.nixos-generators
-                {virtualisation.diskSize = 20 * 1024;}
-              ];
-            };
-            xs = inputs.nixos-generators.nixosGenerate {
-              format = "raw-efi";
-              modules = [
-                inputs.virshle.nixosModule.nixos-generators
-                {virtualisation.diskSize = 50 * 1024;}
-              ];
-            };
-            s = inputs.nixos-generators.nixosGenerate {
-              format = "raw-efi";
-              modules = [
-                inputs.virshle.nixosModule.nixos-generators
-                {virtualisation.diskSize = 80 * 1024;}
-              ];
-            };
-          };
-        };
+      vm_xs = inputs.nixos-generators.nixosGenerate {
+        inherit pkgs;
+        format = "raw-efi";
+        modules = [
+          ./modules/nixos-generators
+          inputs.pipelight.nixosModules.pipelight-init
+          {
+            virtualisation.diskSize = 50 * 1024;
+            services.pipelight-init.enable = true;
+          }
+        ];
+      };
+      vm_s = inputs.nixos-generators.nixosGenerate {
+        inherit pkgs;
+        format = "raw-efi";
+        modules = [
+          ./modules/nixos-generators
+          inputs.pipelight.nixosModules.pipelight-init
+          {
+            virtualisation.diskSize = 80 * 1024;
+            services.pipelight-init.enable = true;
+          }
+        ];
       };
     };
+  };
 }

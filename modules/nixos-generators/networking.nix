@@ -19,6 +19,8 @@
     ];
   };
   # Enable slaac token.
-  kernel.sysctl."net.ipv6.conf.ens4.accept_ra" = 2;
-  kernel.sysctl."net.ipv6.conf.ens4.accept_ra_from_local" = 1;
+  boot = {
+    kernel.sysctl."net.ipv6.conf.ens4.accept_ra" = 2;
+    kernel.sysctl."net.ipv6.conf.ens4.accept_ra_from_local" = 1;
+  };
 }

@@ -1,12 +1,6 @@
-{
-  config,
-  lib,
-  pkgs,
-  inputs,
-  ...
-}: {
+{...}: {
   imports = [
-    ./networking.nix.nix
+    ./networking.nix
     ./hardware-configuration.nix
   ];
 }
