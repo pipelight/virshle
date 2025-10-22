@@ -38,20 +38,20 @@
     devShells.${system}.default = pkgs.callPackage ./shell.nix {};
     packages.${system} = {
       default = pkgs.callPackage ./package.nix {};
-      vm_all_sizes = inputs.nixos-generators.nixosGenerate {
-        inherit pkgs;
-        inherit specialArgs;
-        format = "raw-efi";
-        modules = [
-          ./modules/make-disk-images
-          ./modules/nixos-generators
-        ];
-      };
       vm_base = inputs.nixos-generators.nixosGenerate {
         inherit pkgs;
         inherit specialArgs;
         format = "raw-efi";
         modules = [
+          ./modules/nixos-generators
+        ];
+      };
+      vm_all_sizes = inputs.nixos-generators.nixosGenerate {
+        inherit pkgs;
+        inherit specialArgs;
+        format = "raw-efi";
+        modules = [
+          ./modules/make-disk-images.nix
           ./modules/nixos-generators
         ];
       };

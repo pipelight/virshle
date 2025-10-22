@@ -1,4 +1,5 @@
 {
+  inputs,
   lib,
   pkgs,
   modulesPath,
@@ -7,6 +8,7 @@
   # for virtio kernel drivers
   imports = [
     (modulesPath + "/profiles/qemu-guest.nix")
+    inputs.pipelight.nixosModules.pipelight-init
   ];
 
   ###################################
@@ -43,7 +45,8 @@
     "Z '/pipelight-init' 774 root users - -"
   ];
 
-  # services.pipelight-init.enable = true;
+  services.pipelight-init.enable = true;
+
   fileSystems."/pipelight-init" = {
     device = "/dev/disk/by-label/INIT";
     fsType = "vfat";

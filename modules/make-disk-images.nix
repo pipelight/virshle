@@ -17,21 +17,29 @@
     inherit (config.virtualisation) diskSize;
     format = "raw";
     postVM = let
-      # Make copy of file with size in name.
-      copy_to = size: {
-        cmd = "cp nixos.img nixos.${size}.efi.img";
-      };
-      # Resize the image to the given size (in GiB)
-      to_size = size: {
-        cmd = ''
+      # Copy the image and resize to the given size (in GiB)
+      make_disk = name: size:
+      # Copy base image
+        ''
+          cp $out/nixos.img $out/nixos.${name}.efi.img
+        ''
+        # Extend disk file
+        + ''
           dd \
           if=/dev/null \
-          of=./nixos.img \
-          count=0 bs=1G seek=${size}
+          of=$out/nixos.${name}.efi.img \
+          count=0 bs=1G seek=${builtins.toString size}
+        ''
+        # Extend main partition
+        + ''
+          echo -e ",+" | sfdisk $out/nixos.${name}.efi.img -N 2
         '';
-      };
     in ''
       echo "starting postVM script..."
+      ${pkgs.coreutils}/bin/ls -alh $out
+      ${make_disk "xxs" 20}
+      ${make_disk "xs" 50}
+      ${make_disk "s" 80}
       ${pkgs.coreutils}/bin/ls -alh $out
       echo "end postVM script."
     '';
