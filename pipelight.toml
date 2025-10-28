@@ -5,21 +5,22 @@ name = "build:disk:base"
 name = "build base disk image"
 commands = [
   # Update flake deps
-  "nix flake update",
+  # "nix flake update",
+
   # Build flake
   """
   nix build ".#vm_base" \
-  --out-link ./result_vm_base \
+  --out-link ./result_vms \
   --show-trace \
   """,
   """
   cp \ 
-  ./result_vm_base/nixos.img \
-  ~/Iso/nixos.base.efi.img
+  ./result_vms/nixos.img \
+  ~/Iso/nixos.efi.img
   """,
   # Set permissions
-  "chmod +x ~/Iso/nixos.base.efi.img",
-  "chmod +w ~/Iso/nixos.base.efi.img",
+  "chmod +x ~/Iso/nixos.efi.img",
+  "chmod +w ~/Iso/nixos.efi.img",
 ]
 
 [[pipelines]]
@@ -28,48 +29,21 @@ name = "build:disk:all"
 [[pipelines.steps]]
 name = "build base disk image"
 commands = [
-  #xxs
+  # Build flake
   """
-  cp \
-  ~/Iso/nixos.base.efi.img \
-  ~/Iso/nixos.xxs.efi.img
-  """,
-  """
-  dd \
-  if=/dev/null \
-  of=/home/anon/Iso/nixos.xxs.efi.img \
-  count=0 bs=1G seek=20
-  """,
-  #xs
-  """
-  cp \
-  ~/Iso/nixos.base.efi.img \
-  ~/Iso/nixos.xs.efi.img
-  """,
-  """
-  dd \
-  if=/dev/null \
-  of=~/Iso/nixos.xs.efi.img \
-  count=0 bs=1G seek=50
-  """,
-  """
-  cp \
-  ~/Iso/nixos.base.efi.img \
-  ~/Iso/nixos.s.efi.img
-  """,
-  """
-  dd \
-  if=/dev/null \
-  of=~/Iso/nixos.s.efi.img \
-  count=0 bs=1G seek=80,
+  nix build ".#vm_all_sizes" \
+  --out-link ./result_vms \
+  --show-trace \
   """,
 ]
 [[pipelines.steps]]
 name = "copy disk images to cache"
 commands = [
-  "cp ./result_vm_xxs/nixos.img /var/lib/virshle/cache/nixos.xxs.efi.img",
-  "cp ./result_vm_xs/nixos.img /var/lib/virshle/cache/nixos.xs.efi.img",
-  "cp ./result_vm_s/nixos.img /var/lib/virshle/cache/nixos.s.efi.img",
+  "cp ./result_vms/nixos.*.img /var/lib/virshle/cache/",
+  "cp ./result_vms/nixos.*.img ~/Iso",
+  # Set permissions
+  "chmod +x /var/lib/virshle/cache/*",
+  "chmod +w /var/lib/virshle/cache/*",
 ]
 
 
@@ -77,7 +51,7 @@ commands = [
 name = "test-ovs-nixosModule"
 [[pipelines.steps]]
 
-name = "run openvswitch-afxdp tests"
+name = "build openvswitch test flake"
 commands = [
   # Update flake deps
   "nix flake update --flake ./modules/tests/openvswitch",
@@ -92,7 +66,7 @@ commands = [
 name = "test-nixosModule"
 
 [[pipelines.steps]]
-name = "run flake test"
+name = "build module test flake"
 commands = [
   # Update flake deps
   "nix flake update --flake ./templates/tests",

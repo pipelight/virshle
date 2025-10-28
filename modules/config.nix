@@ -26,12 +26,12 @@ in
   mkIf cfg.enable
   {
     ## Working dir
-    systemd.tmpfiles.rules = lib.mkDefault [
-      "Z '/var/lib/virshle' 2774 ${cfg.user} users - -"
-      "d '/var/lib/virshle' 2774 ${cfg.user} users - -"
-      "Z '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
-      "d '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
-    ];
+    # systemd.tmpfiles.rules = lib.mkDefault [
+    #   "Z '/var/lib/virshle' 2774 ${cfg.user} users - -"
+    #   "d '/var/lib/virshle' 2774 ${cfg.user} users - -"
+    #   "Z '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
+    #   "d '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
+    # ];
 
     security.wrappers.virshle = {
       source = "${package}/bin/virshle";
