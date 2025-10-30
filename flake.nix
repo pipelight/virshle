@@ -20,41 +20,56 @@
     flake-utils,
     flake-parts,
     ...
-  } @ inputs: let
-    system = "x86_64-linux";
-    overlays = [(import rust-overlay)];
-    pkgs = import nixpkgs {
-      inherit system overlays;
-    };
-    specialArgs = {
+  } @ inputs:
+    flake-parts.lib.mkFlake {
       inherit inputs;
-    };
-  in {
-    nixosModules = rec {
-      default = virshle;
-      virshle = ./modules/default.nix;
-      nixos-generators = ./modules/nixos-generators;
-    };
-    devShells.${system}.default = pkgs.callPackage ./shell.nix {};
-    packages.${system} = {
-      default = pkgs.callPackage ./package.nix {};
-      vm_base = inputs.nixos-generators.nixosGenerate {
-        inherit pkgs;
-        inherit specialArgs;
-        format = "raw-efi";
-        modules = [
-          ./modules/nixos-generators
-        ];
+    } {
+      flake = {
+        nixosModules = rec {
+          default = virshle;
+          virshle = ./modules/default.nix;
+          nixos-generators = ./modules/nixos-generators;
+        };
       };
-      vm_all_sizes = inputs.nixos-generators.nixosGenerate {
-        inherit pkgs;
-        inherit specialArgs;
-        format = "raw-efi";
-        modules = [
-          ./modules/make-disk-images.nix
-          ./modules/nixos-generators
-        ];
+      systems = flake-utils.lib.allSystems;
+      perSystem = {
+        config,
+        self,
+        inputs,
+        pkgs,
+        system,
+        ...
+      }: let
+        overlays = [(import rust-overlay)];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+        specialArgs = {
+          inherit inputs;
+        };
+      in {
+        devShells.default = pkgs.callPackage ./shell.nix {};
+
+        packages = {
+          default = pkgs.callPackage ./package.nix {};
+          vm_base = inputs.nixos-generators.nixosGenerate {
+            inherit pkgs;
+            inherit specialArgs;
+            format = "raw-efi";
+            modules = [
+              ./modules/nixos-generators
+            ];
+          };
+          vm_all_sizes = inputs.nixos-generators.nixosGenerate {
+            inherit pkgs;
+            inherit specialArgs;
+            format = "raw-efi";
+            modules = [
+              ./modules/make-disk-images.nix
+              ./modules/nixos-generators
+            ];
+          };
+        };
       };
     };
-  };
 }
