@@ -188,9 +188,9 @@ in
         unitConfig = {
           # Is reloaded when network is reloaded
           # to bind the fresh interfaces.
-          WantedBy = ["network.target"];
           # Starts only after interfaces creation.
-          After = ["network.target"];
+          after = ["network.target"];
+          wantedBy = ["network.target"];
         };
 
         serviceConfig = {
@@ -222,19 +222,19 @@ in
       in {
         kea-ctrl-agent = {
           inherit serviceConfig;
-          inherit unitConfig;
+          inherit (unitConfig) after wantedBy;
         };
         kea-dhcp6-server = {
           inherit serviceConfig;
-          inherit unitConfig;
+          inherit (unitConfig) after wantedBy;
         };
         kea-dhcp4-server = {
           inherit serviceConfig;
-          inherit unitConfig;
+          inherit (unitConfig) after wantedBy;
         };
         kea-dhcp-ddns-server = {
           inherit serviceConfig;
-          inherit unitConfig;
+          inherit (unitConfig) after wantedBy;
         };
       };
     }

@@ -225,7 +225,12 @@ impl HostDisk {
         let vms = Vm::get_all().await?;
         let n_cpus: u64 = vms
             .iter()
-            .map(|e| e.disk.iter().map(|d| d.get_size().unwrap()).sum::<u64>())
+            .map(|e| {
+                e.disk
+                    .iter()
+                    .map(|d| d.get_size().unwrap_or(0))
+                    .sum::<u64>()
+            })
             .sum();
         Ok(n_cpus)
     }

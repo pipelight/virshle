@@ -61,7 +61,7 @@ pub enum Crud {
     #[command(arg_required_else_help = true)]
     Config(VmArgs),
 
-    /// Inspect a created virtual machine configuration (cloud-hypervisor api).
+    /// Inspect a created virtual machine configuration (virshle api).
     #[command(arg_required_else_help = true)]
     Info(VmArgs),
     /// Inspect a created virtual machine configuration (cloud-hypervisor api).
