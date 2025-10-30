@@ -185,16 +185,18 @@ in
         # "Z '/var/lib/kea' 2764 root users - -"
       ];
       systemd.services = with lib; let
-        serviceConfig = {
-          User = mkForce "root";
-          Group = "users";
-          UMask = mkForce "0007";
-
+        unitConfig = {
           # Is reloaded when network is reloaded
           # to bind the fresh interfaces.
           WantedBy = ["network.target"];
           # Starts only after interfaces creation.
           After = ["network.target"];
+        };
+
+        serviceConfig = {
+          User = mkForce "root";
+          Group = "users";
+          UMask = mkForce "0007";
 
           # Do not store tmp files in private dir.
           DynamicUser = mkForce false;
@@ -218,9 +220,21 @@ in
           ];
         };
       in {
-        kea-ctrl-agent.serviceConfig = serviceConfig;
-        kea-dhcp6-server.serviceConfig = serviceConfig;
-        kea-dhcp4-server.serviceConfig = serviceConfig;
-        kea-dhcp-ddns-server.serviceConfig = serviceConfig;
+        kea-ctrl-agent = {
+          inherit serviceConfig;
+          inherit unitConfig;
+        };
+        kea-dhcp6-server = {
+          inherit serviceConfig;
+          inherit unitConfig;
+        };
+        kea-dhcp4-server = {
+          inherit serviceConfig;
+          inherit unitConfig;
+        };
+        kea-dhcp-ddns-server = {
+          inherit serviceConfig;
+          inherit unitConfig;
+        };
       };
     }
