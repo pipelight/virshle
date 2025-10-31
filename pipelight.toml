@@ -14,7 +14,7 @@ commands = [
   --show-trace \
   """,
   """
-  cp \ 
+  cp -f \ 
   ./result_vms/nixos.img \
   ~/Iso/nixos.efi.img
   """,
@@ -39,11 +39,14 @@ commands = [
 [[pipelines.steps]]
 name = "copy disk images to cache"
 commands = [
-  "cp ./result_vms/nixos.*.img /var/lib/virshle/cache/",
-  "cp ./result_vms/nixos.*.img ~/Iso",
+  # Copy to destinations
+  "cp -f ./result_vms/nixos.*.img /var/lib/virshle/cache/",
+  "cp -f ./result_vms/nixos.*.img ~/Iso",
   # Set permissions
   "chmod +x /var/lib/virshle/cache/*",
   "chmod +w /var/lib/virshle/cache/*",
+  "chmod +x ~/Iso/*",
+  "chmod +w ~/Iso/*",
 ]
 
 
