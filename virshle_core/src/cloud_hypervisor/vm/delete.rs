@@ -32,13 +32,15 @@ impl Vm {
     pub async fn delete(&self) -> Result<Self, VirshleError> {
         // Remove process and artifacts.
         self.delete_ch_proc()?;
-        // Remove vm disks
-        self.delete_disks()?;
         // Remove vm networks
         self.delete_networks()?;
         // Soft lease deletion
         self.delete_leases().await.ok();
-        // Finally Remove db networks
+        // Remove vm disks
+        self.delete_disks()?;
+        // Delete vm directory tree
+        self.delete_filetree()?;
+        // Finally Remove db record
         self.delete_db_record().await?;
 
         info!("deleted vm {}", self.name);

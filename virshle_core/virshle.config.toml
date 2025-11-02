@@ -7,15 +7,15 @@ name = "local"
 url = "unix:///var/lib/virshle/virshle.sock"
 weight = 20
 
-[[node]]
-name = "local-ssh"
-url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
-weight = 0
-
-[[node]]
-name = "rpi4b"
-url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
-weight = 10
+# [[node]]
+# name = "local-ssh"
+# url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
+# weight = 0
+#
+# [[node]]
+# name = "rpi4b"
+# url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
+# weight = 10
 
 
 #########################
