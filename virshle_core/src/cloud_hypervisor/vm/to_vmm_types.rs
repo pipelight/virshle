@@ -190,7 +190,11 @@ impl FromStr for VmState {
             "shutdown" => VmState::Shutdown,
             "paused" => VmState::Paused,
             "breakpoing" => VmState::BreakPoint,
-            _ => VmState::Running,
+            _ => {
+                let message = "Couldn't convert unknown string to VmState.";
+                let error = LibError::builder().msg(message).help("").build().into();
+                return Err(error);
+            }
         };
         Ok(res)
     }
