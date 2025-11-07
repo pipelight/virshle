@@ -120,6 +120,18 @@ impl InitData {
                     let username = user.name.clone();
                     let keys = ssh.authorized_keys.to_owned();
                     let mut commands = vec![];
+
+                    p_config += &unindent(&format!(
+                        r#"
+                    [[pipelines.steps]]
+                    name = "ensure user {username} exists"
+                    options.mode = "jump_next"
+                    commands = [
+                        "useradd -m {username} -G wheel"
+                    ]
+                    "#
+                    ));
+
                     // Add keys
                     for key in keys {
                         commands.push(unindent(&format!(
@@ -132,6 +144,7 @@ impl InitData {
                         r#"
                     [[pipelines.steps]]
                     name = "set ipv6 for user {username}"
+                    options.mode = "jump_next"
                     commands = [
                         "mkdir -p /etc/ssh/authorized_keys.d",
                         "touch /etc/ssh/authorized_keys.d/{username}",
