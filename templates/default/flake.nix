@@ -1,11 +1,10 @@
 {
-  description = "A flake that uses virshle module";
+  description = "A minimal nixos configuration flake for virshle VMs";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     virshle = {
-      url = "github:pipelight/virshle?ref=dev";
-      # url = "path:../../";
+      url = "github:pipelight/virshle";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     pipelight.url = "github:pipelight/pipelight";
@@ -20,29 +19,13 @@
     pkgs = nixpkgs;
   in rec {
     nixosConfigurations = {
-      # Default module
       default = pkgs.lib.nixosSystem {
         specialArgs = {inherit inputs;};
         modules = [
           ../commons/configuration.nix
           ../commons/hardware-configuration.nix
 
-          inputs.virshle.nixosModules.default
-
-          ###################################
-          # You may move this module into its own file.
-          ({
-            lib,
-            inputs,
-            config,
-            ...
-          }: {
-            services.virshle = {
-              enable = true;
-              dhcp.defaultConfig = true;
-            };
-          })
-          ###################################
+          inputs.virshle.nixosModules.nixos-generators
         ];
       };
     };
