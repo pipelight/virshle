@@ -24,11 +24,20 @@
     flake-parts.lib.mkFlake {
       inherit inputs;
     } {
-      flake = {
+      flake = rec {
         nixosModules = rec {
           default = virshle;
           virshle = ./modules/default.nix;
           nixos-generators = ./modules/nixos-generators;
+        };
+        defaultTemplate = templates.default;
+        templates = {
+          default = {
+            path = ./templates/default;
+            description = ''
+              A minimal nixos configuration flake for virshle VMs.
+            '';
+          };
         };
       };
       systems = flake-utils.lib.allSystems;
@@ -68,16 +77,6 @@
               ./modules/nixos-generators
             ];
           };
-        };
-      };
-    }
-    // {
-      templates = {
-        default = {
-          path = ./templates/default;
-          description = ''
-            A minimal nixos configuration flake for virshle VMs.
-          '';
         };
       };
     };
