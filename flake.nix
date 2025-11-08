@@ -30,14 +30,6 @@
           virshle = ./modules/default.nix;
           nixos-generators = ./modules/nixos-generators;
         };
-        templates = {
-          default = {
-            path = ./templates/default;
-            description = ''
-              A minimal nixos configuration flake for virshle VMs.
-            '';
-          };
-        };
       };
       systems = flake-utils.lib.allSystems;
       perSystem = {
@@ -76,6 +68,16 @@
               ./modules/nixos-generators
             ];
           };
+        };
+      };
+    }
+    // {
+      templates = {
+        default = {
+          path = ./templates/default;
+          description = ''
+            A minimal nixos configuration flake for virshle VMs.
+          '';
         };
       };
     };
