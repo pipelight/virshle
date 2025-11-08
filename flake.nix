@@ -32,7 +32,7 @@
         };
         templates = {
           default = {
-            path = ./templates/umports/default.nix;
+            path = ./templates/default;
             description = ''
               A minimal nixos configuration flake for virshle VMs.
             '';
