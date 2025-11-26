@@ -154,7 +154,7 @@ impl Default for Vm {
             name: random_name().unwrap(),
             vcpu: 1,
             // vram in Gib
-            vram: "2GiB".to_owned(),
+            vram: "1GiB".to_owned(),
             net: None,
             uuid: Uuid::new_v4(),
             disk: vec![],

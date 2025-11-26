@@ -159,7 +159,7 @@ impl Cli {
                             let mut sp = Spinner::new(spinners::Toggle5, "Creating vm...", None);
 
                             // Create a vm from template.
-                            let res: Result<Vm, VirshleError> = client::vm::create(
+                            let res: Result<VmTable, VirshleError> = client::vm::create(
                                 CreateVmArgs {
                                     template_name: args.template,
                                 },
@@ -207,7 +207,7 @@ impl Cli {
                                     Spinner::new(spinners::Toggle5, "Starting vm...", None);
 
                                 // Rest API
-                                let res: Result<Vm, VirshleError> = client::vm::start(
+                                let res: Result<VmTable, VirshleError> = client::vm::start(
                                     GetVmArgs {
                                         id: args.id,
                                         uuid: args.uuid,
@@ -249,7 +249,7 @@ impl Cli {
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Shutting down vm...", None);
-                        let res: Result<Vm, VirshleError> = client::vm::shutdown(
+                        let res: Result<VmTable, VirshleError> = client::vm::shutdown(
                             GetVmArgs {
                                 id: args.id,
                                 uuid: args.uuid,
@@ -287,7 +287,7 @@ impl Cli {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vm...", None);
 
-                        let res: Result<Vm, VirshleError> = client::vm::delete(
+                        let res: Result<VmTable, VirshleError> = client::vm::delete(
                             GetVmArgs {
                                 id: args.id,
                                 uuid: args.uuid,

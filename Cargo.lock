@@ -1012,16 +1012,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "command-fds"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f849b92c694fe237ecd8fafd1ba0df7ae0d45c1df6daeb7f68ed4220d51640bd"
-dependencies = [
- "nix 0.30.1",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "concurrent-queue"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2891,18 +2881,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nix"
-version = "0.30.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74523f3a35e05aba87a1d978330aef40f67b0304ac79c1c00b294c9830543db6"
-dependencies = [
- "bitflags 2.9.1",
- "cfg-if",
- "cfg_aliases",
- "libc",
-]
-
-[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4036,7 +4014,7 @@ checksum = "4fb0ed583ff0f6b4aa44c7867dd7108df01b30571ee9423e250b4cc939f8c6cf"
 dependencies = [
  "libc",
  "log",
- "nix 0.29.0",
+ "nix",
  "ssh-encoding",
  "winapi",
 ]
@@ -5874,7 +5852,6 @@ dependencies = [
  "chrono",
  "clap",
  "clap-verbosity-flag",
- "command-fds",
  "convert_case 0.8.0",
  "crossterm",
  "csv",

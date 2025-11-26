@@ -35,7 +35,13 @@ hyper = { version = "1.4.1", features = ["full"] }
 http-body-util = "0.1.2"
 hyper-util = "0.1.9"
 
-sea-orm = { version = "1.0.1", features = ["runtime-tokio-rustls", "sqlx-sqlite", "with-json", "macros", "debug-print"] }
+sea-orm = { version = "1.0.1", features = [
+  "runtime-tokio-rustls",
+  "sqlx-sqlite",
+  "with-json",
+  "macros",
+  "debug-print",
+] }
 virshle_migration = { path = "../virshle_migration" }
 russh = "0.54.1"
 url = "2.5.2"
@@ -81,7 +87,7 @@ kdl = "6.3.4"
 dirs = "6.0.0"
 bytes = "1.10.1"
 sys-mount = { version = "3.0.1", features = ["loop"] }
-command-fds = "0.3.2"
+# command-fds = "0.3.2"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["ansi", "env-filter"] }
 tracing-log = "0.2.0"

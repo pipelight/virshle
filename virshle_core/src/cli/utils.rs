@@ -4,7 +4,7 @@ use spinoff::{spinners, Color, Spinner};
 use std::collections::HashMap;
 
 use crate::cli::Cli;
-use crate::{Node, NodeInfo, Vm, VmInfo, VmState, VmTemplate};
+use crate::{Node, NodeInfo, Vm, VmInfo, VmState, VmTable, VmTemplate};
 use pipelight_exec::Status;
 
 // Error handling
@@ -64,7 +64,7 @@ pub fn set_logger(cli: &Cli) -> Result<(), VirshleError> {
 pub fn print_response_op(
     tag: &str,
     node: &str,
-    res: &Result<Vm, VirshleError>,
+    res: &Result<VmTable, VirshleError>,
 ) -> Result<String, VirshleError> {
     let tag = format!("[{tag}]");
     let message;

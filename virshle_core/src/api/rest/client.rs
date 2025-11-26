@@ -202,7 +202,7 @@ pub mod vm {
         args: CreateVmArgs,
         node_name: Option<String>,
         user_data: Option<UserData>,
-    ) -> Result<Vm, VirshleError> {
+    ) -> Result<VmTable, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -230,7 +230,7 @@ pub mod vm {
                 "[end] created vm {:#?} from template {:#?} on node {:#?}",
                 vm.name, template_name, node.name
             );
-            Ok(vm)
+            Ok(VmTable::from(&vm).await?)
         } else {
             Err(LibError::builder()
                 .msg("Couldn't create a Vm")
@@ -286,7 +286,10 @@ pub mod vm {
         }
     }
 
-    pub async fn delete(args: GetVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
+    pub async fn delete(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<VmTable, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
 
@@ -308,7 +311,7 @@ pub mod vm {
 
         info!("[end] deleted vm {:#?} on node {:#?}", vm.name, node.name);
 
-        Ok(vm)
+        Ok(VmTable::from(&vm).await?)
     }
     /// Bulk operation
     /// Stop many virtual machine on a node.
@@ -342,7 +345,7 @@ pub mod vm {
         args: GetVmArgs,
         node_name: Option<String>,
         user_data: Option<UserData>,
-    ) -> Result<Vm, VirshleError> {
+    ) -> Result<VmTable, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] starting a vm on node {:#?}", node.name);
@@ -363,7 +366,7 @@ pub mod vm {
 
         info!("[end] started vm {:#?} on node {:#?}", vm.name, node.name);
 
-        Ok(vm)
+        Ok(VmTable::from(&vm).await?)
     }
     /// Bulk operation
     /// Start many virtual machine on a node.
@@ -422,7 +425,10 @@ pub mod vm {
         Ok(res)
     }
     /// Stop a virtual machine on a node.
-    pub async fn shutdown(args: GetVmArgs, node_name: Option<String>) -> Result<Vm, VirshleError> {
+    pub async fn shutdown(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<VmTable, VirshleError> {
         // Set node to be queried
         let node = Node::unwrap_or_default(node_name).await?;
         info!("[start] shutting down a vm on node {:#?}", node.name);
@@ -446,7 +452,7 @@ pub mod vm {
             vm.name, node.name
         );
 
-        Ok(vm)
+        Ok(VmTable::from(&vm).await?)
     }
     pub async fn get_definition(
         args: GetVmArgs,
