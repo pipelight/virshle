@@ -16,18 +16,55 @@ use virshle_error::{LibError, VirshleError, WrapError};
 use env_logger::Builder;
 
 /// Tracing
-use tracing::Level;
 use tracing_subscriber::fmt::format::{Format, PrettyFields};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
+pub fn logging_per_crate(verbosity: log::LevelFilter) -> Result<String, VirshleError> {
+    let res = match verbosity {
+        log::LevelFilter::Trace => "",
+        log::LevelFilter::Debug => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        }
+        log::LevelFilter::Info => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        }
+        log::LevelFilter::Warn => {
+            "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
+        }
+        log::LevelFilter::Error => {
+            "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
+        }
+        _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
+    };
+    Ok(res.to_owned())
+}
+pub fn tracing_per_crate(verbosity: tracing::Level) -> Result<String, VirshleError> {
+    let res = match verbosity {
+        tracing::Level::TRACE => "",
+        tracing::Level::DEBUG => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        }
+        tracing::Level::INFO => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        }
+        tracing::Level::WARN => {
+            "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
+        }
+        tracing::Level::ERROR => {
+            "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
+        }
+        _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
+    };
+    Ok(res.to_owned())
+}
 /// Build tracing
 pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {
     // Set verbosity
-    let verbosity: Level = cli.verbose.tracing_level().unwrap();
+    let verbosity: tracing::Level = cli.verbose.tracing_level().unwrap();
     let filter = format!(
         "{},{}",
         verbosity.to_string().to_lowercase(),
-        "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        tracing_per_crate(verbosity)?
     );
     let builder = FmtSubscriber::builder()
         .with_max_level(verbosity)
@@ -51,7 +88,7 @@ pub fn set_logger(cli: &Cli) -> Result<(), VirshleError> {
     let filter = format!(
         "{},{}",
         verbosity.to_string().to_lowercase(),
-        "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        logging_per_crate(verbosity)?
     );
     std::env::set_var("VIRSHLE_LOG", filter);
     Builder::from_env("VIRSHLE_LOG").init();
