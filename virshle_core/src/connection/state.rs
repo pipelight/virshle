@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 // Error Handling
-use log::{debug, info, trace};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 

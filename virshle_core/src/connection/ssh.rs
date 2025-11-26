@@ -42,8 +42,8 @@ use tokio::spawn;
 use tokio::task::JoinHandle;
 
 // Error Handling
-use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::{info, trace};
 use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 
 pub struct SshClient;

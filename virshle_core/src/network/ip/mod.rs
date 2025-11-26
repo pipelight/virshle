@@ -15,9 +15,9 @@ use macaddr::MacAddr8;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 // Error handling
-use log::{error, info};
 use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
+use tracing::{error, info};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 use super::InterfaceState;

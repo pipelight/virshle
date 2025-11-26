@@ -27,8 +27,8 @@ use std::path::Path;
 use tokio::net::UnixStream;
 
 // Error Handling
-use log::{info, trace};
 use miette::{Error, IntoDiagnostic, Result};
+use tracing::{info, trace};
 use virshle_error::{ConnectionError, LibError, VirshleError, WrapError};
 
 /// This struct is a convenience wrapper

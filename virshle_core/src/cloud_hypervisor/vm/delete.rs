@@ -21,8 +21,8 @@ use sea_orm::{
 use crate::network::{ip, ip::fd, ovs::OvsBridge};
 
 // Error Handling
-use log::info;
 use miette::{IntoDiagnostic, Result};
+use tracing::info;
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {

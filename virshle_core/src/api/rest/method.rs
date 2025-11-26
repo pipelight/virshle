@@ -35,9 +35,9 @@ use crate::http_request::{Rest, RestClient};
 
 use owo_colors::OwoColorize;
 // Error handling
-use log::{error, info, warn};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use tokio::task::JoinError;
+use tracing::{error, info, warn};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 pub mod node {

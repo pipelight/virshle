@@ -113,8 +113,8 @@ impl Node {
             || info.cpu.is_saturated().await?
         {
             return Err(LibError::builder()
-                .msg("Couldn't create Vm")
-                .help("Node is saturated.")
+                .msg("Not allowed to create VM: node is saturated.")
+                .help("Try deleting unused VMs or change saturation indexes in config.")
                 .build()
                 .into());
         // Check remaining disk space

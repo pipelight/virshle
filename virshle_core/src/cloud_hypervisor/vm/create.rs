@@ -29,8 +29,8 @@ use crate::network::{ip, ip::fd, ovs::OvsBridge, utils};
 use super::UserData;
 
 // Error Handling
-use log::{error, info, trace};
 use miette::{IntoDiagnostic, Result};
+use tracing::{error, info, trace};
 use virshle_error::{CastError, LibError, VirshleError};
 
 impl Vm {
@@ -104,6 +104,7 @@ impl Vm {
     /*
      * Add network ports to ovs config.
      */
+    #[tracing::instrument(skip_all)]
     pub fn create_networks(&self) -> Result<(), VirshleError> {
         trace!("creating networks for vm {:#?}", self.name);
 
