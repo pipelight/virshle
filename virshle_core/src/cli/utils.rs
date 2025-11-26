@@ -27,7 +27,7 @@ pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {
     let filter = format!(
         "{},{}",
         verbosity.to_string().to_lowercase(),
-        "mio=error,sqlx=error,russh=error,users=warn"
+        "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
     );
     let builder = FmtSubscriber::builder()
         .with_max_level(verbosity)
@@ -51,7 +51,7 @@ pub fn set_logger(cli: &Cli) -> Result<(), VirshleError> {
     let filter = format!(
         "{},{}",
         verbosity.to_string().to_lowercase(),
-        "mio=error,sqlx=error,russh=error,users=warn"
+        "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
     );
     std::env::set_var("VIRSHLE_LOG", filter);
     Builder::from_env("VIRSHLE_LOG").init();
