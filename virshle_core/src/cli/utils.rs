@@ -19,25 +19,6 @@ use env_logger::Builder;
 use tracing_subscriber::fmt::format::{Format, PrettyFields};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-pub fn logging_per_crate(verbosity: log::LevelFilter) -> Result<String, VirshleError> {
-    let res = match verbosity {
-        log::LevelFilter::Trace => "",
-        log::LevelFilter::Debug => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
-        }
-        log::LevelFilter::Info => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
-        }
-        log::LevelFilter::Warn => {
-            "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
-        }
-        log::LevelFilter::Error => {
-            "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
-        }
-        _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
-    };
-    Ok(res.to_owned())
-}
 pub fn tracing_per_crate(verbosity: tracing::Level) -> Result<String, VirshleError> {
     let res = match verbosity {
         tracing::Level::TRACE => "",
@@ -51,6 +32,25 @@ pub fn tracing_per_crate(verbosity: tracing::Level) -> Result<String, VirshleErr
             "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
         }
         tracing::Level::ERROR => {
+            "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
+        }
+        _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
+    };
+    Ok(res.to_owned())
+}
+pub fn logging_per_crate(verbosity: log::LevelFilter) -> Result<String, VirshleError> {
+    let res = match verbosity {
+        log::LevelFilter::Trace => "",
+        log::LevelFilter::Debug => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        }
+        log::LevelFilter::Info => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
+        }
+        log::LevelFilter::Warn => {
+            "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
+        }
+        log::LevelFilter::Error => {
             "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
         }
         _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
