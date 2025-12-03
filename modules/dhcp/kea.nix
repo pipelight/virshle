@@ -178,63 +178,63 @@ in
           };
         };
       };
-      ###############################
-      # Sytemd unit rework
-
-      systemd.tmpfiles.rules = [
-        # "Z '/var/lib/kea' 2764 root users - -"
-      ];
-      systemd.services = with lib; let
-        unitConfig = {
-          # Is reloaded when network is reloaded
-          # to bind the fresh interfaces.
-          # Starts only after interfaces creation.
-          after = ["network.target"];
-          wantedBy = ["network.target"];
-        };
-
-        serviceConfig = {
-          User = mkForce "root";
-          Group = "users";
-          UMask = mkForce "0007";
-
-          # Do not store tmp files in private dir.
-          DynamicUser = mkForce false;
-          # Set file permissions
-          ExecStartPost = [
-            # "-${pkgs.coreutils}/bin/chmod -R 7660 /var/lib/kea"
-            # "-${pkgs.coreutils}/bin/chmod -R g+r /var/lib/kea"
-            # "-${pkgs.coreutils}/bin/chmod -R g+w /var/lib/kea"
-          ];
-
-          # StateDirectory = "kea"; # default
-          LogsDirectory = "/var/log/kea";
-
-          AmbientCapabilities = [
-            "CAP_NET_BIND_SERVICE"
-            "CAP_NET_RAW"
-          ];
-          CapabilityBoundingSet = [
-            "CAP_NET_BIND_SERVICE"
-            "CAP_NET_RAW"
-          ];
-        };
-      in {
-        kea-ctrl-agent = {
-          inherit serviceConfig;
-          inherit (unitConfig) after wantedBy;
-        };
-        kea-dhcp6-server = {
-          inherit serviceConfig;
-          inherit (unitConfig) after wantedBy;
-        };
-        kea-dhcp4-server = {
-          inherit serviceConfig;
-          inherit (unitConfig) after wantedBy;
-        };
-        kea-dhcp-ddns-server = {
-          inherit serviceConfig;
-          inherit (unitConfig) after wantedBy;
-        };
-      };
+      # ###############################
+      # # Sytemd unit rework
+      #
+      # systemd.tmpfiles.rules = [
+      #   # "Z '/var/lib/kea' 2764 root users - -"
+      # ];
+      # systemd.services = with lib; let
+      #   unitConfig = {
+      #     # Is reloaded when network is reloaded
+      #     # to bind the fresh interfaces.
+      #     # Starts only after interfaces creation.
+      #     after = ["network.target"];
+      #     wantedBy = ["network.target"];
+      #   };
+      #
+      #   serviceConfig = {
+      #     User = mkForce "root";
+      #     Group = "users";
+      #     UMask = mkForce "0007";
+      #
+      #     # Do not store tmp files in private dir.
+      #     DynamicUser = mkForce false;
+      #     # Set file permissions
+      #     ExecStartPost = [
+      #       # "-${pkgs.coreutils}/bin/chmod -R 7660 /var/lib/kea"
+      #       # "-${pkgs.coreutils}/bin/chmod -R g+r /var/lib/kea"
+      #       # "-${pkgs.coreutils}/bin/chmod -R g+w /var/lib/kea"
+      #     ];
+      #
+      #     # StateDirectory = "kea"; # default
+      #     LogsDirectory = "/var/log/kea";
+      #
+      #     AmbientCapabilities = [
+      #       "CAP_NET_BIND_SERVICE"
+      #       "CAP_NET_RAW"
+      #     ];
+      #     CapabilityBoundingSet = [
+      #       "CAP_NET_BIND_SERVICE"
+      #       "CAP_NET_RAW"
+      #     ];
+      #   };
+      # in {
+      #   kea-ctrl-agent = {
+      #     inherit serviceConfig;
+      #     inherit (unitConfig) after wantedBy;
+      #   };
+      #   kea-dhcp6-server = {
+      #     inherit serviceConfig;
+      #     inherit (unitConfig) after wantedBy;
+      #   };
+      #   kea-dhcp4-server = {
+      #     inherit serviceConfig;
+      #     inherit (unitConfig) after wantedBy;
+      #   };
+      #   kea-dhcp-ddns-server = {
+      #     inherit serviceConfig;
+      #     inherit (unitConfig) after wantedBy;
+      #   };
+      # };
     }
