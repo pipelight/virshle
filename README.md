@@ -17,6 +17,10 @@ Virshle is a single command line utility to manage multiple virtual machines.
 - Use [pipelight-init](https://github.com/pipelight/pipelight) for fast
   vm provisioning on boot.
 
+> [!WARNING]
+> Early development stage.
+> Multinode is not stable.
+
 ## Getting started.
 
 Virshle is a cli(client) that can control multiple nodes(servers)
