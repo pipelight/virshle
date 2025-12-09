@@ -101,6 +101,14 @@ plus **reserved resources** for your VMs.
 For example, you can, of course, reserve more CPUs than what you physically have on a host
 and the linux kernel will share the power between guests.
 
+### Disks
+
+Copy your local disks to the new node cache.
+
+```sh
+rsync --progress -azv /var/lib/virshle/cache/* remote:/var/lib/virshle/cache
+```
+
 ### Create Vms
 
 You can either choose the node which to create the vm on.

@@ -108,6 +108,8 @@ vram = 2
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.efi.img"
+# or
+# path = "/var/lib/virshle/cache/nixos.efi.img"
 
 [[template.vm.net]]
 name = "main"
