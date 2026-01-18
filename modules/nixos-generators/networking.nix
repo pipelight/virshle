@@ -53,4 +53,21 @@
       "net.ipv6.conf.ens4.addr_gen_mode" = 3;
     };
   };
+
+  # Default dns servers.
+  networking.nameservers = with lib;
+    mkDefault [
+      # Ipv6 first
+      # Mullvad
+      "2a07:e340::4"
+      # Quad9
+      "2620:fe::fe"
+      "2620:fe::9"
+
+      # Ipv4 support
+      # Mullvad
+      "194.242.2.4"
+      # Quad9
+      "9.9.9.9"
+    ];
 }
