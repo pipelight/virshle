@@ -22,7 +22,8 @@
   systemd.services."serial-getty@ttyS0".enable = true;
 
   boot = {
-    growPartition = true;
+    # Do not try to resize partition on boot.
+    growPartition = lib.mkForce false;
     tmp.cleanOnBoot = true;
     # tmpOnTmpfs = false;
     # tmp.tmpfsHugeMemoryPages = "within_size";
@@ -62,4 +63,5 @@
     fsType = "ext4";
     autoResize = true;
   };
+  services.dbus.implementation = "broker";
 }

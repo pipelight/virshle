@@ -10,5 +10,6 @@
     ./hardware-configuration.nix
     ./networking.nix
     ./misc.nix
+    ./nix.nix
   ];
 }

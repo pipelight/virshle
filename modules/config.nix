@@ -26,12 +26,19 @@ in
   mkIf cfg.enable
   {
     ## Working dir
+    # Set working directories in your own configuration,
+    # outside of this module.
+    #
+    # Example:
+    #
+    # ```nix
     # systemd.tmpfiles.rules = lib.mkDefault [
     #   "Z '/var/lib/virshle' 2774 ${cfg.user} users - -"
     #   "d '/var/lib/virshle' 2774 ${cfg.user} users - -"
     #   "Z '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
     #   "d '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
     # ];
+    # ```
 
     security.wrappers.virshle = {
       source = "${package}/bin/virshle";
@@ -45,9 +52,63 @@ in
     };
 
     ## Systemd unit file
+    # Auto restart VM on network setup.
+    #
+    # Why is this needed?
+    # Nixos will destroy and rebuild the previous network on some generation switches,
+    # when the network configuration is modified or only touched,
+    # thus destroying vm tap interfaces and ovs interfaces.
+    # The Workaround:
+    # We need to restart the running VMs to generate and bind them to fresh working network interface.
+    systemd.services.virshle-autorestart = {
+      enable = true;
+      description = "Virshle - Auto restart running VMs.";
+      documentation = [
+        "https://github.com/pipelight/virshle"
+      ];
+      after = [
+        "virshle.service"
+      ];
+      wantedBy = ["network-setup.service"];
+      serviceConfig = let
+        verbosity =
+          {
+            "error" = "";
+            "warn" = "-v";
+            "info" = "-vv";
+            "debug" = "-vvv";
+            "trace" = "-vvvv";
+          }.${
+            cfg.logLevel
+          };
+      in {
+        Type = "oneshot";
+        User = "root";
+        Group = "wheel";
+        Environment = [
+          # "PATH=${config.security.wrapperDir}:/run/current-system/sw/bin"
+          "PATH=/run/current-system/sw/bin"
+          # If you want "~" to expend as another user's home.
+          "HOME=${config.users.users.${cfg.user}.home}"
+        ];
+        ExecStart = let
+          name = "virshle-autorestart";
+          text = ''
+            set +e # Do not exit if a command fails
+            echo "Restarting running VMs..."
+            ${package}/bin/virshle vm start --state running ${verbosity}
+            exit 0
+          '';
+          script = pkgs.writeShellScriptBin name text;
+          ## Move multiline script to seperate file
+        in "${script}/bin/${name}";
+      };
+    };
+
+    ## Systemd unit file
     systemd.services.virshle = {
       enable = true;
-      description = "Virshle node daemon (type 2 hypervisor)";
+      description = "Virshle (type 2 hypervisor) - Node daemon ";
       documentation = [
         "https://github.com/pipelight/virshle"
       ];

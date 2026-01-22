@@ -20,7 +20,7 @@
   # Nix substituters
   # and Binary caches
   nix.settings = {
-    trusted-users = lib.mkDefault ["root" "@wheel"];
+    trusted-users = ["root" "@wheel"];
     substituters = [
       "https://cache.nixos.org/"
       "https://nix-community.cachix.org"
