@@ -16,6 +16,7 @@ use crate::cloud_hypervisor::DiskInfo;
 
 pub fn display_duration(delta: &TimeDelta) -> String {
     let mut parsed: String = "".to_owned();
+    let delta = delta.abs();
     let days = delta.num_days();
     let hours = delta.num_hours();
     let minutes = delta.num_minutes();

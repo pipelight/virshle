@@ -31,7 +31,7 @@ impl Vm {
     #[tracing::instrument(skip_all)]
     pub async fn delete(&self) -> Result<Self, VirshleError> {
         // Remove process and artifacts.
-        self.delete_ch_proc()?;
+        self.vmm().kill_process()?;
         // Remove vm networks
         self.delete_networks()?;
         // Soft lease deletion
@@ -122,48 +122,6 @@ impl Vm {
                 };
             }
         }
-        Ok(())
-    }
-    /// Remove running vm hypervisor process if any
-    /// and assiociated socket.
-    pub fn delete_ch_proc(&self) -> Result<(), VirshleError> {
-        let finder = Finder::new()
-            .seed("cloud-hypervisor")
-            .seed(&self.uuid.to_string())
-            .search_no_parents()?;
-
-        #[cfg(debug_assertions)]
-        if let Some(matches) = finder.matches {
-            for _match in matches {
-                if let Some(pid) = _match.pid {
-                    Process::new().stdin(&format!("sudo kill -9 {pid}")).run()?;
-                }
-            }
-        }
-        #[cfg(not(debug_assertions))]
-        finder.kill()?;
-
-        let socket = &self.get_socket()?;
-        let path = Path::new(&socket);
-        if path.exists() {
-            #[cfg(debug_assertions)]
-            Process::new()
-                .stdin(&format!("sudo rm {}", &socket))
-                .run()?;
-            #[cfg(not(debug_assertions))]
-            fs::remove_file(&socket)?;
-        }
-
-        let vsock = &self.get_vsocket()?;
-        let path = Path::new(&vsock);
-        if path.exists() {
-            #[cfg(debug_assertions)]
-            Process::new().stdin(&format!("sudo rm {}", &vsock)).run()?;
-
-            #[cfg(not(debug_assertions))]
-            fs::remove_file(&vsock)?;
-        }
-
         Ok(())
     }
     /// Remove vm working directory and dependencies filetree.

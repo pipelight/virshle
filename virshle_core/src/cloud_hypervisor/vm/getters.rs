@@ -317,11 +317,6 @@ impl Vm {
         let path = format!("{MANAGED_DIR}/vm/{}/tmp", self.uuid);
         Ok(path)
     }
-    /// Return vm socket path for ch REST API communication.
-    pub fn get_socket(&self) -> Result<String, VirshleError> {
-        let path = format!("{MANAGED_DIR}/vm/{}/ch.sock", self.uuid);
-        Ok(path)
-    }
     /// Return vm vsocket path for host guest (ssh) communication.
     pub fn get_vsocket(&self) -> Result<String, VirshleError> {
         let path = format!("{MANAGED_DIR}/vm/{}/ch.vsock", self.uuid);

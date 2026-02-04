@@ -13,14 +13,14 @@
     # auto-optimise-store = true;
     # sandbox = "relaxed";
   };
-  system.stateVersion = "25.11";
-  system.autoUpgrade.channel = "https://nixos.org/channels/nixos-25.11/";
+  system.stateVersion = lib.mkDefault "25.11";
+  system.autoUpgrade.channel = lib.mkDefault "https://nixos.org/channels/nixos-25.11/";
 
   ##########################
   # Nix substituters
   # and Binary caches
   nix.settings = {
-    trusted-users = ["root" "@wheel"];
+    trusted-users = lib.mkDefault ["root" "@wheel"];
     substituters = [
       "https://cache.nixos.org/"
       "https://nix-community.cachix.org"

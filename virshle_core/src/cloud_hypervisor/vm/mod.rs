@@ -46,6 +46,12 @@ use uuid::Uuid;
 use crate::connection::{Connection, ConnectionHandle, UnixConnection};
 use crate::http_request::{Rest, RestClient};
 
+// Global configuration
+use crate::config::MANAGED_DIR;
+
+// Process management
+pub use pipelight_exec::{Finder, Status};
+
 // Error Handling
 use miette::{IntoDiagnostic, Result};
 use tracing::{debug, error, info, trace};
@@ -168,7 +174,180 @@ impl Default for Vm {
     }
 }
 
+pub struct VmmMethods<'a> {
+    vm: &'a Vm,
+}
+pub struct VmmGetMethods<'a> {
+    vm: &'a Vm,
+}
+impl VmmMethods<'_> {
+    pub fn get(&self) -> VmmGetMethods {
+        VmmGetMethods { vm: self.vm }
+    }
+}
+impl VmmGetMethods<'_> {
+    /// Return vm vsocket path for host guest (ssh) communication.
+    /// Return vm socket path for ch REST API communication.
+    pub fn socket(&self) -> Result<String, VirshleError> {
+        let path = format!("{MANAGED_DIR}/vm/{}/ch.sock", self.vm.uuid);
+        Ok(path)
+    }
+}
+
+impl VmmMethods<'_> {
+    /// Remove running vm hypervisor process if any
+    /// and assiociated socket.
+    pub fn kill_process(&self) -> Result<(), VirshleError> {
+        let finder = Finder::new()
+            .seed("cloud-hypervisor")
+            .seed(&self.vm.uuid.to_string())
+            .search_no_parents()?;
+
+        #[cfg(debug_assertions)]
+        if let Some(matches) = finder.matches {
+            for _match in matches {
+                if let Some(pid) = _match.pid {
+                    Process::new().stdin(&format!("sudo kill -9 {pid}")).run()?;
+                }
+            }
+        }
+        #[cfg(not(debug_assertions))]
+        finder.kill()?;
+
+        let socket = &self.get().socket()?;
+        let path = Path::new(&socket);
+        if path.exists() {
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo rm {}", &socket))
+                .run()?;
+            #[cfg(not(debug_assertions))]
+            fs::remove_file(&socket)?;
+        }
+
+        let vsock = &self.get().socket()?;
+        let path = Path::new(&vsock);
+        if path.exists() {
+            #[cfg(debug_assertions)]
+            Process::new().stdin(&format!("sudo rm {}", &vsock)).run()?;
+
+            #[cfg(not(debug_assertions))]
+            fs::remove_file(&vsock)?;
+        }
+
+        Ok(())
+    }
+    /// Start or Restart a VMM.
+    async fn start(&self, attach: Option<bool>) -> Result<(), VirshleError> {
+        // Safeguard: remove old process and artifacts
+        self.kill_process()?;
+
+        #[cfg(debug_assertions)]
+        let mut cmd = format!("cloud-hypervisor");
+        #[cfg(not(debug_assertions))]
+        let mut cmd = format!("cloud-hypervisor");
+
+        // If we can't establish connection to socket,
+        // this means cloud-hypervisor is dead.
+        // So we start a new viable process.
+        let mut conn = Connection::from(self.vm);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/vmm.ping");
+
+        if rest.open().await.is_err() || rest.ping().await.is_err() {
+            match attach {
+                Some(true) => {
+                    cmd = format!(
+                        "kitty \
+                            --title ttyS0@vm-{} \
+                            --hold sh -c \"{} --api-socket {}\"",
+                        &self.vm.name,
+                        cmd,
+                        &self.get().socket()?
+                    );
+                    Process::new()
+                        .stdin(&cmd)
+                        .term()
+                        .background()
+                        .detach()
+                        .run()?;
+                    info!("launching: {:#?}", &cmd);
+                }
+                _ => {
+                    cmd = format!("{} --api-socket {}", &cmd, &self.get().socket()?);
+                    Process::new()
+                        .stdin(&cmd)
+                        .orphan()
+                        .background()
+                        .detach()
+                        .run()?;
+                    info!("launching: {:#?}", &cmd);
+                }
+            };
+
+            // Wait until socket is created
+            let socket = &self.get().socket()?;
+            let path = Path::new(socket);
+            while !path.exists() {
+                tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
+            }
+
+            // Set loose permission on cloud-hypervisor socket.
+            #[cfg(not(debug_assertions))]
+            {
+                let mut perms = fs::metadata(&path)?.permissions();
+                perms.set_mode(0o774);
+                fs::set_permissions(&path, perms)?;
+            }
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo chmod 774 {}", &socket))
+                .run()?;
+        }
+        Ok(())
+    }
+
+    /// Bring the virtual machine up.
+    async fn create(&self) -> Result<(), VirshleError> {
+        let config = VmConfig::from(self.vm).await?;
+        trace!("{:#?}", config);
+
+        let mut conn = Connection::from(self.vm);
+        let mut rest = RestClient::from(&mut conn);
+
+        let endpoint = "/api/v1/vm.create";
+        let response = rest.put::<VmConfig>(endpoint, Some(config)).await?;
+
+        if response.status().is_success() {
+            let msg = &response.to_string().await?;
+            trace!("{}", &msg);
+        } else {
+            let err_msg = &response.to_string().await?;
+            error!("{}", &err_msg);
+        }
+
+        Ok(())
+    }
+}
+
 impl Vm {
+    pub fn vmm(&self) -> VmmMethods<'_> {
+        VmmMethods { vm: self }
+    }
+}
+
+impl Vm {
+    /// Start Vm
+    #[tracing::instrument(skip_all)]
+    pub async fn ensure_network(&mut self) -> Result<Vm, VirshleError> {
+        // Delete previous networks
+        // vm.vmm()get().networks();
+        // Create ressources
+        self.create_networks()?;
+        self.vmm().create().await?;
+        Ok(self.to_owned())
+    }
     /// Start Vm
     #[tracing::instrument(skip_all)]
     pub async fn start(
@@ -180,8 +359,8 @@ impl Vm {
         self.add_init_disk(user_data)?;
         self.create_networks()?;
 
-        self.start_vmm(attach).await?;
-        self.push_config_to_vmm().await?;
+        self.vmm().start(attach).await?;
+        self.vmm().create().await?;
 
         let mut conn = Connection::from(&self.clone());
         let mut rest = RestClient::from(&mut conn);
@@ -208,76 +387,6 @@ impl Vm {
         info!("started vm {:#?}", self.name);
         Ok(self.to_owned())
     }
-    /// Start or Restart a VMM.
-    async fn start_vmm(&self, attach: Option<bool>) -> Result<(), VirshleError> {
-        // Safeguard: remove old process and artifacts
-        self.delete_ch_proc()?;
-
-        #[cfg(debug_assertions)]
-        let mut cmd = format!("cloud-hypervisor");
-        #[cfg(not(debug_assertions))]
-        let mut cmd = format!("cloud-hypervisor");
-
-        // If we can't establish connection to socket,
-        // this means cloud-hypervisor is dead.
-        // So we start a new viable process.
-        let mut conn = Connection::from(self);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/vmm.ping");
-
-        if rest.open().await.is_err() || rest.ping().await.is_err() {
-            match attach {
-                Some(true) => {
-                    cmd = format!(
-                        "kitty \
-                            --title ttyS0@vm-{} \
-                            --hold sh -c \"{} --api-socket {}\"",
-                        &self.name,
-                        cmd,
-                        &self.get_socket()?
-                    );
-                    Process::new()
-                        .stdin(&cmd)
-                        .term()
-                        .background()
-                        .detach()
-                        .run()?;
-                    info!("launching: {:#?}", &cmd);
-                }
-                _ => {
-                    cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
-                    Process::new()
-                        .stdin(&cmd)
-                        .orphan()
-                        .background()
-                        .detach()
-                        .run()?;
-                    info!("launching: {:#?}", &cmd);
-                }
-            };
-
-            // Wait until socket is created
-            let socket = &self.get_socket()?;
-            let path = Path::new(socket);
-            while !path.exists() {
-                tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
-            }
-
-            // Set loose permission on cloud-hypervisor socket.
-            #[cfg(not(debug_assertions))]
-            {
-                let mut perms = fs::metadata(&path)?.permissions();
-                perms.set_mode(0o774);
-                fs::set_permissions(&path, perms)?;
-            }
-            #[cfg(debug_assertions)]
-            Process::new()
-                .stdin(&format!("sudo chmod 774 {}", &socket))
-                .run()?;
-        }
-        Ok(())
-    }
 
     /// Shut the virtual machine down and removes artifacts.
     /// Should silently fail when vm is already down.
@@ -298,7 +407,7 @@ impl Vm {
         let response = rest.put::<()>(endpoint, None).await?;
 
         // Remove ch process
-        self.delete_ch_proc()?;
+        self.vmm().kill_process()?;
         // Remove network ports
         self.delete_networks()?;
 
@@ -321,27 +430,6 @@ impl Vm {
         Ok(())
     }
 
-    /// Bring the virtual machine up.
-    async fn push_config_to_vmm(&self) -> Result<(), VirshleError> {
-        let config = VmConfig::from(self).await?;
-        trace!("{:#?}", config);
-
-        let mut conn = Connection::from(self);
-        let mut rest = RestClient::from(&mut conn);
-
-        let endpoint = "/api/v1/vm.create";
-        let response = rest.put::<VmConfig>(endpoint, Some(config)).await?;
-
-        if response.status().is_success() {
-            let msg = &response.to_string().await?;
-            trace!("{}", &msg);
-        } else {
-            let err_msg = &response.to_string().await?;
-            error!("{}", &err_msg);
-        }
-
-        Ok(())
-    }
     /// Widden vsock permissions to allow ssh connection from the owning group.
     ///
     /// Socket is not created on ch proc start, but after vm boot.
