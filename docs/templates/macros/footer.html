@@ -1,6 +1,6 @@
 {% import "macros/links.html" as links %}
 {% macro make(ctx) %}
-<footer class="footer"><div class="footerContent">{% set docs = "docs/main.md" %}
+<footer class="footer"><div class="footerContent">{% set docs = "docs/_index.md" %}
 {% set_global sections = [] | concat(with=docs) | concat(with= ctx.subsections) %}
 {% for section in sections %}
 {% set section = get_section(path=section) %}<div class="flex flex-col p-4"><div class="section title">{{ section.title }}</div>{% for page in section.pages %}{{ links::make(ctx=page) }}{% endfor %}

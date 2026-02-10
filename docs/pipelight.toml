@@ -85,7 +85,7 @@ commands = [
   "pipelight run gen_js --attach --flag blank",
   "pipelight run gen_md --attach --flag blank",
   # build bundle
-  "zola build --base-url https://crocuda.com",
+  "zola build --base-url https://virshle.crocuda.com",
 ]
 [[pipelines.steps]]
 options.mode = "continue"
@@ -93,9 +93,9 @@ name = "copy files to remote"
 commands = [
   # Ensure destination exists
   """
-    ssh v1 -C "mkdir -p /var/www/crocuda.com"
+    ssh v1 -C "mkdir -p /var/www/virshle.crocuda.com"
   """,
   """
-    rsync --progress -azv ./public/ v1:/var/www/crocuda.com
+    rsync --progress -azv ./public/ v1:/var/www/virshle.crocuda.com
   """,
 ]

@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.13",
+    "@vueuse/components": "^12.8.2",
+    "@vueuse/core": "^12.8.2",
+    "daisyui": "^5.1.10",
+    "date-fns": "^4.1.0",
+    "petite-vue": "^0.4.1",
+    "pug-cli": "^1.0.0-alpha6",
+    "tailwindcss": "^4.1.13",
+    "vue": "^3.5.21"
+  }
+}

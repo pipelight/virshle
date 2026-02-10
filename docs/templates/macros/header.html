@@ -1,4 +1,4 @@
 {% macro make() %}
-<header class="flex flex-row"><div><a href="/"><div class="title">Crocuda_vps</div></a></div><div class="flex-grow"></div>{% for link in config.extra.links %}
+<header class="flex flex-row"><div><a href="/"><div class="title">{{ config.title }}</div></a></div><div class="flex-grow"></div>{% for link in config.extra.links %}
 <a class="social icon {{ link.title }}" href="{{ link.url }}" target="_blank"></a>{% endfor %}
 </header>{% endmacro make %}

@@ -1,10 +1,10 @@
 +++
 date = 2025-09-11
-updated = 2026-01-22
+updated = 2026-02-10
 
 weight = 10
 
-title = "User documentation 📖"
+title = "Virshle documentation 📖"
 
 description = """
 
@@ -12,3 +12,5 @@ description = """
 
 draft=false
 +++
+
+# Virshle documentation

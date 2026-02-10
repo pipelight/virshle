@@ -1,5 +1,5 @@
 +++
-title = "Virshle documentation"
+title = "Virshle"
 
 sort_by = "date"
 

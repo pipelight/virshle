@@ -1,7 +1,7 @@
 # The URL the site will be built for
-base_url = "https://crocuda.com"
+base_url = "https://virshle.crocuda.com"
 
-title = "Crocuda_vps"
+title = "Virshle documentation"
 description = """
 
 

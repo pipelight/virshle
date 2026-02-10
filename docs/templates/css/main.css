@@ -26,14 +26,17 @@
   --icon-nixos: url("../icons/nixos.svg");
   --icon-monero: url("../icons/monero.svg");
 
-  --primary: #9b34fe;
+  --primary: #854293;
   --secondary: #fe55fe;
   --warning: #fee140;
   --success: #84ee8455;
 
+  /* Doomchad */
+  --background: #282c34;
+
   --vp-hero-title-color: linear-gradient(
     120deg,
-    var(--primary) 70%,
+    var(--primary) 90%,
     var(--secondary)
   );
 }
@@ -69,7 +72,8 @@ body {
   /* colors */
   transition: all 150ms ease;
   @apply text-zinc-950 bg-amber-50;
-  @apply dark:text-gray-100 dark:bg-gray-950;
+  background-color: var(--background);
+  @apply dark:text-gray-100;
 }
 
 section.main {
@@ -154,10 +158,11 @@ header {
 */
 .hero {
   @apply relative;
-  @apply min-w-full md:min-w-min md:max-w-95/100 lg:max-w-7/8 2xl:max-w-4/5;
+  @apply min-w-full md:max-w-min md:max-w-80/100 lg:max-w-3/4;
   @apply flex flex-col;
-  @apply items-end;
-  @apply px-4 pt-10;
+  @apply items-start;
+  @apply mt-20;
+  @apply p-5 mx-5 md:mx-10 lg:mx-40;
 
   .image {
     transition: all 150ms ease;
@@ -297,14 +302,16 @@ header .title {
     @apply mt-10 mr-10;
     @apply md:mt-20 md:mr-5;
     @apply lg:mt-40 lg:mr-20;
-    @apply 2xl:mt-40 2xl:mr-20;
+    @apply 2xl:mt-10 2xl:mr-10;
   }
   &:active {
     animation: tap 150ms ease-out;
   }
 
   &.primary {
-    @apply dark:bg-purple-800 shadow-sm;
+    /* background-color: var(--primary); */
+    @apply shadow-sm;
+    @apply dark:bg-pink-600;
     @apply dark:hover:bg-purple-600;
   }
   p {
