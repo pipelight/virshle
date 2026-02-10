@@ -1,9 +1,9 @@
 {
   lib,
-  self_lib,
+  virshle_lib,
   ...
 }:
-with self_lib; let
+with virshle_lib; let
   secret = "vm-nixos";
   hash = "70cc2860c2371bf7872597545f76774c";
 in {

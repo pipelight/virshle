@@ -20,7 +20,17 @@
     flake-utils,
     flake-parts,
     ...
-  } @ inputs:
+  } @ inputs: let
+    virshle_lib =
+      {}
+      // (import ./modules/lib/network {
+        inherit (nixpkgs) lib;
+      });
+    specialArgs = {
+      inherit inputs;
+      inherit virshle_lib;
+    };
+  in
     flake-parts.lib.mkFlake {
       inherit inputs;
     } {
@@ -39,6 +49,11 @@
             '';
           };
         };
+        ## Unit tests
+        tests = import ./modules/lib/network/test.nix {
+          inherit virshle_lib;
+          inherit (nixpkgs) lib;
+        };
       };
       systems = flake-utils.lib.allSystems;
       perSystem = {
@@ -51,15 +66,6 @@
         overlays = [(import rust-overlay)];
         pkgs = import nixpkgs {
           inherit system overlays;
-        };
-        virshle_lib =
-          {}
-          // (import ./lib/network {
-            inherit (nixpkgs) lib;
-          });
-        specialArgs = {
-          inherit inputs;
-          inherit virshle_lib;
         };
       in {
         devShells.default = pkgs.callPackage ./shell.nix {};
@@ -82,11 +88,6 @@
               ./modules/nixos-generators
             ];
           };
-        };
-        ## Unit tests
-        tests = import ./lib/network/test.nix {
-          inherit virshle_lib;
-          inherit (nixpkgs) lib;
         };
       };
     };
