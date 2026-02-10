@@ -16,11 +16,6 @@ with lib; let
     "OpenFlow15"
   ];
 in {
-  users.users."anon".openssh.authorizedKeys.keys = [
-    #v0
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID5YciI0i5sqro+5UYqA+R/BhsbnDv/KJwhaFeow1zFE anon@v0"
-  ];
-
   # Fix network restart failure.
   # Never do `systemctl restart network-setup`
   # Always do `systemctl stop network-setup && sleep 1 && systemctl start network-setup`
@@ -74,28 +69,28 @@ in {
       useDHCP = true;
       ipv6.addresses = [
         ## Directives
-        # Subnet: 2a02:842b:6361:ad00::/50
+        # Subnet: 2001:db8::beef::/50
         # Router: fe80::1 and
         {
-          address = "fe80::c0da";
+          address = "fe80::beef";
           prefixLength = 64;
         }
         {
-          address = "fd00::c0da";
+          address = "fd00::beef";
           prefixLength = 64;
         }
         {
-          address = "2a02:842b:6361:ad00::c0da";
+          address = "2001:db8::beef";
           prefixLength = 64;
         }
         {
-          address = "2a02:842b:6361:ad02::c0da";
+          address = "2001:db9::beef";
           prefixLength = 64;
         }
       ];
       ipv6.routes = [
         {
-          address = "2a02:842b:6361:ad00::";
+          address = "2001:db8::";
           prefixLength = 50;
           via = "fe80::1";
         }
@@ -114,7 +109,7 @@ in {
         ## ipv6 params
         # ipv6only
         ipv6rs
-        slaac token ::c0da temp
+        slaac token ::beef temp
 
         ## privacy params
         # anonymous
@@ -427,11 +422,11 @@ in {
         {
           id = 2;
           interface = "br0-dhcp";
-          subnet = "2a02:842b:6361:ad02::/64";
+          subnet = "2001:db8::/64";
           allocator = "random";
           pools = [
             {
-              pool = "2a02:842b:6361:ad02::ff - 2a02:842b:6361:ad02:ffff:ffff:ffff:ffff";
+              pool = "2001:db8::ff - 2001:db8::beef:ffff:ffff:ffff:ffff";
             }
           ];
         }
@@ -472,7 +467,7 @@ in {
         };
 
         # Static address
-        prefix 2a02:842b:6361:ad02::/64 {
+        prefix 2001:db8::/64 {
           AdvOnLink on;
           AdvAutonomous off;
           AdvValidLifetime 4000;
@@ -480,14 +475,14 @@ in {
         };
 
         # Privacy addresses
-        prefix 2a02:842b:6361:ad10::/64 {
+        prefix 2001:db9::/64 {
           AdvOnLink on;
           AdvAutonomous on;
           AdvValidLifetime 4000;
           AdvPreferredLifetime 3000;
         };
 
-        route 2a02:842b:6361:ad00::/56 {
+        route 2001:db8::/56 {
           AdvRouteLifetime 3000;
         };
 
