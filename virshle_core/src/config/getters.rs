@@ -1,4 +1,4 @@
-use super::{Node, VirshleConfig, Vm, VmTemplate};
+use super::{Config, Node, Vm, VmTemplate};
 
 // Config
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,14 @@ use miette::{Error, IntoDiagnostic, Result};
 use tracing::info;
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
-impl VirshleConfig {
+impl Config {
+    pub fn nodes(&self) -> Result<Vec<Node>, VirshleError> {
+        let nodes: Vec<Node> = match &self.node {
+            Some(node) => node.to_owned(),
+            None => vec![Node::default()],
+        };
+        Ok(nodes)
+    }
     pub fn get_templates(&self) -> Result<Vec<VmTemplate>, VirshleError> {
         if let Some(template) = &self.template {
             if let Some(vm) = &template.vm {

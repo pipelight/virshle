@@ -2,7 +2,7 @@ pub mod fd;
 pub mod macvtap;
 pub mod tap;
 
-use crate::network::utils;
+use super::utils;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, Value::Array};

@@ -1,7 +1,11 @@
 #!/usr/bin/env -S bash
 
 update_frontmatter_dates() {
-  modified=$(git status -s | grep "M" | grep .md)
+
+  # Get modified markdown files 
+  # that are this directory and its subdirectories.
+  modified=$(git status -s | grep "M" | grep .md | grep -v "../")
+
   while read file; do
     # Get file path
     path=$(echo $file | cut -d " " -f 2)

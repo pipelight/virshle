@@ -6,12 +6,16 @@
 
 footer.footer
   .footerContent
-    a(
-      href!="{{ config.extra.sponsor.url }}",
-    )
-      .image(
-        style!="background-image: url( {{ get_url(path=\"/images/crocuda_small.png\") }} )"
+    .flex.flex-col.p-4
+      .section.title Sponsors
+      a(
+        href!="{{ config.extra.sponsor.url }}",
       )
+        .flex.flex-row
+          p.content-center Crocuda_vps
+          .image(
+            style!="background-image: url( {{ get_url(path=\"/images/crocuda_small.png\") }} )"
+          )
     
 :tera
   {% endmacro make %}

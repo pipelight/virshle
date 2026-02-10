@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use users::{get_current_uid, get_user_by_uid};
 
 // Global vars
-use crate::api::NodeServer;
+use crate::rest_api::NodeServer;
 
 // Error Handling
 use miette::{Error, IntoDiagnostic, Result};

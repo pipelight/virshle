@@ -1,10 +1,10 @@
 use super::utils::*;
-use crate::cloud_hypervisor::{DiskInfo, Vm, VmState};
 use crate::config::Node;
 use crate::connection::Uri;
+use crate::hypervisor::{DiskInfo, Vm, VmState};
 
 // Time
-use crate::cloud_hypervisor::disk::utils;
+use crate::hypervisor::disk::utils;
 use chrono::{DateTime, NaiveDateTime, TimeDelta, Utc};
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};

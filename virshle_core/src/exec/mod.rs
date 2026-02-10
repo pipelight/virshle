@@ -1,4 +1,4 @@
-use crate::cloud_hypervisor::Vm;
+use crate::hypervisor::Vm;
 
 use owo_colors::OwoColorize;
 use pipelight_exec::{Process, Status};

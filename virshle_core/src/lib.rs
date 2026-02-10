@@ -4,8 +4,8 @@
 #![allow(unused_must_use)]
 
 // Virshle daemon http Rest API
-pub mod api;
-pub use api::NodeServer;
+pub mod rest_api;
+pub use rest_api::NodeServer;
 // pub use api::{GrpcClient, RestClient};
 
 // Toml configuration structs.
@@ -15,11 +15,14 @@ pub use config::{Node, NodeInfo};
 // Virshle command line
 pub mod cli;
 
+// Interact with host network configuration.
+pub mod network;
+
 // Interact with cloud hypervisor processes and API.
-pub mod cloud_hypervisor;
-pub use cloud_hypervisor::disk::utils::{human_bytes, reverse_human_bytes};
-pub use cloud_hypervisor::Account;
-pub use cloud_hypervisor::{Vm, VmInfo, VmState, VmTemplate};
+pub mod hypervisor;
+pub use hypervisor::disk::utils::{human_bytes, reverse_human_bytes};
+pub use hypervisor::Account;
+pub use hypervisor::{Vm, VmInfo, VmState, VmTemplate};
 
 // Methods to do http easily on unix sockets.
 // Used to interact with cloud hypervisor
@@ -28,15 +31,9 @@ pub mod http_request;
 
 pub mod exec;
 
-// Host network manipulation.
-pub mod network;
-pub use network::{ip, ovs};
-
 // Stores vm definitions in sqlite database
 pub mod database;
 
 // Display virshle types in pretty tables.
 pub mod display;
 pub use display::VmTable;
-
-pub mod template_config;

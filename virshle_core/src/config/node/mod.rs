@@ -4,9 +4,9 @@ pub use info::NodeInfo;
 
 use owo_colors::OwoColorize;
 
-use crate::api::NodeServer;
 use crate::connection::{Connection, ConnectionHandle, Uri};
 use crate::http_request::{Rest, RestClient};
+use crate::rest_api::NodeServer;
 use crate::Vm;
 
 // Http
@@ -21,7 +21,7 @@ use log::{info, warn};
 use miette::{Error, IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError, WrapError};
 
-use super::VirshleConfig;
+use super::Config;
 
 /*
 * A declaration of a remote/local virshle daemon virshle nodes (name and address)
@@ -112,7 +112,7 @@ impl Node {
     /// Returns nodes defined in configuration,
     /// plus the default local node.
     pub fn get_all() -> Result<Vec<Node>, VirshleError> {
-        let config = VirshleConfig::get()?;
+        let config = Config::get()?;
         let nodes: Vec<Node> = match &config.node {
             Some(node) => node.to_owned(),
             None => vec![Node::default()],

@@ -9,11 +9,10 @@ pub use node::{
     Node, NodeInfo,
 };
 
-use crate::api::NodeServer;
-use crate::cloud_hypervisor::{Template, Vm, VmTemplate};
 use crate::database;
-use crate::network::dhcp::DhcpType;
-use crate::network::ovs;
+use crate::hypervisor::network::{dhcp::DhcpType, ovs};
+use crate::hypervisor::{Template, Vm, VmTemplate};
+use crate::rest_api::NodeServer;
 
 use owo_colors::OwoColorize;
 
@@ -44,12 +43,12 @@ pub const MAX_DISK_RESERVATION: f64 = 95_f64;
 * The main virshle cli and daemon configuration struct.
 */
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct VirshleConfig {
+pub struct Config {
     node: Option<Vec<Node>>,
     pub template: Option<Template>,
     pub dhcp: Option<DhcpType>,
 }
-impl Default for VirshleConfig {
+impl Default for Config {
     fn default() -> Self {
         Self {
             node: Some(vec![Node::default()]),
@@ -58,7 +57,7 @@ impl Default for VirshleConfig {
         }
     }
 }
-impl VirshleConfig {
+impl Config {
     /// Ensure virshle resources:
     ///   - a clean working directory and database.
     ///   - an initial configuration.
@@ -124,7 +123,7 @@ impl VirshleConfig {
     }
     /// Clean dhcp leases
     pub async fn _clean_leases() -> Result<(), VirshleError> {
-        match VirshleConfig::get()?.dhcp {
+        match Config::get()?.dhcp {
             Some(DhcpType::Kea(kea_dhcp)) => {
                 kea_dhcp.clean_leases().await?;
             }

@@ -31,15 +31,15 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Derivative)]
 #[derivative(Debug)]
-pub struct RestClient<'a> {
+pub struct RestClient {
     #[derivative(Debug = "ignore")]
-    pub connection: &'a mut Connection,
+    pub connection: Connection,
     #[derivative(Debug = "ignore")]
     handle: Option<StreamHandle>,
     pub base_url: Option<String>,
     ping_url: Option<String>,
 }
-impl RestClient<'_> {
+impl RestClient {
     pub fn ping_url(&mut self, ping_url: &str) {
         self.ping_url = Some(ping_url.to_owned());
     }
@@ -124,7 +124,7 @@ pub trait Rest {
         T: Serialize + Send;
 }
 
-impl<'a> Rest for RestClient<'a> {
+impl Rest for RestClient {
     async fn open(&mut self) -> Result<&mut Self, VirshleError> {
         if self.handle.is_none() {
             match self.connection.open().await {
@@ -347,8 +347,8 @@ pub async fn handshake(stream: Stream) -> Result<StreamHandle, VirshleError> {
     }
 }
 
-impl<'a> From<&'a mut Connection> for RestClient<'a> {
-    fn from(value: &'a mut Connection) -> Self {
+impl From<Connection> for RestClient {
+    fn from(value: Connection) -> Self {
         let cli = RestClient {
             connection: value,
             handle: None,

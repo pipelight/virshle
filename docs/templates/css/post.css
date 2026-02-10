@@ -45,6 +45,11 @@
 
   /* Size */
   @apply w-full md:max-w-3/4 lg:max-w-[800px];
+
+  &.landing {
+    @apply mt-20 xl:pt-0 xl:mx-280;
+    @apply xl:fixed xl:top-30;
+  }
 }
 
 .navContainer {
@@ -241,7 +246,7 @@
 
       /* colors */
       @apply opacity-80 lg:opacity-0;
-      @apply text-orange-100;
+      @apply text-pink-200;
     }
     &:hover:before {
       @apply lg:opacity-80;
@@ -256,7 +261,7 @@
   }
   h2 {
     @apply text-xl md:text-2xl font-bold;
-    @apply py-6 mt-5;
+    @apply py-6 mt-8;
     border-top-style: solid;
     border-top-width: 1px;
 
@@ -519,7 +524,7 @@
   .sbs {
     @apply my-3;
     @apply flex flex-col;
-    @apply xs:flex-row;
+    @apply md:flex-row;
     &:has(img) {
       @apply xs:flex-wrap;
       img {
@@ -604,7 +609,7 @@
     @apply p-2;
   }
   table {
-    @apply my-2;
+    @apply my-2 mb-6;
     /* @apply min-w-1/2; */
   }
 }

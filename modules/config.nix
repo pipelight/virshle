@@ -32,22 +32,47 @@ in
     # Example:
     #
     # ```nix
-    # systemd.tmpfiles.rules = lib.mkDefault [
-    #   "Z '/var/lib/virshle' 2774 ${cfg.user} users - -"
-    #   "d '/var/lib/virshle' 2774 ${cfg.user} users - -"
-    #   "Z '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
-    #   "d '/var/lib/virshle/cache' 2774 ${cfg.user} users - -"
-    # ];
+    # systemd.tmpfiles.rules = let
+    #   group = "users"; # "wheel" | "root"
+    # in
+    #   lib.mkDefault [
+    #     "Z '/var/lib/virshle' 2774 ${cfg.user} ${group} - -"
+    #     "d '/var/lib/virshle' 2774 ${cfg.user} ${group} - -"
+    #     "Z '/var/lib/virshle/cache' 2774 ${cfg.user} ${group} - -"
+    #     "d '/var/lib/virshle/cache' 2774 ${cfg.user} ${group} - -"
+    #   ];
     # ```
 
+    # Set user as a sudoer.
+    # Virshle needs it to mount and unmount storage devices.
+    security.sudo.extraRules = [
+      {
+        users = [cfg.user];
+        commands = [
+          {
+            command = "/run/wrappers/bin/mount";
+            options = ["NOPASSWD"];
+          }
+          {
+            command = "/run/wrappers/bin/umount";
+            options = ["NOPASSWD"];
+          }
+        ];
+      }
+    ];
+    # Give the binary some capabilities.
+    # Virshle needs it to create network devices.
     security.wrappers.virshle = {
       source = "${package}/bin/virshle";
-      owner = "root";
-      group = "wheel";
-
+      owner = cfg.user;
+      group = "root";
       # setuid = true;
       # setgid = true;
-      capabilities = "cap_net_admin,cap_sys_admin+eip";
+
+      ## DO NOT WORK: Add mounting capabilities.
+      ## But can't work unless rust native mounting lib. (sys_mount crate is only FFI bindings)
+      # capabilities = "cap_net_admin,cap_sys_admin+eip";
+      capabilities = "cap_net_admin";
       permissions = "u+rx,g+rx,o+rx";
     };
 
@@ -92,7 +117,7 @@ in
           "HOME=${config.users.users.${cfg.user}.home}"
         ];
         ExecStart = let
-          name = "virshle-autorestart";
+          name = "virshle-refresh-network";
           text = ''
             set +e # Do not exit if a command fails
             echo "Restarting running VMs..."

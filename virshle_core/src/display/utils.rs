@@ -11,8 +11,8 @@ use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATI
 
 use crossterm::{execute, style::Stylize, terminal::size};
 
-use crate::cloud_hypervisor::disk::utils::human_bytes;
-use crate::cloud_hypervisor::DiskInfo;
+use crate::hypervisor::disk::utils::human_bytes;
+use crate::hypervisor::DiskInfo;
 
 pub fn display_duration(delta: &TimeDelta) -> String {
     let mut parsed: String = "".to_owned();

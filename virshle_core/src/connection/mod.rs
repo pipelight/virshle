@@ -31,8 +31,8 @@ pub use state::ConnectionState;
 pub use tcp::TcpConnection;
 pub use uri::{LocalUri, SshUri, TcpUri, Uri};
 
-use crate::cloud_hypervisor::Vm;
 use crate::config::Node;
+use crate::hypervisor::Vm;
 
 // Http
 use http_body_util::{BodyExt, Full};

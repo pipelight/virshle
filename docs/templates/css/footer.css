@@ -33,11 +33,11 @@
 
 .footerContent {
   @apply pb-10 pt-5 md:pt-10;
-  @apply w-7/8 md:max-w-3/4 lg:max-w-[700px];
+  @apply w-7/8;
   @apply mx-auto;
 
   @apply flex flex-wrap;
   @apply flex-row;
 
-  @apply justify-end xl:justify-center;
+  @apply justify-end;
 }

@@ -1,9 +1,9 @@
 use crate::Vm;
 use sysinfo::{Disks, System};
 
-use crate::cloud_hypervisor::disk::utils;
 use crate::config::MANAGED_DIR;
 use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
+use crate::hypervisor::disk::utils;
 
 use std::path::Path;
 

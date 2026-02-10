@@ -1,4 +1,4 @@
-use crate::cloud_hypervisor::VmState;
+use crate::hypervisor::VmState;
 use clap::{Args, Parser, Subcommand, ValueEnum, ValueHint};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use serde::{Deserialize, Serialize};

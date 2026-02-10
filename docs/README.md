@@ -1,48 +1,26 @@
 # Virshle documentation
 
 You can browse documentation as is through the markdown files.
-Or build the website with zola.
+Or you can build the website with Zola.
 
-# Zola suprecharged.
+## Zola suprecharged.
 
-Uses zola + some other preprocessors to ease file readability
+This documentation website uses Zola
+plus some other preprocessors to ease file readability:
 
 - pug -> html.
 - tailwindcss -> css.
 
 ## Development
 
+A few pipelines ease the installation of dependencies.
+
 ```sh
 p run install
 ```
 
+Serve the website with hot-reload.
+
 ```sh
 p enable watcher && zola serve
 ```
-
-## Start fresh
-
-Init the zola blog
-
-```sh
-zola init
-```
-
-Install the required preprocessors.
-
-```sh
-# Cli tools
-bun add -g pug-cli
-bun add -g tailwindcss @tailwindcss/cli
-
-# LSP
-bun add -g tailwindcss @tailwindcss/language-server
-go install github.com/opa-oz/pug-lsp@latest
-```
-
-Add vue js for simple js support.
-
-# PWA (Progressive web app)
-
-Generate assets from svg file width
-[pwa-asset-generator]()

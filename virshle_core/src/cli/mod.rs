@@ -2,11 +2,11 @@ mod types;
 mod utils;
 pub use types::*;
 
-use crate::cloud_hypervisor::VmConfigPlus;
 use crate::display::VmTable;
+use crate::hypervisor::VmConfigPlus;
 use crate::{
-    cloud_hypervisor::{Definition, UserData, Vm, VmState, VmTemplate},
-    config::{HostCpu, HostDisk, HostRam, Node, NodeInfo, VirshleConfig},
+    config::{HostCpu, HostDisk, HostRam, Node, NodeInfo, Config},
+    hypervisor::{Definition, UserData, Vm, VmState, VmTemplate},
 };
 use std::str::FromStr;
 use uuid::Uuid;
@@ -21,8 +21,8 @@ use owo_colors::OwoColorize;
 use spinoff::{spinners, Color, Spinner};
 
 // Rest API client
-use crate::api::{rest::client, rest::method, NodeServer};
-use crate::api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
+use crate::rest_api::{rest::client, rest::method, NodeServer};
+use crate::rest_api::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
 use pipelight_exec::Status;
 
 // Logger
@@ -97,16 +97,16 @@ impl Cli {
                  */
                 NodeArgs::Init(args) => {
                     if args.all == Some(true) {
-                        VirshleConfig::ensure_all().await?;
+                        Config::ensure_all().await?;
                     } else {
                         if args.db == Some(true) {
-                            VirshleConfig::ensure_database().await?;
+                            Config::ensure_database().await?;
                         }
                         if args.net == Some(true) {
-                            VirshleConfig::ensure_network().await?;
+                            Config::ensure_network().await?;
                         }
                         if args.dir == Some(true) {
-                            VirshleConfig::ensure_directories().await?;
+                            Config::ensure_directories().await?;
                         }
                     }
                 }

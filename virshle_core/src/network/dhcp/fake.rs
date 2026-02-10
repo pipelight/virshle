@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::config::VirshleConfig;
+use crate::config::Config;
 
 //Database
 use crate::database;

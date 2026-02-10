@@ -5,8 +5,8 @@
 use super::Stream;
 use super::{Connection, ConnectionHandle, ConnectionState};
 use super::{LocalUri, Uri};
-use crate::cloud_hypervisor::Vm;
 use crate::config::Node;
+use crate::hypervisor::Vm;
 
 // Http
 use http_body_util::{BodyExt, Full};

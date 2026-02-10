@@ -1,5 +1,5 @@
 use super::convert;
-use crate::network::interface::Bridge;
+use crate::hypervisor::network::interface::Bridge;
 
 use std::rc::Rc;
 
@@ -297,7 +297,7 @@ impl OvsInterface {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::network::interface::Bridge;
+    use crate::hypervisor::network::interface::Bridge;
 
     // Brigdges
     // #[test]

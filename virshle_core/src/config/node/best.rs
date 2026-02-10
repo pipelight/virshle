@@ -1,4 +1,4 @@
-use crate::api::client;
+use crate::rest_api::client;
 use std::cmp::Ordering;
 
 use crate::connection::{Connection, ConnectionState};

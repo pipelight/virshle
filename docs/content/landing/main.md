@@ -1,12 +1,29 @@
 +++
 date = 2025-02-10
-updated = 2026-02-10
+updated = 2026-02-13
 
 title = "Landing"
 description = ""
 
 render = false
 +++
+
+{% container(type="null") %}
+**tl;dr**
+
+Virshle is **toml** configuration files and fancy cli
+on top of a modern hypervisor.
+
+{% end %}
+
+{% container(type="danger") %}
+
+**Alpha releases.**
+
+Although virshle is stable enough to be the engine propelling [Crocuda_vps](https://crocuda.com),
+You shouldn't use it in production as you may encounter unnoticed breaking changes.
+
+{% end %}
 
 {% sbs() %}
 
@@ -50,15 +67,25 @@ v vm ls -v`
 
 {% container(type="info") %}
 
-**Template centric**
+**\[\[ Template centric \]\]**
 
-Define a standard VM template that you can twist multiple copy of.
+In the vein of NixOs,
+you get a declarative/reproducible approach of VM creation.
+
+A **single template** can spin up **multiple identical** VMs.
+
+{% sbs() %}
+
+{% container(type="null") %}
+
+Define custom VM templates...
 
 ```toml
-#########################
-# Templates:
-# vm standard sizes with decents presets.
+# /etc/virshle/config.toml
 
+#########################
+## Templates:
+# Vm standard sizes with decents presets.
 [[template.vm]]
 name = "xxs"
 vcpu = 1
@@ -72,4 +99,34 @@ name = "main"
 
 ```
 
+{% end %}
+
+{% container(type="null") %}
+
+...add some user defined data...
+
+```toml
+# ./user-data.toml
+
+#########################
+# Conventional user-data added to the VM.
+[[user]]
+name = "anon"
+[user.ssh]
+# Key is appended at /etc/ssh/authorized_keys.d/<user.name>
+authorized_keys = ["ssh-ed25519 AAAAC3N..."]
+```
+
+{% end %}
+{% end %}
+
+{% container(type="null") %}
+
+...and twist multiple copy of a VM.
+
+```sh
+v vm create --template xxs --user-data ~./user-data.toml
+```
+
+{% end %}
 {% end %}

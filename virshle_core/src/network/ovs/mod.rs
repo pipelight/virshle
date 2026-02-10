@@ -26,14 +26,14 @@ use tracing::{error, info};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 // Cloud-hypervisor
-use crate::cloud_hypervisor::Vm;
-use crate::network::utils;
+use crate::hypervisor::Vm;
+use crate::hypervisor::network::utils;
 
 //Fs
 use std::fs;
 use std::path::Path;
 
-use crate::network::InterfaceState;
+use crate::hypervisor::network::InterfaceState;
 
 impl OvsBridge {
     /*

@@ -22,7 +22,7 @@ in {
       defaultConfig = mkEnableOption "Enable kea dhcp with custom configuration for ${moduleName}.";
     };
 
-    # Virshle only runs well as root.
+    # Virshle runs better as root.
     # This options sets the user environment and permissions.
     user = mkOption {
       default = "root";

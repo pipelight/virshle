@@ -1,7 +1,5 @@
-use crate::network::ip::{get_interfaces, get_main_interface};
-use crate::network::ovs::OvsBridge;
-use crate::network::utils;
-
+use super::{get_interfaces, get_main_interface};
+use crate::hypervisor::network::{ovs::OvsBridge, utils};
 use std::fs::File;
 use std::os::fd::{AsFd, AsRawFd, RawFd};
 

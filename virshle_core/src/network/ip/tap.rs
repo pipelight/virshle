@@ -16,9 +16,12 @@ use virshle_error::{LibError, VirshleError, WrapError};
 // Process
 use crate::exec::exec_cmds;
 
-use crate::ip::{get_interfaces, get_main_interface};
-use crate::network::ovs::OvsBridge;
-use crate::network::{interface, utils};
+use crate::hypervisor::network::{
+    interface,
+    ip::{get_interfaces, get_main_interface},
+    ovs::OvsBridge,
+    utils,
+};
 
 pub fn create(name: &str) -> Result<(), VirshleError> {
     let vm_bridge = OvsBridge::get_vm_switch()?;

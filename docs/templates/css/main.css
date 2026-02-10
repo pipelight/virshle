@@ -118,7 +118,7 @@ header {
 .landingContainer {
   @apply relative;
   @apply flex flex-col justify-start;
-  @apply pb-40;
+  @apply pb-25 xs:pb-40;
 }
 .subtitleContainer {
   @apply flex flex-col items-end justify-end;
@@ -157,17 +157,18 @@ header {
 */
 .hero {
   @apply relative;
-  @apply min-w-full md:max-w-min md:max-w-80/100 lg:max-w-3/4;
+  @apply md:max-w-80/100 lg:max-w-3/4;
   @apply flex flex-col;
   @apply items-start;
   @apply mt-20;
-  @apply p-5 mx-5 md:mx-10 lg:mx-40;
+  @apply mx-6 sm:mx-10 md:mx-20 lg:mx-40;
 
   .image {
     transition: all 150ms ease;
     @apply absolute;
-    @apply left-100 md:left-150;
-    @apply z-10;
+    @apply -top-10 xs:top-20;
+    @apply xs:left-100 md:left-150;
+    @apply -z-10;
     @apply h-30 w-30 md:h-40 md:w-40;
     /* bg */
     @apply bg-no-repeat bg-cover;
@@ -175,6 +176,7 @@ header {
   }
   .title {
     @apply text-5xl md:text-6xl lg:text-7xl 2xl:text-8xl;
+    @apply pt-25 xs:pt-0;
     @apply flex-shrink;
   }
   .subtitle {
@@ -188,7 +190,7 @@ header {
     @apply dark:text-zinc-200;
   }
   .subtitle-xs {
-    @apply pl-6 md:pl-12;
+    @apply pl-2 md:pl-12 w-full lg:w-md;
     @apply font-bold;
     @apply text-xl md:text-2xl font-bold my-1;
     @apply tracking-tighter;
@@ -291,6 +293,7 @@ header .title {
   }
 
   &.primary {
+    @apply ml-0 md:ml-10 mr-5 lg:mr-0;
     background-color: var(--primary);
     &:hover {
       background-color: var(--secondary);

@@ -1,7 +1,7 @@
-use crate::cloud_hypervisor::{Template, UserData, Vm, VmConfigPlus, VmTemplate};
+use crate::hypervisor::{Template, UserData, Vm, VmConfigPlus, VmTemplate};
 use crate::database;
 
-use super::VirshleConfig;
+use super::Config;
 
 // Global vars
 use super::{CONFIG_DIR, MANAGED_DIR};
@@ -19,10 +19,10 @@ use miette::{Error, IntoDiagnostic, Result};
 use tracing::{error, info, trace, warn};
 use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
 
-pub const CONFIG: Lazy<Arc<Mutex<VirshleConfig>>> =
-    Lazy::new(|| Arc::new(Mutex::new(VirshleConfig::default())));
+pub const CONFIG: Lazy<Arc<Mutex<Config>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Config::default())));
 
-impl VirshleConfig {
+impl Config {
     /*
      * Get config from crate directory
      */
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn get_config_from_file() -> Result<()> {
-        let res = VirshleConfig::get()?;
+        let res = Config::get()?;
         println!("{:#?}", res);
         Ok(())
     }
@@ -195,7 +195,7 @@ mod tests {
 
         "#;
 
-        let res = VirshleConfig::from_toml(&toml)?;
+        let res = Config::from_toml(&toml)?;
         println!("{:#?}", res);
         Ok(())
     }

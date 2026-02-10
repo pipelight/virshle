@@ -60,16 +60,10 @@ sysinfo = { version = "0.37.0", features = ["serde"] }
 
 tower = { version = "0.5.2", features = ["util"] }
 
-# tonic = { version = "0.13.1", features = ["zstd"] }
-# tonic-rpc = { path = "/home/anon/.ghr/github.com/pipelight/tonic-rpc/tonic-rpc", features = [
-#   "bincode",
-#   "json",
+## Cloud hypervisor and deps
+# vmm = { git = "https://github.com/cloud-hypervisor/cloud-hypervisor", tag = "v50.0", features = [
+#   "kvm",
 # ] }
-
-# tokio-stream = "0.1.17"
-
-# use this one for easy fd.
-# tappers = { git = "https://github.com/pipelight/tappers", branch = "dev" }
 
 tappers = "0.4.2"
 # tappers = { git = "ssh://git@github.com/pipelight/tappers.git", branch = "dev" }

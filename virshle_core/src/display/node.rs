@@ -2,7 +2,7 @@ use crate::config::{HostCpu, HostDisk, HostRam, Node, NodeInfo};
 use crate::connection::{ConnectionState, Uri};
 
 use super::utils::*;
-use crate::cloud_hypervisor::{Vm, VmState};
+use crate::hypervisor::{Vm, VmState};
 
 use human_bytes::human_bytes;
 use owo_colors::OwoColorize;
