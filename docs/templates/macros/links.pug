@@ -1,0 +1,11 @@
+:tera
+  {% macro make(ctx) %}
+
+.link
+  a(
+    href="{{ ctx.permalink }}"
+  )
+    .title {{ ctx.title }}
+
+:tera
+  {% endmacro make %}

@@ -1,0 +1,12 @@
+:tera
+  {% macro make(page,direction) %}
+
+a.nav(
+  class!="{{ direction }}"
+  href="{{ page.permalink | safe }}"
+)
+  .direction {{ direction }}
+  .title {{ page.title }}
+
+:tera
+  {% endmacro make %}

@@ -1,0 +1,40 @@
+:tera
+  {% macro make(page) %}
+
+:tera {% if page.toc %}
+
+toc.toc
+  ul
+    :tera {% for h1 in page.toc %}
+    li
+      a(
+        href!="{{ h1.permalink | safe }}",
+      ) {{ h1.title }}
+    :tera {% if h1.children %}
+    li
+      ul
+        :tera {% for h2 in h1.children %}
+        li
+          a(
+            href!="{{ h2.permalink | safe }}",
+          ) {{ h2.title }}
+
+        :tera {% if h2.children %}
+        li
+          ul
+            :tera {% for h3 in h2.children %}
+            li
+              a(
+                href!="{{ h3.permalink | safe }}",
+              ) {{ h3.title }}
+            :tera {% endfor %}
+        :tera {% endif %}
+
+        :tera {% endfor %}
+    :tera {% endif %}
+    :tera {% endfor %}
+
+:tera {% endif %}
+
+:tera
+  {% endmacro make %}

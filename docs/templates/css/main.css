@@ -1,0 +1,326 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  include: [tabs, collapse, timeline];
+}
+@layer theme, base, components, utilities;
+
+@theme {
+  --breakpoint-xs: 30rem;
+}
+
+@import "./theme.css" layer(theme);
+@import "./fonts.css";
+
+@import "./footer.css";
+@import "./post.css";
+@import "./syntax.css";
+
+:root {
+  /* Icons from Icon8 at https://icons8.com/ */
+  --icon-github: url("../icons/github.svg");
+  --icon-mastodon: url("../icons/mastodon.svg");
+  --icon-brand: url("../icons/areskul_white.svg");
+  --icon-copy: url("../icons/copy.svg");
+  --icon-copied: url("../icons/copied.svg");
+  --icon-checked: url("../icons/checkmark.svg");
+  --icon-nixos: url("../icons/nixos.svg");
+  --icon-monero: url("../icons/monero.svg");
+
+  --primary: #9b34fe;
+  --secondary: #fe55fe;
+  --warning: #fee140;
+  --success: #84ee8455;
+
+  --vp-hero-title-color: linear-gradient(
+    120deg,
+    var(--primary) 70%,
+    var(--secondary)
+  );
+}
+
+/*
+* For dark theme only, use in combination with:
+* html.dark(lang="en")
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "JetBrainsMono", var(--font-mono);
+  font-feature-settings:
+    "liga" on,
+    "dlig" on,
+    "calt" on;
+  font-variant-ligatures: common-ligatures discretionary-ligatures contextual;
+}
+
+/*
+* Home Page
+*/
+body {
+  @apply min-w-screen;
+  @apply flex flex-col justify-center;
+}
+
+body {
+  /* colors */
+  transition: all 150ms ease;
+  @apply text-zinc-950 bg-amber-50;
+  @apply dark:text-gray-100 dark:bg-gray-950;
+}
+
+section.main {
+  @apply min-h-screen;
+  @apply text-base;
+  /* router transition */
+  animation: fadein 250ms;
+}
+@keyframes fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/*
+* Header
+*/
+header {
+  @apply p-5 mx-5 md:mx-10 lg:mx-40;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  /* colors */
+  @apply border-gray-400;
+  @apply dark:border-gray-600;
+}
+
+@keyframes scaleProgress {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/************************/
+/* 
+* Main Layout and containers
+*/
+.landingContainer {
+  @apply relative;
+  @apply flex flex-col justify-start;
+  @apply h-180 xs:h-150 md:h-160 lg:h-180;
+}
+.subtitleContainer {
+  @apply flex flex-col items-end justify-end;
+  @apply absolute top-115;
+  @apply xs:relative xs:top-0;
+}
+/*
+* Images
+*/
+.vlazy {
+  /* transition: all 1200ms ease; */
+}
+.fadeIn {
+  animation:
+    fadeIn 350ms ease-in,
+    grayScale 2000ms ease-out;
+}
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes grayScale {
+  0% {
+    filter: grayscale(0.7);
+  }
+  100% {
+    filter: grayscale(0);
+  }
+}
+
+/*
+* Hero
+*/
+.hero {
+  @apply relative;
+  @apply min-w-full md:min-w-min md:max-w-95/100 lg:max-w-7/8 2xl:max-w-4/5;
+  @apply flex flex-col;
+  @apply items-end;
+  @apply px-4 pt-10;
+
+  .image {
+    transition: all 150ms ease;
+    @apply absolute;
+    @apply -scale-x-100;
+    @apply z-10;
+
+    /* bg */
+    @apply bg-no-repeat bg-cover;
+    @apply object-cover;
+
+    @apply top-25 -left-30;
+    @apply h-100 w-120;
+    /* xs */
+    @apply xs:top-15 xs:-left-85;
+    @apply xs:h-150 xs:w-200;
+    /* sm */
+    @apply xs:top-15 sm:-left-65;
+    @apply xs:h-150 xs:w-200;
+    /* md */
+    @apply md:-top-12 md:-left-90;
+    @apply md:h-180 md:w-250;
+    /* lg */
+    @apply lg:-top-5 lg:-left-85;
+    @apply lg:h-200 lg:w-300;
+  }
+  .title {
+    @apply text-5xl md:text-6xl lg:text-7xl 2xl:text-8xl;
+    @apply flex-shrink;
+  }
+  .subtitle {
+    @apply relative;
+    @apply font-bold;
+    @apply text-2xl md:text-3xl lg:text-4xl 2xl:text-5xl;
+    @apply font-bold my-1;
+    @apply tracking-tighter;
+    /* colors */
+    @apply text-zinc-900;
+    @apply dark:text-zinc-200;
+  }
+  .subtitle-xs {
+    @apply font-bold;
+    @apply text-xl md:text-2xl font-bold my-1;
+    @apply tracking-tighter;
+    /* colors */
+    @apply text-zinc-900;
+    @apply dark:text-zinc-200;
+  }
+}
+
+.hero .title,
+header .title {
+  /* @apply inline-block; */
+  background: var(--vp-hero-title-color);
+  @apply bg-clip-text;
+  @apply font-bold text-transparent;
+}
+
+/* Socials */
+.icon {
+  &.pin {
+    @apply absolute top-1 right-1;
+  }
+  &.nixos {
+    @apply h-8 w-8;
+    background-image: var(--icon-nixos);
+    @apply bg-cover bg-center bg-no-repeat;
+  }
+  &.monero {
+    @apply h-6 min-w-6;
+    background-image: var(--icon-monero);
+    @apply bg-cover bg-center bg-no-repeat;
+  }
+  &.ipv6 {
+    &::before {
+      @apply mx-2 h-18 w-18;
+      content: "::1";
+      @apply font-bold;
+      @apply bg-transparent;
+      /* colors */
+    }
+  }
+
+  &.check {
+    @apply h-5 w-5;
+    mask: var(--icon-checked) no-repeat;
+    mask-size: 100%;
+    @apply bg-zinc-400;
+    @apply dark:bg-zinc-400;
+  }
+  &.brand {
+    @apply mx-2 h-18 w-18 mt-20;
+    mask: var(--icon-brand) no-repeat;
+    mask-size: 100%;
+    /* colors */
+    @apply bg-black;
+    @apply dark:bg-white;
+  }
+  &.code {
+    @apply mx-2 h-7 w-7;
+    &.copy {
+      mask: var(--icon-copy) no-repeat;
+      mask-size: 100%;
+      @apply bg-zinc-400;
+      @apply dark:bg-zinc-400;
+    }
+    &.copied {
+      mask: var(--icon-copied) no-repeat;
+      mask-size: 100%;
+      @apply bg-zinc-400;
+      @apply dark:bg-zinc-400;
+    }
+  }
+  &.social {
+    @apply mx-2 h-7 w-7;
+    &.github {
+      mask: var(--icon-github) no-repeat;
+      mask-size: 100%;
+      @apply bg-zinc-400;
+      @apply dark:bg-zinc-400;
+    }
+    &.mastodon {
+      mask: var(--icon-mastodon) no-repeat;
+      mask-size: 100%;
+      @apply bg-zinc-400;
+      @apply dark:bg-zinc-400;
+    }
+  }
+}
+
+.button {
+  @apply rounded-2xl;
+  transition: all 150ms ease;
+
+  /* Position only */
+  &.pin {
+    @apply mt-10 mr-10;
+    @apply md:mt-20 md:mr-5;
+    @apply lg:mt-40 lg:mr-20;
+    @apply 2xl:mt-40 2xl:mr-20;
+  }
+  &:active {
+    animation: tap 150ms ease-out;
+  }
+
+  &.primary {
+    @apply dark:bg-purple-800 shadow-sm;
+    @apply dark:hover:bg-purple-600;
+  }
+  p {
+    @apply px-4 py-3;
+    @apply lg:px-6 lg:py-4;
+    @apply text-lg font-bold;
+  }
+}
+@keyframes tap {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.96);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

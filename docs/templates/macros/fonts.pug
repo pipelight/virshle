@@ -1,0 +1,34 @@
+:tera {% macro preload() %}
+:tera
+  {% for file_name in 
+    [
+      "JetBrainsMono-Bold.woff2",
+      "JetBrainsMono-BoldItalic.woff2",
+      "JetBrainsMono-ExtraBold.woff2",
+      "JetBrainsMono-ExtraBoldItalic.woff2",
+      "JetBrainsMono-ExtraLight.woff2",
+      "JetBrainsMono-ExtraLightItalic.woff2",
+      "JetBrainsMono-Italic.woff2",
+      "JetBrainsMono-Regular.woff2",
+      "JetBrainsMono-Medium.woff2",
+      "JetBrainsMono-MediumItalic.woff2",
+      "JetBrainsMono-Light.woff2",
+      "JetBrainsMono-LightItalic.woff2",
+      "JetBrainsMono-SemiBold.woff2",
+      "JetBrainsMono-SemiBoldItalic.woff2",
+      "JetBrainsMono-Thin.woff2",
+      "JetBrainsMono-ThinItalic.woff2"
+    ]
+  %}
+
+:tera {% set file_path = "/fonts/webfonts/" ~ file_name %}
+link(
+  rel="preload" 
+  href="{{ get_url(path=file_path) }}"
+  as="font"
+  type="font/woff2"
+  crossorigin=""
+)
+
+:tera {% endfor %}
+:tera {% endmacro preload %}

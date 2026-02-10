@@ -1,0 +1,24 @@
+:tera
+  {% macro make() %}
+
+header.flex.flex-row
+  div
+    a(href="/")
+      .title Crocuda_vps
+  .flex-grow
+
+  :tera
+    {% for link in config.extra.links %}
+
+  a.social.icon(
+    class="{{ link.title }}",
+    href="{{ link.url }}",
+    target="_blank"
+  )
+
+  :tera
+    {% endfor %}
+
+:tera
+  {% endmacro make %}
+  

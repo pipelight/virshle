@@ -1,0 +1,101 @@
+[[pipelines]]
+name = "install"
+[[pipelines.triggers]]
+actions = ["manual", "blank"]
+[[pipelines.steps]]
+name = "install dependencies"
+commands = ["""
+  bun install
+  """]
+
+[[pipelines]]
+name = "gen_js"
+[[pipelines.triggers]]
+actions = ["watch", "manual", "blank"]
+[[pipelines.steps]]
+name = "convert ts to js"
+commands = [
+  # build vuejs
+  """
+  bun build ./templates/js/petite-vue.ts \
+    --outfile=./static/petite-vue.js \
+    --format="esm" \
+    --minify
+  """,
+]
+
+[[pipelines]]
+name = "gen_css"
+[[pipelines.triggers]]
+actions = ["watch", "manual", "blank"]
+[[pipelines.steps]]
+name = "convert tailwindcss to css"
+commands = [
+  # main css
+  """tailwindcss \
+    --input ./templates/css/main.css \
+    --output ./static/css/main.css \
+    --minify
+  """,
+]
+
+[[pipelines]]
+name = "gen_html"
+[[pipelines.triggers]]
+actions = ["watch", "manual", "blank"]
+[[pipelines.steps]]
+name = "convert pug to html"
+commands = [
+  # main templates
+  """pug \
+    --obj ./templates/pug.options.js \
+    ./templates/*.pug
+  """,
+  """pug \
+    --obj ./templates/pug.options.js \
+    ./templates/**/*.pug
+  """,
+]
+
+[[pipelines]]
+name = "gen_md"
+[[pipelines.triggers]]
+actions = ["watch", "manual", "blank"]
+[[pipelines.steps]]
+name = "update modified .md file date fields"
+commands = ["""
+  ./scripts/update_frontmatter_dates.sh
+"""]
+
+
+##########################################
+# Production - to Crocuda main server
+[[pipelines]]
+name = "deploy-v1"
+[[pipelines.triggers]]
+actions = ["manual"]
+[[pipelines.steps]]
+name = "build website"
+commands = [
+  # install deps
+  "pipelight run install --attach --flag blank",
+  # build resources
+  "pipelight run gen_css --attach --flag blank",
+  "pipelight run gen_html --attach --flag blank",
+  "pipelight run gen_js --attach --flag blank",
+  "pipelight run gen_md --attach --flag blank",
+  # build bundle
+  "zola build --base-url https://crocuda.com",
+]
+[[pipelines.steps]]
+options.mode = "continue"
+name = "copy files to remote"
+commands = [
+  # Ensure destination exists
+  """
+    ssh v1 -C "mkdir -p /var/www/crocuda.com"
+  """,
+  """
+    rsync --progress -azv ./public/ v1:/var/www/crocuda.com
+  """,
+]

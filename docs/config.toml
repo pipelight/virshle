@@ -1,0 +1,64 @@
+# The URL the site will be built for
+base_url = "https://crocuda.com"
+
+title = "Crocuda_vps"
+description = """
+
+
+"""
+
+compile_sass = false
+
+# Whether to build a search index to be used later on by a JavaScript library
+build_search_index = true
+generate_robots_txt = true
+generate_feeds = true
+generate_sitemap = true
+minify_html = false
+
+[slugify]
+path = "safe"
+# taxonomies = "safe"
+# anchors = "safe"
+
+[markdown]
+
+external_links_target_blank = true
+external_links_no_follow = true
+external_links_no_referrer = true
+lazy_async_images = true
+bottom_footnotes = true
+render_emoji = true
+highlight_code = true
+extra_syntaxes_and_themes = ["syntaxes"]
+highlight_theme = "css"
+
+[[taxonomies]]
+name = "tags"
+feed = false
+render = false
+
+[extra]
+owner = "Areska"
+
+banner = "/images/crocuda_banner.png"
+
+[extra.hero]
+low = "/images/crocuda_small.png"
+high = "/images/crocuda.png"
+
+
+[[extra.links]]
+title = "github"
+url = "https://github.com/pipelight"
+
+[[extra.links]]
+title = "mastodon"
+url = "https://mastodon.social/@jean_dupont"
+
+[extra.accounts]
+twitter = "jean_builder"
+
+[extra.accounts.fediverse]
+name = "jean_dupont"
+server = "mastodon.social"

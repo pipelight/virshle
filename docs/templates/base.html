@@ -1,0 +1,11 @@
+{% import "macros/header.html" as header %}
+{% import "macros/footer.html" as footer %}
+{% import "macros/meta.html" as meta %}
+{% import "macros/fonts.html" as fonts %}
+{% import "macros/images.html" as images %}
+<!DOCTYPE html><html class="dark" lang="en"><!--html(lang="en")--><head><meta charset="UTF-8"><!-- device reactivity--><meta name="viewport" content="width=device-width, initial-scale=1.0"><!-- icons--><link rel="icon" href="{{ get_url(path="icons/areskul_black.svg") }}"><link rel="mask-icon" href="{{ get_url(path="icons/areskul_black.svg") }}" color="#000000"><!-- fonts-->{{ fonts::preload() }}<!-- images-->{{ images::preload() }}
+<!-- style--><link rel="stylesheet" type="text/css" href="{{ get_url(path="css/main.css") | safe }}"><!-- js--><script type="module" src="{{ get_url(path="petite-vue.js") | safe }}" defer init></script><!-- social meta tags-->{{ meta::make() }}
+</head><!-- For vuejs script injection--><body><div id="app">{{ header::make() }}  
+<section class="main">{% block content %} {% endblock %}
+</section>{% set misc = get_section(path="misc/_index.md") %}
+{{ footer::make(ctx=misc) }}</div></body></html>

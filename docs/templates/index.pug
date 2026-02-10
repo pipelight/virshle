@@ -1,0 +1,49 @@
+:tera
+  {% import "macros/prev_next.html" as prev_next %}
+  {% import "macros/feed.html" as feed %}
+
+:tera
+  {% extends "base.html" %}
+
+:tera
+  {% block content %}
+
+:tera
+  {% set docs = get_page(path="docs/index.md") %}
+
+// Post content
+vprogress
+vcode
+
+.landingContainer
+  .hero
+    vlazy.image(
+      low="{{ config.extra.hero.low | safe }}",
+      high="{{ config.extra.hero.high | safe }}",
+      style="background-image: url({{ config.extra.hero.high | safe }}), url({{ config.extra.hero.low | safe }})"
+    )
+    h1.title {{ section.title }}
+    p.subtitle-xs.pb-6 virtual private servers
+
+    .subtitleContainer
+      p.subtitle Pre-configured
+      p.subtitle Instant delivery
+      p.subtitle Practical sign-in
+      a.button.primary.pin(
+        href="{{ docs.permalink }}"
+      )
+        p Get Started
+
+:tera
+  {% set product = get_page(path="landing/index.md") %}
+
+.pageContainer.pt-10
+  .postContainer
+    :tera
+      {% set product = get_page(path="landing/index.md") %}
+      {{ product.content | markdown(inline=true) | safe }}
+
+
+:tera
+  {% endblock content %}
+

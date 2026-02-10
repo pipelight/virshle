@@ -1,0 +1,16 @@
+## Blacklist
+
+*
+
+.git/
+.jj/
+.pipelight/
+.direnv/
+
+## Whitelist
+
+!/templates/**/*.pug
+!/templates/**/*.ts
+!/templates/**/*.css
+
+

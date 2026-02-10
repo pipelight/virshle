@@ -1,0 +1,9 @@
+:tera {% macro preload() %}
+:tera {% set file_path = "/fonts/webfonts/" %}
+link(
+  rel="preload" 
+  href="{{ config.extra.hero | safe }}"
+  as="image"
+  crossorigin=""
+)
+:tera {% endmacro preload %}

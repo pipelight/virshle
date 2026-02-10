@@ -1,0 +1,10 @@
+{% import "macros/thumbnail.html" as thumbnail %}
+{% macro make(ctx) %}
+<div class="feed">{% if ctx.pages %}
+
+  {% for page in ctx.pages %}
+  {{ thumbnail::make(ctx=page) }}
+  {% endfor %}
+
+{% endif %}
+</div>{% endmacro make %}

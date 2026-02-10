@@ -1,0 +1,2 @@
+{% macro make(page,direction) %}
+<a class="nav {{ direction }}" href="{{ page.permalink | safe }}"><div class="direction">{{ direction }}</div><div class="title">{{ page.title }}</div></a>{% endmacro make %}

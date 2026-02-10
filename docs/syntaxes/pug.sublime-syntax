@@ -1,0 +1,635 @@
+%YAML 1.2
+---
+# http://www.sublimetext.com/docs/syntax.html
+name: Pug
+file_extensions:
+  - pug
+variables:
+  js_escape_chars: '\(\)\[\]\{\}''"`'
+scope: text.pug
+contexts:
+  main:
+    - match: '^(!!!|doctype)(\s*[a-zA-Z0-9-_]+)?'
+      comment: Doctype declaration.
+      scope: meta.tag.sgml.doctype.html
+    - match: ^(\s*)//-
+      comment: Unbuffered (pug-only) comments.
+      push:
+        - meta_scope: comment.unbuffered.block.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+    - match: ^(\s*)//
+      comment: Buffered (html) comments.
+      push:
+        - meta_scope: string.comment.buffered.block.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - match: ^\s*(//)(?!-)
+          comment: Buffered comments inside buffered comments will generate invalid html.
+          scope: string.comment.buffered.block.pug
+          captures:
+            1: invalid.illegal.comment.comment.block.pug
+    - match: <!--
+      push:
+        - meta_scope: comment.unbuffered.block.pug
+        - match: '--\s*>'
+          pop: true
+        - match: '--'
+          scope: invalid.illegal.comment.comment.block.pug
+    - match: ^(\s*)-$
+      comment: Unbuffered code block.
+      embed: scope:source.js
+      embed_scope:
+        source.js
+      escape: '^(?!(\1\s)|\s*$)'
+    - match: '^(\s*)(script)((\.$)|(?=[^\n]*((text|application)/javascript|module).*\.$))'
+      comment: Script tag with JavaScript code.
+      captures:
+        2: entity.name.tag.pug
+      push:
+        - meta_scope: meta.tag.other
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - match: \G(?=\()
+          push:
+            - match: $
+              pop: true
+            - include: tag_attributes
+        - match: '\G(?=[.#])'
+          push:
+            - match: $
+              pop: true
+            - include: complete_tag
+        - match: '^(\s*)'
+          embed: scope:source.js
+          embed_scope:
+            source.js
+          escape: '^(?!(\1)|\s*$)'
+    - match: '^(\s*)(style)((\.$)|(?=[.#(].*\.$))'
+      comment: Style tag with CSS code.
+      captures:
+        2: entity.name.tag.pug
+      push:
+        - meta_scope: meta.tag.other
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - match: \G(?=\()
+          push:
+            - match: $
+              pop: true
+            - include: tag_attributes
+        - match: '\G(?=[.#])'
+          push:
+            - match: $
+              pop: true
+            - include: complete_tag
+        - include: scope:source.css
+    - match: ^(\s*):(sass)(?=\(|$)
+      captures:
+        2: constant.language.name.sass.filter.pug
+      push:
+        - meta_scope: source.sass.filter.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - include: tag_attributes
+        - include: scope:source.sass
+    - match: ^(\s*):(scss)(?=\(|$)
+      captures:
+        2: constant.language.name.scss.filter.pug
+      push:
+        - meta_scope: source.css.scss.filter.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - include: tag_attributes
+        - include: scope:source.css.scss
+    - match: ^(\s*):(less)(?=\(|$)
+      captures:
+        2: constant.language.name.less.filter.pug
+      push:
+        - meta_scope: source.less.filter.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - include: tag_attributes
+        - include: scope:source.less
+    - match: ^(\s*):(stylus)(?=\(|$)
+      captures:
+        2: constant.language.name.stylus.filter.pug
+      push:
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - include: tag_attributes
+        - include: scope:source.stylus
+    - match: ^(\s*):(coffee(-?script)?)(?=\(|$)
+      captures:
+        2: constant.language.name.coffeescript.filter.pug
+      push:
+        - meta_scope: source.coffeescript.filter.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - include: tag_attributes
+        - include: scope:source.coffee
+    - match: ^(\s*):(uglify-js)(?=\(|$)
+      captures:
+        2: constant.language.name.js.filter.pug
+      push:
+        - meta_scope: source.js.filter.pug
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - include: tag_attributes
+        - match: '^(\s*)'
+          embed: scope:source.js
+          embed_scope:
+            source.js
+          escape: '^(?!(\1)|\s*$)'
+    - match: ^(\s*)((:(?=.))|(:$))
+      comment: Generic Pug filter.
+      captures:
+        4: invalid.illegal.empty.generic.filter.pug
+      push:
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - match: \G(?<=:)(?=.)
+          push:
+            - meta_scope: name.generic.filter.pug
+            - match: $
+              pop: true
+            - match: \G\(
+              scope: invalid.illegal.name.generic.filter.pug
+            - match: '[\w-]'
+              scope: constant.language.name.generic.filter.pug
+            - include: tag_attributes
+            - match: \W
+              scope: invalid.illegal.name.generic.filter.pug
+    - match: '^(\s*)(?:(?=\.$)|(?:(?=[\w.#].*?\.$)(?=(?:(?:(?:(?:(?:#[\w-]+)|(?:\.[\w-]+))|(?:(?:[#!]\{[^}]*\})|(?:\w(?:(?:[\w:-]+[\w-])|(?:[\w-]*)))))(?:(?:#[\w-]+)|(?:\.[\w-]+)|(?:\((?:[^()\''\"]*(?:(?:\''(?:[^\'']|(?:(?<!\\)\\\''))*\'')|(?:\"(?:[^\"]|(?:(?<!\\)\\\"))*\")))*[^()]*\))*)*)(?:(?:(?::\s+)|(?<=\)))(?:(?:(?:(?:#[\w-]+)|(?:\.[\w-]+))|(?:(?:[#!]\{[^}]*\})|(?:\w(?:(?:[\w:-]+[\w-])|(?:[\w-]*)))))(?:(?:#[\w-]+)|(?:\.[\w-]+)|(?:\((?:[^()\''\"]*(?:(?:\''(?:[^\'']|(?:(?<!\\)\\\''))*\'')|(?:\"(?:[^\"]|(?:(?<!\\)\\\"))*\")))*[^()]*\))*)*))*)\.$)(?:(?:(#[\w-]+)|(\.[\w-]+))|((?:[#!]\{[^}]*\})|(?:\w(?:(?:[\w:-]+[\w-])|(?:[\w-]*)))))))'
+      comment: Generated from dot_block_tag.py
+      captures:
+        2: meta.selector.css entity.other.attribute-name.id.css.pug
+        3: meta.selector.css entity.other.attribute-name.class.css.pug
+        4: meta.tag.other entity.name.tag.pug
+      push:
+        - match: ^(?!(\1\s)|\s*$)
+          pop: true
+        - match: \.$
+          scope: storage.type.function.pug.dot-block-dot
+        - include: tag_attributes
+        - include: complete_tag
+        - match: ^(?=.)
+          push:
+            - meta_scope: text.block.pug
+            - match: $
+              pop: true
+            - include: inline_pug
+            - include: embedded_html
+            - include: html_entity
+            - include: interpolated_value
+            - include: interpolated_error
+    - match: ^\s*
+      comment: All constructs that generally span a single line starting with any number of white-spaces.
+      push:
+        - match: $
+          pop: true
+        - include: inline_pug
+        - include: blocks_and_includes
+        - include: unbuffered_code
+        - include: mixin_definition
+        - include: mixin_call
+        - include: flow_control
+        - include: flow_control_each
+        - include: case_conds
+        - match: \|
+          comment: Tag pipe text line.
+          push:
+            - meta_scope: text.block.pipe.pug
+            - match: $
+              pop: true
+            - include: inline_pug
+            - include: embedded_html
+            - include: html_entity
+            - include: interpolated_value
+            - include: interpolated_error
+        - include: printed_expression
+        - match: '\G(?=(#[^\{\w-])|[^\w.#])'
+          comment: Line starting with characters incompatible with tag name/id/class is standalone text.
+          push:
+            - match: $
+              pop: true
+            - match: '</?(?=[!#])'
+              push:
+                - match: '>|$'
+                  pop: true
+                - include: inline_pug
+                - include: interpolated_value
+                - include: interpolated_error
+            - include: inline_pug
+            - include: embedded_html
+            - include: html_entity
+            - include: interpolated_value
+            - include: interpolated_error
+        - include: complete_tag
+  string-content:
+    - match: \\\n
+      scope: constant.character.escape.newline.js
+    - match: \\(?:x\h\h|u\h\h\h\h|.)
+      scope: constant.character.escape.js
+  string-interpolations:
+    - match: \$\{
+      scope: punctuation.section.interpolation.begin.js
+      push: string-interpolation-content
+  string-interpolation-content:
+    - clear_scopes: 1
+    - meta_scope: meta.interpolation.js
+    - meta_content_scope: source.js.embedded
+    - match: \}
+      scope: punctuation.section.interpolation.end.js
+      pop: 1
+    - match: \n
+      scope: invalid.illegal.newline.js
+    - include: include_js
+  js_string:
+    - match: '([''"])'
+      scope: punctuation.definition.string.begin.js
+      push:
+        - meta_scope: string.quoted.pug
+        - match: (?<!\\)\1
+          scope: punctuation.definition.string.end.js
+          pop: true
+        - match: \n
+          scope: invalid.illegal.newline.js
+        - include: string-content
+    - match: '(`)'
+      scope: punctuation.definition.string.begin.js
+      push:
+        - meta_scope: string.quoted.pug
+        - match: (?<!\\)(\1)
+          pop: true
+          scope: punctuation.definition.string.end.js
+        - match: \n
+          scope: invalid.illegal.newline.js
+        - include: string-interpolations
+  inside_js:
+    - match: '(?=[^{{js_escape_chars}}])'
+      embed: scope:source.js
+      embed_scope:
+        source.js
+      escape: '$|(?=[{{js_escape_chars}}])'
+  include_js:
+    - include: js_string
+    - include: js_parens
+    - include: js_brackets
+    - include: js_braces
+    - include: inside_js
+  blocks_and_includes:
+    - match: (extends|include|yield|append|prepend|block( (append|prepend))?)\s+(.*)$
+      comment: Template blocks and includes.
+      scope: meta.first-class.pug
+      captures:
+        1: storage.type.import.include.pug
+        4: variable.control.import.include.pug
+  case_conds:
+    - match: (default|when)((\s+|(?=:))|$)
+      comment: Pug case conditionals.
+      captures:
+        1: storage.type.function.pug
+      push:
+        - meta_scope: meta.control.flow.pug
+        - match: $
+          captures:
+            1: storage.type.function.pug
+          pop: true
+        - match: \G(?!:)
+          push:
+            - meta_scope: js.embedded.control.flow.pug
+            - match: (?=:\s+)|$
+              pop: true
+            - include: case_when_paren
+            - include: include_js
+        - match: ':\s+'
+          push:
+            - meta_scope: tag.case.control.flow.pug
+            - match: $
+              pop: true
+            - include: complete_tag
+  case_when_paren:
+    - match: \(
+      push:
+        - meta_scope: js.when.control.flow.pug
+        - match: \)
+          pop: true
+        - include: case_when_paren
+        - match: ':'
+          scope: invalid.illegal.name.tag.pug
+        - include: include_js
+  complete_tag:
+    - match: '(?=[\w.#])|(:\s*)'
+      push:
+        - match: (\.?$)|(?=:.)
+          captures:
+            1: storage.type.function.pug.dot-block-dot
+          pop: true
+        - include: blocks_and_includes
+        - include: unbuffered_code
+        - include: mixin_call
+        - include: flow_control
+        - include: flow_control_each
+        - match: (?<=:)\w.*$
+          scope: invalid.illegal.name.tag.pug
+        - include: tag_name
+        - include: tag_id
+        - include: tag_classes
+        - include: tag_attributes
+        - include: tag_mixin_attributes
+        - match: ((\.)\s+$)|((:)\s*$)
+          captures:
+            2: invalid.illegal.end.tag.pug
+            4: invalid.illegal.end.tag.pug
+        - include: printed_expression
+        - include: tag_text
+  embedded_html:
+    - match: '(?=<[^>]*>)'
+      push:
+        - meta_scope: html
+        - match: $|(?=>)
+          pop: true
+        - include: scope:text.html.basic
+        - include: interpolated_value
+        - include: interpolated_error
+  flow_control:
+    - match: (for|if|else if|else|until|while|unless|case)(\s+|$)
+      comment: Pug control flow.
+      captures:
+        1: storage.type.function.pug
+      push:
+        - meta_scope: meta.control.flow.pug
+        - match: $
+          captures:
+            1: storage.type.function.pug
+          pop: true
+        - match: ''
+          push:
+            - meta_scope: js.embedded.control.flow.pug
+            - match: $
+              pop: true
+            - include: include_js
+  flow_control_each:
+    - match: (each)(\s+|$)
+      captures:
+        1: storage.type.function.pug
+      push:
+        - meta_scope: meta.control.flow.pug.each
+        - match: $
+          captures:
+            1: storage.type.function.pug
+          pop: true
+        - match: '([\w$_]+)(?:\s*,\s*([\w$_]+))?'
+          scope: variable.other.pug.each-var
+        - match: ''
+          push:
+            - meta_scope: js.embedded.control.flow.pug
+            - match: $
+              pop: true
+            - include: include_js
+  html_entity:
+    - match: '(&)([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+)(;)'
+      scope: constant.character.entity.html.text.pug
+    - match: '[<>&]'
+      scope: invalid.illegal.html_entity.text.pug
+  inline_pug:
+    - match: '(?<!\\)(#\[)'
+      captures:
+        1: entity.name.function.pug
+        2: entity.name.function.pug
+      push:
+        - meta_scope: inline.pug
+        - match: '(\])'
+          captures:
+            1: entity.name.function.pug
+            2: entity.name.function.pug
+          pop: true
+        - include: inline_pug
+        - include: mixin_call
+        - match: '(?<!\])(?=[\w.#])|(:\s*)'
+          push:
+            - meta_scope: tag.inline.pug
+            - match: '(?=\]|(:.)|=|\s)'
+              pop: true
+            - include: tag_name
+            - include: tag_id
+            - include: tag_classes
+            - include: tag_attributes
+            - include: tag_mixin_attributes
+            - include: inline_pug
+            - match: '\['
+              scope: invalid.illegal.tag.pug
+        - include: unbuffered_code
+        - include: printed_expression
+        - match: '\['
+          scope: invalid.illegal.tag.pug
+        - include: inline_pug_text
+  inline_pug_text:
+    - match: ''
+      push:
+        - match: '(?=\])'
+          pop: true
+        - match: '\['
+          push:
+            - match: '\]'
+              pop: true
+            - include: inline_pug_text
+        - include: inline_pug
+        - include: embedded_html
+        - include: html_entity
+        - include: interpolated_value
+        - include: interpolated_error
+  interpolated_error:
+    - match: '(?<!\\)[#!]\{(?=[^}]*$)'
+      scope: invalid.illegal.tag.pug
+  interpolated_value:
+    - match: '(?<!\\)[#!]\{(?=.*?\})'
+      push:
+        - meta_scope: string.interpolated.pug
+        - match: '\}'
+          pop: true
+        - match: '{'
+          scope: invalid.illegal.tag.pug
+        - include: include_js
+  js_braces:
+    - match: '\{'
+      push:
+        - match: '\}'
+          pop: true
+        - include: js_braces
+        - include: js_string
+        - include: inside_js
+  js_brackets:
+    - match: '\['
+      push:
+        - match: '\]'
+          pop: true
+        - include: js_brackets
+        - include: js_string
+        - include: inside_js
+  js_parens:
+    - match: \(
+      push:
+        - match: \)
+          pop: true
+        - include: js_parens
+        - include: js_string
+        - include: inside_js
+  mixin_call:
+    - match: '((?:mixin\s+)|\+)([\w-]+)'
+      captures:
+        1: storage.type.function.pug
+        2: meta.tag.other entity.name.function.pug
+      push:
+        - match: (?!\()|$
+          pop: true
+        - match: (?<!\))\(
+          push:
+            - meta_scope: args.mixin.pug
+            - match: \)
+              pop: true
+            - include: js_string
+            - include: js_parens
+            - include: js_brackets
+            - include: js_braces
+            - match: '([^\s(),=/]+)\s*=\s*'
+              captures:
+                1: meta.tag.other entity.other.attribute-name.tag.pug
+            - include: inside_js
+        - include: tag_attributes
+  mixin_definition:
+    - match: '(mixin\s+)([\w-]+)(?:(\()\s*((?:[a-zA-Z_]\w*\s*)(?:,\s*[a-zA-Z_]\w*\s*)*)(\)))?$'
+      captures:
+        1: storage.type.function.pug
+        2: meta.tag.other entity.name.function.pug
+        3: punctuation.definition.parameters.begin.js
+        4: variable.parameter.function.js
+        5: punctuation.definition.parameters.begin.js
+  printed_expression:
+    - match: (!?\=)\s*
+      captures:
+        1: constant
+      push:
+        - meta_scope: source.js
+        - match: '(?=\])|$'
+          captures:
+            1: constant
+          pop: true
+        - include: include_js
+  string:
+    - match: '([''"])'
+      push:
+        - meta_scope: string.quoted.pug
+        - match: (?<!\\)\1
+          pop: true
+        - match: '\\((x[0-9a-fA-F]{2})|(u[0-9]{4})|.)'
+          scope: constant.character.quoted.pug
+        - include: interpolated_value
+        - include: interpolated_error
+  tag_attribute_name:
+    - match: '([^\s(),=/!]+)\s*'
+      captures:
+        1: entity.other.attribute-name.tag.pug
+  tag_attribute_name_paren:
+    - match: \(\s*
+      push:
+        - meta_scope: entity.other.attribute-name.tag.pug
+        - match: \)
+          pop: true
+        - include: tag_attribute_name_paren
+        - include: tag_attribute_name
+  tag_attribute_js_val:
+    - match: '(?=.)'
+      embed: scope:source.js
+      embed_scope:
+        source.js
+      escape: '$|(?=,|(?:\s+[^!%&*\-+~|<>?/])|[{{js_escape_chars}}])'
+  tag_attributes:
+    - match: (\(\s*)
+      captures:
+        1: constant.name.attribute.tag.pug
+      push:
+        - meta_scope: meta.tag.other
+        - match: (\))
+          captures:
+            1: constant.name.attribute.tag.pug
+          pop: true
+        - include: tag_attribute_name_paren
+        - include: tag_attribute_name
+        - match: '!(?!=)'
+          scope: invalid.illegal.tag.pug
+        - match: '=\s*'
+          push:
+            - meta_scope: attribute_value
+            - match: '$|(?=,|(?:\s+[^!%&*\-+~|<>?/])|\))'
+              pop: true
+            - include: js_string
+            - include: js_parens
+            - include: js_brackets
+            - include: js_braces
+            - include: tag_attribute_js_val
+        - match: '(?<=[%&*\-+~|<>:?/])\s+'
+          push:
+            - meta_scope: attribute_value2
+            - match: '$|(?=,|(?:\s+[^!%&*\-+~|<>?/])|\))'
+              pop: true
+            - include: js_string
+            - include: js_parens
+            - include: js_brackets
+            - include: js_braces
+            - include: tag_attribute_js_val
+  tag_classes:
+    - match: '\.([^\w-])?[\w-]*'
+      scope: meta.selector.css entity.other.attribute-name.class.css.pug
+      captures:
+        1: invalid.illegal.tag.pug
+  tag_id:
+    - match: '#[\w-]+'
+      scope: meta.selector.css entity.other.attribute-name.id.css.pug
+  tag_mixin_attributes:
+    - match: (&attributes\()
+      captures:
+        1: entity.name.function.pug
+      push:
+        - meta_scope: meta.tag.other
+        - match: (\))
+          captures:
+            1: entity.name.function.pug
+          pop: true
+        - match: attributes(?=\))
+          scope: storage.type.keyword.pug
+        - include: include_js
+  tag_name:
+    - match: '([#!]\{(?=.*?\}))|(\w(([\w:-]+[\w-])|([\w-]*)))'
+      push:
+        - meta_scope: meta.tag.other entity.name.tag.pug
+        - match: '(\G(?<!\5[^\w-]))|\}|$'
+          pop: true
+        - match: '\G(?<=\{)'
+          push:
+            - meta_scope: meta.tag.other entity.name.tag.pug
+            - match: '(?=\})'
+              pop: true
+            - match: '{'
+              scope: invalid.illegal.tag.pug
+            - include: include_js
+  tag_text:
+    - match: (?=.)
+      push:
+        - match: $
+          pop: true
+        - include: inline_pug
+        - include: embedded_html
+        - include: html_entity
+        - include: interpolated_value
+        - include: interpolated_error
+  unbuffered_code:
+    - match: '(-|(([a-zA-Z0-9_]+)\s+=))'
+      captures:
+        3: variable.parameter.javascript.embedded.pug
+      push:
+        - meta_scope: source.js
+        - match: '(?=\])|$'
+          pop: true
+        - include: include_js

@@ -1,0 +1,37 @@
+/*
+* Footer
+*/
+.footer {
+  @apply z-20;
+  @apply flex flex-row;
+  @apply justify-center items-center;
+  @apply dark:bg-black;
+  /* ! sensible size params ! */
+  /* colors */
+  @apply bg-gray-500/50;
+  /* @apply dark:bg-zinc-950; */
+
+  .section {
+    &.title {
+      @apply border-b-1;
+      @apply pb-2 mb-4;
+    }
+  }
+  .link {
+    .title {
+      @apply px-2 py-2;
+      @apply dark:hover:text-purple-500;
+    }
+  }
+}
+
+.footerContent {
+  @apply pb-20 pt-5 md:pt-20;
+  @apply w-7/8 md:max-w-3/4 lg:max-w-[700px];
+  @apply mx-auto;
+
+  @apply flex flex-wrap;
+  @apply flex-col md:flex-row;
+
+  @apply justify-center md:justify-around;
+}

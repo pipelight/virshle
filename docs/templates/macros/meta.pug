@@ -1,0 +1,141 @@
+:tera
+  {% macro make() %}
+
+//site
+meta(
+  property="og:site_name"
+  content="{{ config.title }}"
+)
+
+//title and decription
+:tera
+  {% if page.title %}
+meta(
+  name="twitter:title"
+  content="{{ page.title }}"
+)
+meta(
+  property="og:title"
+  content="{{ page.title }}"
+)
+meta(
+  name="twitter:description"
+  content="{{ page.description }}"
+)
+meta(
+  property="og:description"
+  content="{{ page.description }}"
+)
+:tera
+  {% else %}
+meta(
+  name="twitter:title"
+  content="{{ config.title }}"
+)
+meta(
+  property="og:title"
+  content="{{ config.title }}"
+)
+meta(
+  name="twitter:description"
+  content="{{ config.description }}"
+)
+meta(
+  property="og:description"
+  content="{{ config.description }}"
+)
+:tera
+  {% endif %}
+
+:tera
+  {% if page.relative_path %}
+//url
+meta(
+  name="twitter:url"
+  content="{{ config.base_url }}{{ page.path }}"
+)
+meta(
+  property="og:url"
+  content="{{ config.base_url }}{{ page.path }}"
+)
+:tera
+  {% endif %}
+
+//image
+:tera
+  {% if page.extra.banner %}
+meta(
+  name="twitter:image"
+  content="{{ config.base_url }}{{ page.extra.banner }}"
+)
+meta(
+  property="og:image"
+  content="{{ config.base_url }}{{ page.extra.banner }}"
+)
+:tera
+  {% else %}
+meta(
+  name="twitter:image"
+  content="{{ config.base_url }}{{ config.extra.banner }}"
+)
+meta(
+  property="og:image"
+  content="{{ config.base_url }}{{ config.extra.banner }}"
+)
+:tera
+  {% endif %}
+
+//author
+meta(
+  name="fediverse:creator"
+  content="@{{ config.extra.accounts.fediverse.name }}@{{ config.extra.accounts.fediverse.server }}"
+)
+meta(
+  name="twitter:creator"
+  content="@{{ config.extra.accounts.twitter }}"
+)
+meta(
+  name="twitter:site"
+  content="@{{ config.extra.accounts.twitter }}"
+)
+meta(
+  property="og:article:author"
+  content="{{ config.extra.owner }}"
+)
+link(
+  rel="me"
+  href="https://{{ config.extra.accounts.fediverse.server }}/@{{ config.extra.accounts.fediverse.name }}"
+)
+
+//content type
+meta(
+  property="og:type"
+  content="article"
+)
+meta(
+  name="twitter:card"
+  content="summary_large_image"
+)
+
+//date
+
+:tera
+  {% if page.date %}
+meta(
+  property="dcterm.created"
+  content="{{ page.date }}"
+)
+meta(
+  name="dcterm.modified"
+  content="{{ page.updated }}"
+)
+meta(
+  property="article:modified_time"
+  content="{{ page.updated }}"
+)
+:tera
+  {% endif %}
+
+:tera
+  {% endmacro make %}
+  

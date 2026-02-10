@@ -1,0 +1,18 @@
+:tera
+  {% import "macros/nav.html" as nav %}
+
+:tera
+  {% macro make(page) %}
+
+:tera
+  {% if page.higher or page.lower %}
+    {% if page.lower %}
+      {{ nav::make(page=page.lower, direction="previous") }}
+    {% endif %}
+    {% if page.higher %}
+      {{ nav::make(page=page.higher, direction="next") }}
+    {% endif %}
+  {% endif %}
+
+:tera
+  {% endmacro make %}

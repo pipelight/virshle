@@ -1,0 +1,40 @@
+:tera
+  {% import "macros/related.html" as related %}
+  {% import "macros/toc.html" as toc %}
+  {% import "macros/prev_next.html" as prev_next %}
+
+:tera
+  {% extends "base.html" %}
+
+:tera
+  {% block content %}
+
+// Post content
+vprogress
+vcode
+
+.cascadeContainer(
+  style="background-image: url({{ config.extra.hero | safe }}"
+)
+.pageContainer
+  .multiDateContainer
+    .dateContainer
+      .icon.updated
+      date(date="{{ page.updated }}", :since="true")
+
+  // Table of content
+  .tocContainer
+    :tera
+      {{ toc::make(page=page) }}
+
+  .postContainer
+    // Markdown content
+    :tera
+      {{ page.content | safe }}
+
+  .navContainer
+    :tera
+      {{ prev_next::make(page=page) }}
+
+:tera
+  {% endblock content %}

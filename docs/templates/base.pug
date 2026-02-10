@@ -1,0 +1,62 @@
+:tera
+  {% import "macros/header.html" as header %}
+  {% import "macros/footer.html" as footer %}
+  {% import "macros/meta.html" as meta %}
+  {% import "macros/fonts.html" as fonts %}
+  {% import "macros/images.html" as images %}
+
+doctype html
+html.dark(lang="en")
+  //html(lang="en")
+  head
+    meta(charset="UTF-8")
+    // device reactivity
+    meta(
+      name="viewport" 
+      content="width=device-width, initial-scale=1.0"
+    )
+    // icons
+    link(rel="icon", href!="{{ get_url(path=\"icons/areskul_black.svg\") }}")
+    link(
+      rel="mask-icon", href!="{{ get_url(path=\"icons/areskul_black.svg\") }}",
+      color="#000000"
+    )
+    // fonts
+    :tera
+      {{ fonts::preload() }}
+    // images
+    :tera
+      {{ images::preload() }}
+
+    // style
+    link(
+      rel="stylesheet" 
+      type="text/css"
+      href!="{{ get_url(path=\"css/main.css\") | safe }}"
+    )
+    // js
+    script(
+      type="module"
+      src!="{{ get_url(path=\"petite-vue.js\") | safe }}"
+      defer 
+      init
+    )
+
+    // social meta tags
+    :tera
+      {{ meta::make() }}
+
+  // For vuejs script injection
+  body
+    #app
+      :tera
+        {{ header::make() }}  
+
+      section.main
+        :tera
+          {% block content %} {% endblock %}
+
+      :tera
+        {% set misc = get_section(path="misc/_index.md") %}
+        {{ footer::make(ctx=misc) }}
+

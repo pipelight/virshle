@@ -1,0 +1,45 @@
+{% import "macros/thumbnail.html" as thumbnail %}
+{% import "macros/prev_next.html" as prev_next %}
+{% macro make(ctx) %}
+<related>{% if ctx.taxonomies %}
+
+  {# ########################## #}
+  {# Iterate through current post tags. #}
+  {# Returns a list of pages with same tags. #}
+
+  {% set_global pages = [] %}
+  {% for kind, tags in ctx.taxonomies %}
+    {% for tag in tags %}
+      {% set res = get_taxonomy_term(kind=kind, term=tag) %}
+      {% set_global pages = pages | concat(with=res.pages) %}
+    {% endfor %}
+  {% endfor %}
+
+  {# Make element of the list unique #}
+  {% set_global pages = pages | unique(attribute="title") %}
+
+
+  {# ########################## #}
+  {# If their is related pages. #}
+
+  {% if pages | length > 1 %}
+    {% for page in pages %}
+      {% if page.title != ctx.title %}
+
+        {{ thumbnail::make(ctx=page) }}
+
+      {% endif %}
+    {% endfor %}
+
+  {% else %}
+    {# ########################## #}
+    {# Fallback to prev_next. #}
+    {{ prev_next::make(ctx=page) }}
+  {% endif %}
+  
+{% else %}
+  {# ########################## #}
+  {# Fallback to prev_next. #}
+  {{ prev_next::make(ctx=page) }}
+{% endif %}
+</related>{% endmacro make %}

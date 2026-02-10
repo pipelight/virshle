@@ -1,0 +1,595 @@
+/* 
+* This is the layout/styling for Posts pages.
+*/
+
+/************************/
+/*
+* Global vars
+*/
+:root {
+  --icon-birthday: url("../icons/birthday.svg");
+  --icon-update: url("../icons/update.svg");
+  --vp-gray-gradient: linear-gradient(
+    #00000000,
+    var(--color-gray-900) 45%,
+    var(--color-gray-900)
+  );
+}
+
+/************************/
+/* 
+* Main Layout and containers
+*/
+.pageContainer {
+  @apply relative;
+  @apply pb-10 md:pb-30;
+}
+
+.postContainer {
+  @apply relative;
+  /* Size */
+  @apply w-full md:max-w-3/4 lg:max-w-[800px];
+  @apply px-4;
+  /* Center */
+  @apply mx-auto xl:mx-50;
+}
+
+.tocContainer {
+  transition: all 150ms ease;
+  /* Auto detach */
+  @apply relative xl:fixed;
+  @apply mx-auto xl:mx-280;
+
+  @apply px-4 py-8;
+
+  /* Size */
+  @apply w-full md:max-w-3/4 lg:max-w-[800px];
+}
+
+.navContainer {
+  /* Size */
+  @apply w-full md:max-w-3/4 lg:max-w-[800px];
+  /* Center */
+  @apply mx-auto xl:mx-50;
+  @apply px-4;
+
+  @apply pt-10 md:pt-30;
+
+  @apply gap-2;
+  @apply flex flex-col-reverse justify-between;
+
+  &:has(.nav:nth-child(1):is(.next)) {
+    @apply md:flex-row-reverse;
+  }
+  &:has(.nav:nth-child(1):is(.previous)) {
+    @apply md:flex-row;
+  }
+  /* @apply flex-col-reverse md:flex-row; */
+
+  .nav {
+    @apply border-1 dark:border-gray-700;
+    @apply rounded-2xl;
+    @apply w-2/3 xs:w-1/2 md:w-1/3 p-4;
+
+    &.previous {
+      @apply self-start;
+    }
+    &.next {
+      @apply self-end;
+    }
+
+    &:active {
+      animation: tap 150ms ease-out;
+      @apply dark:border-green-400;
+    }
+    .direction {
+      @apply pb-1 text-xs;
+    }
+    .title {
+    }
+  }
+}
+
+/*
+* Background styling
+*/
+.cascadeContainer {
+  transition: all 150ms ease;
+  @apply flex flex-row;
+  @apply justify-center;
+  /* @apply px-6 md:px-0; */
+
+  @apply -z-10;
+  @apply fixed;
+  @apply -top-2/100 left-1/3;
+  @apply bg-no-repeat bg-cover;
+
+  /* @apply -top-10 -left-5; */
+  @apply min-h-full min-w-full;
+
+  @apply opacity-1 dark:opacity-1;
+}
+
+/************************/
+/*
+* Table of content
+*/
+
+.toc {
+  a {
+    @apply text-nowrap;
+    transition: all 150ms ease;
+  }
+  li {
+    transition: all 150ms ease;
+  }
+  li:not(:has(ul)) {
+    @apply my-1 border-l-1;
+    @apply dark:text-zinc-400;
+    &.isVisible {
+      @apply border-l-2;
+      @apply border-l-green-400;
+      a {
+        @apply dark:text-zinc-300;
+      }
+    }
+  }
+  /* Nested title levels (3) */
+  ul:has(li) li {
+    @apply px-3;
+    @apply relative;
+    ul:has(li) li {
+      @apply px-6;
+      @apply relative -left-3;
+      ul:has(li) li {
+        @apply px-9;
+        @apply relative -left-6;
+      }
+    }
+  }
+}
+
+/************************/
+/* Dates */
+/* Icons for dates */
+.multiDateContainer {
+  transition: all 150ms ease;
+  @apply relative;
+
+  /* Size */
+  @apply w-full md:max-w-3/4 lg:max-w-[1080px];
+  /* Center */
+  @apply mx-auto xl:mx-50;
+
+  @apply px-4;
+  @apply pt-5 lg:pt-10;
+
+  @apply flex flex-row;
+  @apply justify-end items-end;
+
+  @apply text-xs md:text-sm;
+}
+.dateContainer {
+  @apply flex flex-row pb-1;
+}
+.date {
+  @apply dark:text-zinc-400;
+}
+/* Icons for dates */
+.icon {
+  &.birthday {
+    @apply mx-2 h-5 w-5;
+    @apply dark:bg-zinc-400;
+    mask: var(--icon-birthday);
+    mask-size: 100%;
+  }
+  &.updated {
+    @apply mx-2 h-5 w-5;
+    @apply dark:bg-zinc-400;
+    mask: var(--icon-update);
+    mask-size: 100%;
+  }
+}
+
+/************************/
+/*
+* Titles
+*/
+.postContainer {
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply relative;
+    @apply pl-4 lg:pl-0;
+    &:before {
+      content: "#";
+      @apply absolute;
+      @apply -left-[0.2em] lg:-left-[1em];
+      transition: opacity 250ms;
+
+      /* colors */
+      @apply opacity-80 lg:opacity-0;
+      @apply text-orange-100;
+    }
+    &:hover:before {
+      @apply lg:opacity-80;
+      opacity: 0.8;
+    }
+  }
+
+  h1 {
+    @apply font-bold;
+    @apply text-2xl md:text-4xl;
+    @apply mt-12 mb-8;
+  }
+  h2 {
+    @apply text-xl md:text-2xl font-bold;
+    @apply py-6 mt-5;
+    border-top-style: solid;
+    border-top-width: 1px;
+
+    /* colors */
+    @apply border-zinc-400;
+    @apply dark:border-zinc-600;
+  }
+  h3 {
+    @apply text-lg md:text-xl font-bold;
+    @apply py-3 mb-4 mt-4;
+  }
+  h4 {
+    @apply text-lg;
+    @apply py-3;
+  }
+  p {
+    @apply py-2;
+  }
+  p:empty {
+    @apply py-0;
+  }
+
+  td > code,
+  p > code,
+  ul li > code,
+  ol li > code {
+    @apply italic;
+    @apply rounded-sm;
+    /* colors */
+    @apply text-pink-300 bg-purple-500/10;
+  }
+  /* link highlighting */
+  ul,
+  ol {
+    @apply relative;
+    @apply pl-5 py-2;
+  }
+  a,
+  p a,
+  ol a,
+  ul a {
+    @apply text-purple-500;
+    @apply underline;
+  }
+  ol {
+    counter-reset: n;
+    li {
+      @apply relative;
+      counter-increment: n;
+      &::before {
+        content: counter(n) ".";
+        /* colors */
+        @apply absolute -left-6 top-2;
+        @apply text-red-500;
+      }
+    }
+  }
+  ul:not(.timeline) {
+    li:not(:has(p)) {
+      @apply py-1;
+    }
+    li p,
+    li:not(:has(p)) {
+      &::before {
+        content: "- ";
+        /* colors */
+        @apply absolute left-0;
+        @apply text-red-500 inline;
+      }
+    }
+  }
+  .timelineContainer {
+    @apply relative;
+    @apply inline-block;
+    @apply min-w-[160%];
+
+    @apply overflow-x-hidden;
+  }
+  .timeline {
+    @apply -left-[40%] md:-left-[45%];
+    @apply timeline-vertical;
+
+    .box {
+      /* colors */
+      @apply p-4;
+      @apply rounded-lg border;
+      @apply dark:bg-zinc-950/20 dark:border-zinc-900;
+    }
+  }
+}
+
+/************************/
+/*
+* Custom containers
+* Based on https://vitepress.dev/guide/markdown#custom-containers
+*/
+.postContainer {
+  /* 
+  * Details
+  */
+  .collapse {
+    @apply mb-5;
+    @apply rounded-lg;
+    @apply relative;
+    /* color */
+    @apply bg-white;
+    @apply dark:bg-gray-500/25;
+  }
+  .collapse-title {
+    @apply text-base;
+  }
+  /* 
+  * Container groups
+  */
+  .customContainer {
+    @apply relative;
+    @apply max-w-max;
+    @apply rounded-lg;
+    @apply p-4 my-5;
+    &.success {
+      @apply bg-blue-400/40;
+    }
+    &.info {
+      @apply bg-gray-500/25;
+      @apply dark:bg-gray-500/25;
+    }
+    &.tip {
+      @apply bg-green-500/25;
+    }
+    &.warning {
+      @apply bg-yellow-500/25;
+    }
+    &.danger {
+      @apply bg-red-500/25;
+    }
+  }
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    display: none;
+  }
+  50% {
+    opacity: 0.5;
+    display: block;
+  }
+  100% {
+    opacity: 1;
+    display: block;
+  }
+}
+
+/************************/
+/* 
+* Code blocks 
+*/
+.postContainer {
+  pre[class^="language-"] {
+    @apply relative w-full;
+    @apply px-3 py-5 md:p-6;
+    @apply rounded-lg my-3;
+
+    /* overflow */
+    @apply text-wrap;
+    @apply text-sm;
+    @apply break-all;
+
+    /* colors */
+    @apply bg-zinc-400;
+    @apply dark:bg-zinc-950;
+
+    /* @apply border-2; */
+    /* @apply dark:border-gray-600/50; */
+
+    /* Labels */
+    &::before {
+      @apply absolute top-0 right-0 p-2;
+      @apply text-xs;
+      content: attr(data-lang);
+
+      /* colors */
+      @apply text-zinc-400;
+      @apply dark:text-zinc-400;
+
+      /* animation */
+      visibility: visible;
+      opacity: 1;
+    }
+    &:hover:before {
+      /* animation */
+      visibility: hidden;
+      opacity: 0;
+    }
+  }
+}
+
+.postContainer {
+  pre[class^="language-"] {
+    /* copy code button */
+    .copy_btn {
+      @apply cursor-pointer;
+      @apply absolute top-0 right-0;
+      @apply border-2 px-2 pt-2 pb-1 m-1 rounded-md;
+
+      /* colors */
+      @apply text-zinc-400 border-zinc-600;
+      @apply dark:text-zinc-400 dark:border-zinc-600;
+
+      /* animation */
+      background: inherit;
+      opacity: 0;
+      transition: opacity 150ms ease-in;
+
+      &::after {
+        content: var(--icon-copy);
+      }
+      &.success {
+        opacity: 1;
+        &::after {
+          content: var(--icon-copied);
+        }
+      }
+    }
+    &:hover {
+      .copy_btn {
+        aria-label: "copy";
+        opacity: 1;
+      }
+    }
+  }
+}
+
+/*
+* Tab groups of code blocks
+*/
+.codeGroup {
+  @apply bg-transparent;
+  input {
+    @apply rounded-t-xl;
+
+    @apply text-zinc-100;
+    @apply bg-zinc-400;
+
+    @apply dark:text-zinc-400;
+    @apply dark:bg-zinc-950;
+
+    &:hover,
+    &:checked {
+      @apply dark:text-white;
+    }
+    &:checked {
+      @apply border border-b-green-500;
+    }
+  }
+}
+
+.postContainer {
+  .sbs {
+    @apply my-3;
+    @apply flex flex-col;
+    @apply xs:flex-row;
+    &:has(img) {
+      @apply xs:flex-wrap;
+      img {
+        @apply my-1 mr-1;
+        @apply xs:max-w-80 lg:max-w-95;
+      }
+    }
+    div {
+      @apply my-1 xs:mr-1;
+    }
+    pre {
+      @apply my-1 xs:mr-1;
+    }
+  }
+}
+
+/************************/
+/*
+* Optional progress bar
+*/
+.progress {
+  @apply sticky top-0 z-10;
+  @apply h-[1px] xl:hidden;
+  @apply dark:bg-green-500;
+  animation-timeline: scroll(root);
+  animation-name: scaleProgress;
+  animation-duration: auto;
+  animation-timing-function: linear;
+}
+
+@keyframes scaleProgress {
+  0% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+/* Images */
+.postContainer {
+  .customContainer {
+    img {
+      @apply my-0;
+    }
+  }
+  img {
+    @apply my-3;
+    @apply rounded-md;
+  }
+}
+
+/* Github style tables */
+
+.postContainer {
+  table {
+    @apply text-nowrap;
+    @apply block max-w-max;
+    @apply overflow-x-auto;
+  }
+  table,
+  tr {
+    @apply border rounded-lg;
+    @apply dark:border-zinc-700;
+    @apply text-sm;
+  }
+  th {
+    @apply dark:bg-gray-800/50;
+  }
+  tr {
+    &:nth-child(even) {
+      @apply dark:bg-gray-800/50;
+    }
+  }
+  /*Column*/
+  td {
+    @apply min-w-20;
+    @apply text-center;
+  }
+  td,
+  th {
+    @apply p-2;
+  }
+  table {
+    @apply my-2;
+    /* @apply min-w-1/2; */
+  }
+}
+
+/* Blockquotes */
+.postContainer {
+  blockquote {
+    @apply px-3 py-1 my-3;
+    @apply border-l-4;
+    @apply dark:border-zinc-600;
+  }
+}
+
+/* Keyboard keys */
+kbd {
+  @apply px-1 py-[2px];
+  @apply border-1 rounded-md shadow-xl text-xs;
+  @apply dark:border-zinc-200;
+  @apply bg-white/5;
+}
