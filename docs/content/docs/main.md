@@ -2,9 +2,9 @@
 date = 2025-09-11
 updated = 2026-02-10
 
-weight = 10
+weight = 0
 
-title = "Virshle documentation 📖"
+title = "Introduction"
 
 description = """
 
@@ -13,12 +13,51 @@ description = """
 draft=false
 +++
 
-# Introduction.
+# Introduction
 
-Virshle is a virtual machine manager.
-It is shipped as a single binary which is a light command line interface.
+Virshle is a VMM (virtual machine manager).
+It is a cli (command line interface) written in Rust.
 
-It fills the same role as its alternative like libvirt, virt-manager, virtualbox, or gnome-boxes.
+It fills the same role as its alternatives like
+libvirt and virt-manager,
+virtualbox,
+or gnome-boxes.
+
+## Why does it exists?
+
+I wanted to test
+[pipelight](https://github.com/pipelight/pipelight)
+inside a VM to ensure that it could work as a git forge on a remote server.
+But oh boy virtualization isn't easy.
+
+Wrestling with existing VMMs and network tooling, had me learned the fundamentals to finally
+bring together a VMM I enjoy using.
+
+{% container(type="tip") %}
+**The ultimate goal.**
+
+Virshle aims to provide working VMs (virtual machines) with a
+predefined configuration and internet access
+**as fast as possible, and with the lightest burden possible for the end user.**
+
+{% end %}
+
+Of course living up to those assumptions has a price.
+
+Virshle can only be installed on
+[NixOs](https://nixos.org/)
+due to heavy network pimping,
+and only NixOs based VMs are supported (need to use a compatibility module/flake).
+
+## Show me the stack!
+
+The building blocks are _rusty_ as well.
+
+Virshle works on top of
+[cloud-hypervisor](https://github.com/cloud-hypervisor/cloud-hypervisor)
+and
+[linux-kvm](https://linux-kvm.org/page/Main_Page)
+for machine virtualization.
 
 | Tool type         | Crocuda stack    | A trivial stack |
 | ----------------- | ---------------- | --------------- |
@@ -26,78 +65,18 @@ It fills the same role as its alternative like libvirt, virt-manager, virtualbox
 | single VM manager | cloud-hypervisor | qemu            |
 | hypervisor        | kvm              | kvm             |
 
-## Why does it exists?
+It uses
+[pipelight-init](https://github.com/pipelight/pipelight)
+as a
+[cloud-init](https://cloud-init.io/)
+replacement for fast vm provisioning on boot.
 
-I have been facing many issues while digging the virtual machine rabbit hole.
+Network wise packet routing is currently handled by
+[openvswitch](https://github.com/openvswitch/ovs)
+a more flexible framework than
+[netfilter](https://netfilter.org/)
+and common networking tools, devices and concepts(ip, tap, bridges...)
 
-- Configure and Provision the same machine over and over.
-- Network understanding and configuration is tough.
-  Need to use bridges, interface, routers...
-
-Answer:
-
-- Preconfigured VM with nixos.
-
-- Stop juggling with linux network concepts and directly rewrite network packet headers
-  with the lowest API possible.
-  [openvswitch](https://github.com/openvswitch/ovs)
-  and
-  [rex](https://github.com/rex-rs/rex)
-
-# Installation.
-
-## NixOs (with flakes).
-
-When using nixos, you can enable the module by adding those lines to your configuration.
-Add the repo url to your configuration.
-
-{% container(type="warning") %}
-
-You'll face a substential compilation time due to **virshle** and **pipelight**
-not being precompiled in any official repository.
-
-{% end %}
-
-```nix
-# flake.nix
-inputs = {
-  virshle = {
-      url = "github:pipelight/virshle";
-  };
-};
-```
-
-Enable the service.
-
-```nix
-# default.nix
-services.virshle = {
-  enable = true;
-  logLevel = "info";
-  # The user to run the node as.
-  user = "anon"; #default to root.
-};
-```
-
-You may want to create an alias to ease command line usage.
-
-```sh
-alias v='virshle'
-```
-
-### Set a custom storage.
-
-You can store VMs resources in another device like an encrypted RAID.
-Just symlink `/var/lib/virshle` to the desired path, and set required permissions.
-
-```nix
-systemd.tmpfiles.rules = [
-  "L+ /var/lib/virshle - - - - /run/media/RAID/storage/virshle"
-  "Z '/run/media/RAID/storage/virshle' 2774 ${config.services.virshle.user} users - -"
-];
-```
-
-## Custom network configuration.
-
-For fine vm network control, you can add a host network configuration like the following
-[`modules/networking.nix`](https://github.com/pipelight/virshle/modules/config.nix).
+But network will ultimately be taken care of with
+[rex](https://github.com/rex-rs/rex)
+to programmatically route packets with short and straightforward code.

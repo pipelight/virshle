@@ -4,7 +4,7 @@ updated = 2026-02-10
 
 weight = 10
 
-title = "Virshle documentation 📖"
+title = "Network configuration"
 
 description = """
 

@@ -127,12 +127,38 @@ const toc = defineComponent(() => {
     update_toc();
   });
 
-  console.info("[petite-vue]: LOG - loaded dynamyc table of content.");
+  console.info("[petite-vue]: LOG - loaded dynamic table of content.");
   return () => h("div", { ref: "toc" }, slot);
+});
+
+const navbar = defineComponent(() => {
+  const slot = useSlots().default();
+  const template = useTemplateRef("navbar");
+
+  const update_navbar = useDebounceFn(() => {
+    const page_titles = document.querySelectorAll(".navbarContainer a");
+    let current_href = document.location.href;
+    for (const [_, el] of page_titles.entries()) {
+      let title_href = el.getAttribute("href");
+      if (title_href == current_href) {
+        el.parentElement.classList.add("isVisible");
+      } else {
+        el.parentElement.classList.remove("isVisible");
+      }
+    }
+  });
+
+  onBeforeMount(() => {
+    update_navbar();
+  });
+
+  console.info("[petite-vue]: LOG - loaded dynamic navbar.");
+  return () => h("div", { ref: "navbar" }, slot);
 });
 
 app.component("popup", popup);
 app.component("toc", toc);
+app.component("navbar", navbar);
 app.component("vprogress", progress);
 
 app.mount("#app");

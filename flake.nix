@@ -52,12 +52,17 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+        virshle_lib =
+          {}
+          // (import ./lib/network {
+            inherit (nixpkgs) lib;
+          });
         specialArgs = {
           inherit inputs;
+          inherit virshle_lib;
         };
       in {
         devShells.default = pkgs.callPackage ./shell.nix {};
-
         packages = {
           default = pkgs.callPackage ./package.nix {};
           vm_base = inputs.nixos-generators.nixosGenerate {
@@ -77,6 +82,11 @@
               ./modules/nixos-generators
             ];
           };
+        };
+        ## Unit tests
+        tests = import ./lib/network/test.nix {
+          inherit virshle_lib;
+          inherit (nixpkgs) lib;
         };
       };
     };

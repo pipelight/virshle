@@ -23,15 +23,21 @@
       @apply dark:hover:text-purple-500;
     }
   }
+  .image {
+    transition: all 150ms ease;
+    @apply w-30 h-20;
+    @apply bg-no-repeat bg-cover;
+    @apply object-cover;
+  }
 }
 
 .footerContent {
-  @apply pb-20 pt-5 md:pt-20;
+  @apply pb-10 pt-5 md:pt-10;
   @apply w-7/8 md:max-w-3/4 lg:max-w-[700px];
   @apply mx-auto;
 
   @apply flex flex-wrap;
-  @apply flex-col md:flex-row;
+  @apply flex-row;
 
-  @apply justify-center md:justify-around;
+  @apply justify-end xl:justify-center;
 }

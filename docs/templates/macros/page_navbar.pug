@@ -1,0 +1,14 @@
+:tera
+  {% import "macros/navbar.html" as navbar %}
+
+:tera
+  {% macro make(page) %}
+
+:tera
+  {% set section = page.ancestors | last %}
+  {% set section = get_section(path=section) %}
+:tera
+  {{ navbar::make(section=section) }}
+
+:tera
+  {% endmacro make %}

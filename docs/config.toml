@@ -46,6 +46,8 @@ banner = "/images/crocuda_banner.png"
 low = "/images/virshle.png"
 high = "/images/virshle.png"
 
+[extra.sponsor]
+url = "https://crocuda.com"
 
 [[extra.links]]
 title = "github"

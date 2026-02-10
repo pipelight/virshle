@@ -1,0 +1,32 @@
+:tera
+  {% macro make(section) %}
+
+navbar.navbar
+  ul
+    :tera
+      {% for page in section.pages %}
+    li.page-title
+      a(
+        href="{{ page.permalink | safe }}"
+      ) {{ page.title }}
+    :tera
+      {% endfor %}
+  :tera
+    {% for section in section.subsections %}
+    {% set section = get_section(path=section) %}
+  ul 
+    .section-title {{ section.title }}
+    :tera
+      {% for page in section.pages %}
+    li.page-title
+      a(
+        href="{{ page.permalink | safe }}"
+      ) {{ page.title }}
+    :tera
+      {% endfor %}
+  :tera
+    {% endfor %}
+
+
+:tera
+  {% endmacro make %}

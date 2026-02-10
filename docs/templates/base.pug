@@ -57,6 +57,5 @@ html.dark(lang="en")
           {% block content %} {% endblock %}
 
       :tera
-        {% set misc = get_section(path="misc/_index.md") %}
-        {{ footer::make(ctx=misc) }}
+        {{ footer::make() }}
 

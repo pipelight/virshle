@@ -1,5 +1,5 @@
 :tera
-  {% import "macros/related.html" as related %}
+  {% import "macros/page_navbar.html" as page_navbar %}
   {% import "macros/toc.html" as toc %}
   {% import "macros/prev_next.html" as prev_next %}
 
@@ -24,6 +24,10 @@ vcode
 
   // Table of content
   .tocContainer
+    .navbarContainer
+        :tera
+          {% set doc = get_page(path="docs/main.md") %}
+          {{ page_navbar::make(page=doc) }}
     :tera
       {{ toc::make(page=page) }}
 
@@ -32,6 +36,7 @@ vcode
     :tera
       {{ page.content | safe }}
 
+  
   .navContainer
     :tera
       {{ prev_next::make(page=page) }}

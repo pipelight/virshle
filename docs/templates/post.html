@@ -1,9 +1,11 @@
-{% import "macros/related.html" as related %}
+{% import "macros/page_navbar.html" as page_navbar %}
 {% import "macros/toc.html" as toc %}
 {% import "macros/prev_next.html" as prev_next %}
 {% extends "base.html" %}
 {% block content %}
-<!-- Post content--><vprogress></vprogress><vcode></vcode><div class="cascadeContainer" style="background-image: url({{ config.extra.hero | safe }}"></div><div class="pageContainer"><div class="multiDateContainer"><div class="dateContainer"><div class="icon updated"></div><date date="{{ page.updated }}" :since="true"></date></div></div><!-- Table of content--><div class="tocContainer">{{ toc::make(page=page) }}
+<!-- Post content--><vprogress></vprogress><vcode></vcode><div class="cascadeContainer" style="background-image: url({{ config.extra.hero | safe }}"></div><div class="pageContainer"><div class="multiDateContainer"><div class="dateContainer"><div class="icon updated"></div><date date="{{ page.updated }}" :since="true"></date></div></div><!-- Table of content--><div class="tocContainer"><div class="navbarContainer">{% set doc = get_page(path="docs/main.md") %}
+{{ page_navbar::make(page=doc) }}</div>{{ toc::make(page=page) }}
 </div><div class="postContainer"><!-- Markdown content-->{{ page.content | safe }}
+
 </div><div class="navContainer">{{ prev_next::make(page=page) }}
 </div></div>{% endblock content %}

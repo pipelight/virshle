@@ -7,5 +7,4 @@
 <!-- style--><link rel="stylesheet" type="text/css" href="{{ get_url(path="css/main.css") | safe }}"><!-- js--><script type="module" src="{{ get_url(path="petite-vue.js") | safe }}" defer init></script><!-- social meta tags-->{{ meta::make() }}
 </head><!-- For vuejs script injection--><body><div id="app">{{ header::make() }}  
 <section class="main">{% block content %} {% endblock %}
-</section>{% set misc = get_section(path="misc/_index.md") %}
-{{ footer::make(ctx=misc) }}</div></body></html>
+</section>{{ footer::make() }}</div></body></html>

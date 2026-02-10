@@ -2,7 +2,7 @@
 module.exports = {
   doctype: "html",
   filters: {
-    tera: function(text, options) {
+    tera: function (text, options) {
       return text;
     },
   },

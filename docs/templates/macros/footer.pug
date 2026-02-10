@@ -2,27 +2,17 @@
   {% import "macros/links.html" as links %}
 
 :tera
-  {% macro make(ctx) %}
+  {% macro make() %}
 
 footer.footer
   .footerContent
-    :tera
-      {% set docs = "docs/_index.md" %}
-      {% set_global sections = [] | concat(with=docs) | concat(with= ctx.subsections) %}
-      {% for section in sections %}
-      {% set section = get_section(path=section) %}
-    .flex.flex-col.p-4
-      .section.title {{ section.title }}
-      :tera
-        {% for page in section.pages %}
-      :tera
-        {{ links::make(ctx=page) }}
-      :tera
-        {% endfor %}
-
-    :tera
-      {% endfor %}
-
+    a(
+      href!="{{ config.extra.sponsor.url }}",
+    )
+      .image(
+        style!="background-image: url( {{ get_url(path=\"/images/crocuda_small.png\") }} )"
+      )
+    
 :tera
   {% endmacro make %}
   
