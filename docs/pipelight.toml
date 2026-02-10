@@ -71,7 +71,7 @@ commands = ["""
 ##########################################
 # Production - to Crocuda main server
 [[pipelines]]
-name = "deploy-v1"
+name = "deploy-cro-1"
 [[pipelines.triggers]]
 actions = ["manual"]
 [[pipelines.steps]]
@@ -93,9 +93,9 @@ name = "copy files to remote"
 commands = [
   # Ensure destination exists
   """
-    ssh v1 -C "mkdir -p /var/www/virshle.crocuda.com"
+    ssh cro-1 -C "mkdir -p /var/www/virshle.crocuda.com"
   """,
   """
-    rsync --progress -azv ./public/ v1:/var/www/virshle.crocuda.com
+    rsync --progress -azv ./public/ cro-1:/var/www/virshle.crocuda.com
   """,
 ]

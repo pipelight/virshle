@@ -26,7 +26,7 @@ vcode
     p.subtitle-xs.pb-6 Indefectible virtual machines.
 
     .subtitleContainer
-      a.button.primary.pin(
+      a.button.primary.ml-10(
         href="{{ docs.permalink }}"
       )
         p Get Started
@@ -34,7 +34,7 @@ vcode
 :tera
   {% set product = get_page(path="landing/main.md") %}
 
-.pageContainer.pt-10
+.pageContainer
   .postContainer
     :tera
       {% set product = get_page(path="landing/main.md") %}

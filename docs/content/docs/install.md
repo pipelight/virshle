@@ -1,55 +1,17 @@
-# Install on NixOs (with flakes).
++++
+date = 2025-09-11
+updated = 2026-02-10
 
-When using nixos, you can enable the module by adding those lines to your configuration.
-Add the repo url to your configuration.
+weight = 10
 
-```nix
-# flake.nix
-inputs = {
-  virshle = {
-      url = "github:pipelight/virshle";
-  };
-};
-```
+title = "Custom disk"
 
-Enable the service.
+description = """
 
-```nix
-# default.nix
-services.virshle = {
-  enable = true;
-  logLevel = "info";
-  # The user to run the node as.
-  user = "anon"; #default to root.
-};
-```
+"""
 
-You may want to create an alias to ease command line usage.
-
-```sh
-alias v='virshle'
-```
-
-> [!WARNING]
-> You'll face a small compilation time due to virshle and pipelight
-> not being precompiled in any official repository.
-
-## Custom storage.
-
-You can store VMs resources in another device like an encrypted RAID.
-Just symlink `/var/lib/virshle` to the desired path, and set required permissions.
-
-```nix
-systemd.tmpfiles.rules = [
-  "L+ /var/lib/virshle - - - - /run/media/RAID/storage/virshle"
-  "Z '/run/media/RAID/storage/virshle' 2774 ${config.services.virshle.user} users - -"
-];
-```
-
-## Custom network configuration.
-
-For fine vm network control, you can add a host network configuration like the following
-[`modules/networking.nix`](https://github.com/pipelight/virshle/modules/config.nix).
+draft=false
++++
 
 # Install on FHS Linux distributions (Arch/Debian).
 

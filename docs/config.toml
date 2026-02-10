@@ -4,7 +4,6 @@ base_url = "https://virshle.crocuda.com"
 title = "Virshle documentation"
 description = """
 
-
 """
 
 compile_sass = false
@@ -44,13 +43,13 @@ owner = "Areska"
 banner = "/images/crocuda_banner.png"
 
 [extra.hero]
-low = "/images/crocuda_small.png"
-high = "/images/crocuda.png"
+low = "/images/virshle.png"
+high = "/images/virshle.png"
 
 
 [[extra.links]]
 title = "github"
-url = "https://github.com/pipelight"
+url = "https://github.com/pipelight/virshle"
 
 [[extra.links]]
 title = "mastodon"

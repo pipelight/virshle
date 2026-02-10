@@ -1,3 +1,18 @@
++++
+date = 2025-09-11
+updated = 2026-02-10
+
+weight = 10
+
+title = "Custom disk"
+
+description = """
+
+"""
+
+draft=false
++++
+
 # Custom disk image.
 
 ## With Nixos.

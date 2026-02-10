@@ -396,7 +396,8 @@
 
     /* colors */
     @apply bg-zinc-400;
-    @apply dark:bg-zinc-950;
+    /* @apply dark:bg-zinc-950; */
+    background-color: var(--terminal);
 
     /* @apply border-2; */
     /* @apply dark:border-gray-600/50; */

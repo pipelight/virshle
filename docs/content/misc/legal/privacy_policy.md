@@ -18,7 +18,7 @@ The less you give, the less is exposed.
 
 ## The documentation website.
 
-The website is exposed through a simple webproxy that automaticaly logs `your ip` and `page requests`.
+The website is exposed through a simple webproxy that automatically logs `your ip` and `page requests`.
 
 No data harvesting.
 
@@ -30,7 +30,7 @@ No tracking, No profiling here.
 ## The terminal user interface(TUI).
 
 The terminal user interface needs to store your `ssh public key` to authenticate you.
-And that is the only data it realy needs.
+And that is the only data it really needs.
 
 But the law enforces the collection and persistence for 12 months of:
 

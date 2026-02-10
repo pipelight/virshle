@@ -3,8 +3,8 @@
 {% extends "base.html" %}
 {% block content %}
 {% set docs = get_page(path="docs/main.md") %}
-<!-- Post content--><vprogress></vprogress><vcode></vcode><div class="landingContainer"><div class="hero"><vlazy class="image" low="{{ config.extra.hero.low | safe }}" high="{{ config.extra.hero.high | safe }}" style="background-image: url({{ config.extra.hero.high | safe }}), url({{ config.extra.hero.low | safe }})"></vlazy><h1 class="title">{{ section.title }}</h1><p class="subtitle-xs pb-6">Indefectible virtual machines.</p><div class="subtitleContainer"><a class="button primary pin" href="{{ docs.permalink }}"><p>Get Started</p></a></div></div></div>{% set product = get_page(path="landing/main.md") %}
-<div class="pageContainer pt-10"><div class="postContainer">{% set product = get_page(path="landing/main.md") %}
+<!-- Post content--><vprogress></vprogress><vcode></vcode><div class="landingContainer"><div class="hero"><vlazy class="image" low="{{ config.extra.hero.low | safe }}" high="{{ config.extra.hero.high | safe }}" style="background-image: url({{ config.extra.hero.high | safe }}), url({{ config.extra.hero.low | safe }})"></vlazy><h1 class="title">{{ section.title }}</h1><p class="subtitle-xs pb-6">Indefectible virtual machines.</p><div class="subtitleContainer"><a class="button primary ml-10" href="{{ docs.permalink }}"><p>Get Started</p></a></div></div></div>{% set product = get_page(path="landing/main.md") %}
+<div class="pageContainer"><div class="postContainer">{% set product = get_page(path="landing/main.md") %}
 {{ product.content | markdown(inline=true) | safe }}
 
 </div></div>{% endblock content %}

@@ -27,16 +27,16 @@
   --icon-monero: url("../icons/monero.svg");
 
   --primary: #854293;
-  --secondary: #fe55fe;
+  --secondary: #af49b8;
   --warning: #fee140;
   --success: #84ee8455;
 
   /* Doomchad */
   --background: #282c34;
-
+  --terminal: #1c1f24;
   --vp-hero-title-color: linear-gradient(
     120deg,
-    var(--primary) 90%,
+    var(--primary) 70%,
     var(--secondary)
   );
 }
@@ -118,12 +118,11 @@ header {
 .landingContainer {
   @apply relative;
   @apply flex flex-col justify-start;
-  @apply h-180 xs:h-150 md:h-160 lg:h-180;
+  @apply pb-40;
 }
 .subtitleContainer {
   @apply flex flex-col items-end justify-end;
-  @apply absolute top-115;
-  @apply xs:relative xs:top-0;
+  @apply relative top-10;
 }
 /*
 * Images
@@ -167,27 +166,12 @@ header {
   .image {
     transition: all 150ms ease;
     @apply absolute;
-    @apply -scale-x-100;
+    @apply left-100 md:left-150;
     @apply z-10;
-
+    @apply h-30 w-30 md:h-40 md:w-40;
     /* bg */
     @apply bg-no-repeat bg-cover;
     @apply object-cover;
-
-    @apply top-25 -left-30;
-    @apply h-100 w-120;
-    /* xs */
-    @apply xs:top-15 xs:-left-85;
-    @apply xs:h-150 xs:w-200;
-    /* sm */
-    @apply xs:top-15 sm:-left-65;
-    @apply xs:h-150 xs:w-200;
-    /* md */
-    @apply md:-top-12 md:-left-90;
-    @apply md:h-180 md:w-250;
-    /* lg */
-    @apply lg:-top-5 lg:-left-85;
-    @apply lg:h-200 lg:w-300;
   }
   .title {
     @apply text-5xl md:text-6xl lg:text-7xl 2xl:text-8xl;
@@ -204,6 +188,7 @@ header {
     @apply dark:text-zinc-200;
   }
   .subtitle-xs {
+    @apply pl-6 md:pl-12;
     @apply font-bold;
     @apply text-xl md:text-2xl font-bold my-1;
     @apply tracking-tighter;
@@ -299,20 +284,18 @@ header .title {
 
   /* Position only */
   &.pin {
-    @apply mt-10 mr-10;
-    @apply md:mt-20 md:mr-5;
-    @apply lg:mt-40 lg:mr-20;
-    @apply 2xl:mt-10 2xl:mr-10;
+    @apply mt-5 mr-5;
   }
   &:active {
     animation: tap 150ms ease-out;
   }
 
   &.primary {
-    /* background-color: var(--primary); */
+    background-color: var(--primary);
+    &:hover {
+      background-color: var(--secondary);
+    }
     @apply shadow-sm;
-    @apply dark:bg-pink-600;
-    @apply dark:hover:bg-purple-600;
   }
   p {
     @apply px-4 py-3;

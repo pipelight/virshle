@@ -1,0 +1,31 @@
+{
+  "name": "Areskul",
+  "author": "areskul",
+  "description": "Level up your tech game. Move faster. Build more.",
+  "homepage_url": "areskul.com",
+
+  "start_url": "/",
+  "scope": "/",
+
+  "display": "standalone",
+  "icons": [
+    {
+      "src": "/icons/manifest/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/manifest/android-chrome-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png"
+    }
+  ],
+
+  "permissions": {
+    "clipboardWrite": true
+  },
+
+  "background_color": "#000000",
+  "colors": {
+  }
+}

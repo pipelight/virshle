@@ -41,7 +41,7 @@ data hosted on the **customers**’s VPS,
 their content or their use by internet users`.
 
 **Crocuda_vps** is not responsible for the content broadcast by its **customers**,
-and the **cutomer** guarantees to have the **rights to broadcast** the content.
+and the **customer** guarantees to have the **rights to broadcast** the content.
 
 When the **customer** orders their VPS,
 they confirm that they have the `necessary knowledge to manage it`.
@@ -156,5 +156,5 @@ if it poses a danger to the proper functioning of the infrastructure.
 #### Scam
 
 **Customers** are not allowed to use the **Crocuda_vps** network or services
-to store or deliver the content that can be labeled as fraudulent or misleading,
+to store or deliver the content that can be labelled as fraudulent or misleading,
 for the purposes of promoting deceptive services or products.
