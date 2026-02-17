@@ -1,37 +1,16 @@
-use super::account::Account;
-use super::{Disk, NetType, Vm, VmNet};
-use crate::hypervisor::network::ovs::OvsPort;
-
-// Process
-use pipelight_exec::{Finder, Process};
+use super::{Disk, Vm};
 
 // Filesystem
 use std::fs;
 use std::path::Path;
 
-//Database
-use crate::database;
-use crate::database::connect_db;
-use crate::database::entity::{prelude, *};
-use chrono::{DateTime, NaiveDateTime, Utc};
-use sea_orm::{
-    prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult, IntoActiveModel,
-};
-
-// Http
-use crate::connection::{Connection, ConnectionHandle, UnixConnection};
-use crate::http_request::{Rest, RestClient};
-
-// Ovs
-use crate::network::{ip, ip::fd, ovs::OvsBridge, utils};
-
 // Init disk
 use super::UserData;
 
 // Error Handling
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tracing::{error, info, trace};
-use virshle_error::{CastError, LibError, VirshleError};
+use virshle_error::VirshleError;
 
 impl Vm {
     /// Add vm config to database.
@@ -39,7 +18,7 @@ impl Vm {
     #[tracing::instrument(skip_all)]
     pub async fn create(&mut self, user_data: Option<UserData>) -> Result<Self, VirshleError> {
         // Persist vm config into database
-        self.db().create(user_data).await?;
+        self.db().await?.create(user_data).await?;
 
         info!("created vm {:#?}", self.name);
         Ok(self.to_owned())
@@ -56,8 +35,8 @@ impl Vm {
         self.networks().create_all()?;
 
         self.vmm().start(attach).await?;
-        self.vmm().api().create().await?;
-        self.vmm().api().boot().await?;
+        self.vmm().api()?.create().await?;
+        self.vmm().api()?.boot().await?;
 
         self.set_vsock_permissions().await?;
 
@@ -67,7 +46,7 @@ impl Vm {
     /// Remove a vm definition from database.
     /// And delete vm resources and process.
     #[tracing::instrument(skip_all)]
-    pub async fn delete(&self) -> Result<Self, VirshleError> {
+    pub async fn delete(&mut self) -> Result<Self, VirshleError> {
         // Remove process and artifacts.
         self.vmm().kill_process()?;
         // Remove vm networks
@@ -79,7 +58,7 @@ impl Vm {
         // Delete vm directory tree
         self.delete_filetree()?;
         // Finally Remove db record
-        self.db().delete().await?;
+        self.db().await?.delete().await?;
 
         info!("deleted vm {}", self.name);
         Ok(self.to_owned())
@@ -89,7 +68,7 @@ impl Vm {
     /// Should silently fail when vm is already down.
     #[tracing::instrument(skip_all)]
     pub async fn shutdown(&self) -> Result<Self, VirshleError> {
-        self.vmm().api().shutdown().await?;
+        self.vmm().api()?.shutdown().await?;
         // Remove ch process
         self.vmm().kill_process()?;
         // Remove network ports

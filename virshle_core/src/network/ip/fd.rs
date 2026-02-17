@@ -1,11 +1,10 @@
 use std::os::fd::AsRawFd;
 
-use crate::hypervisor::network::utils::unix_name;
-use pipelight_exec::Process;
+use crate::network::utils::unix_name;
 
 // Error handling
 use miette::{IntoDiagnostic, Result};
-use virshle_error::{LibError, VirshleError};
+use virshle_error::VirshleError;
 
 /*
 * Return tap fd.
@@ -26,7 +25,7 @@ pub fn get_fd(name: &str) -> Result<i32, VirshleError> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hypervisor::network::ovs::{OvsBridge, OvsInterfaceType};
+    use crate::network::ovs::{OvsBridge, OvsInterfaceType};
 
     #[test]
     fn test_ovs_get_tap_interfaces() -> Result<()> {

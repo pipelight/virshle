@@ -1,23 +1,19 @@
-pub use super::account::Account;
-use super::Vm;
-use crate::hypervisor::{network::utils::uuid_to_mac, Disk, InitDisk};
+use crate::config::UserData;
+use crate::hypervisor::{
+    disk::{Disk, InitDisk},
+    Vm,
+};
+use crate::network::utils::uuid_to_mac;
 
 use unindent::unindent;
 
+pub use uuid::Uuid;
+
 // Templating engine
-use convert_case::{Case, Casing};
 
 // Mac
-use macaddr::MacAddr6;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
-use std::str::FromStr;
-use uuid::Uuid;
-
-use std::path::Path;
-
-// Global
-use crate::config::MANAGED_DIR;
 
 // "mkdir -p ./scripts/mnt/pipelight-init",
 // "mount -t ext4 -o loop ./scripts/pipelight-init.img ./scripts/mnt/pipelight-init",
@@ -25,13 +21,10 @@ use crate::config::MANAGED_DIR;
 // "cp -r /pipelight-init/* ./scripts/mnt/pipelight-init",
 // "umount ./scripts/mnt/pipelight-init",
 
-use pipelight_exec::{Process, Status};
-use std::fs;
-
 // Error handling
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tracing::{debug, info};
-use virshle_error::{LibError, VirshleError};
+use virshle_error::VirshleError;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct InitData {
@@ -39,21 +32,6 @@ pub struct InitData {
     pub vm_data: Option<VmData>,
     // User defined data.
     pub user_data: Option<UserData>,
-}
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct UserData {
-    pub user: Vec<User>,
-    /// Only purpose is to remain in database for further VM identification.
-    pub account: Option<Account>,
-}
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct User {
-    pub name: String,
-    pub ssh: Option<SshParams>,
-}
-#[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct SshParams {
-    pub authorized_keys: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
@@ -231,7 +209,7 @@ mod test {
     // #[tokio::test]
     async fn test_init_disk_creation() -> Result<()> {
         // let vm = Vm::default();
-        let vms = Vm::get_all().await?;
+        let vms = Vm::database().await?.many().get().await?;
         let mut vm = vms.first().unwrap().to_owned();
         // println!("{:#?}", &vm);
 

@@ -27,13 +27,12 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 // Cloud-hypervisor
 use crate::hypervisor::Vm;
-use crate::hypervisor::network::utils;
+use crate::network::utils;
+use crate::network::InterfaceState;
 
 //Fs
 use std::fs;
 use std::path::Path;
-
-use crate::hypervisor::network::InterfaceState;
 
 impl OvsBridge {
     /*
@@ -190,7 +189,10 @@ impl OvsBridge {
      * If a port is not related to an existing vm in database.
      */
     pub async fn remove_orphan_ports(&self) -> Result<(), VirshleError> {
-        let vms_name: Vec<String> = Vm::get_all()
+        let vms_name: Vec<String> = Vm::database()
+            .await?
+            .many()
+            .get()
             .await?
             .iter()
             .map(|e| e.name.to_owned())

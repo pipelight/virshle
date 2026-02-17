@@ -3,7 +3,8 @@ pub mod utils;
 pub use info::DiskInfo;
 
 // Struct
-use super::vm::{InitData, UserData, Vm, VmData};
+use crate::config::DiskTemplate;
+use crate::hypervisor::vm::{InitData, UserData, Vm, VmData};
 
 // Filesystem
 // use tokio::fs::{self, File};
@@ -11,9 +12,6 @@ use super::vm::{InitData, UserData, Vm, VmData};
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
-
-// Process
-use pipelight_exec::{Process, Status};
 
 // Cloud Hypervisor
 use uuid::Uuid;
@@ -24,30 +22,6 @@ use serde::{Deserialize, Serialize};
 use log::{debug, error, info, trace};
 use miette::{IntoDiagnostic, Result};
 use virshle_error::{LibError, VirshleError};
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct DiskTemplate {
-    pub name: String,
-    pub path: String,
-    pub readonly: Option<bool>,
-}
-impl DiskTemplate {
-    pub fn get_size(&self) -> Result<u64, VirshleError> {
-        let source = utils::shellexpand(&self.path)?;
-        let path = Path::new(&source);
-        if path.exists() && path.is_file() {
-            let metadata = std::fs::metadata(path)?;
-            let size = metadata.len();
-            Ok(size)
-        } else {
-            Err(LibError::builder()
-                .msg("Counldn't get disk file size.")
-                .help("Disk doesn't exist or is unreachable")
-                .build()
-                .into())
-        }
-    }
-}
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct Disk {
@@ -72,20 +46,8 @@ impl Disk {
     }
 }
 
-impl From<&DiskTemplate> for Disk {
-    fn from(e: &DiskTemplate) -> Self {
-        Self {
-            name: e.name.to_owned(),
-            path: e.path.to_owned(),
-            readonly: e.readonly,
-        }
-    }
-}
-
-/*
-* An ephemeral disk that is mounted/unmounted to vm on boot.
-* to provision with custom user datas.
-*/
+/// An ephemeral disk that is mounted/unmounted to vm on boot.
+///to provision with custom user datas.
 #[derive(Debug, Eq, PartialEq)]
 pub struct InitDisk<'a> {
     pub vm: &'a Vm,

@@ -1,38 +1,25 @@
 // TODO: Refactor this fucking mess:
 // factorize functions!!
 
-use axum::response;
-// Files
+use virshle_network::{
+    connection::{Connection, TcpConnection},
+    http::{Rest, RestClient},
+};
 
-use csv;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::{Path, PathBuf};
 use std::str::FromStr;
-
-// Time
-use jiff::Timestamp;
 
 // IP
 use super::Lease;
-use ipnet::{
-    IpAddrRange, IpNet, IpSub, IpSubnets, Ipv4AddrRange, Ipv6AddrRange, Ipv6Net, Ipv6Subnets,
-};
-use macaddr::{MacAddr, MacAddr6};
+use macaddr::MacAddr6;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-use super::IpPool;
-use crate::connection::{Connection, ConnectionHandle, TcpConnection};
-use crate::http_request::{Rest, RestClient};
 use crate::Vm;
 use std::collections::HashMap;
 
-use serde_with::skip_serializing_none;
-
 // Error handling
-use miette::{IntoDiagnostic, Result};
-use tracing::{debug, error, trace};
-use virshle_error::{LibError, VirshleError, WrapError};
+use miette::Result;
+use virshle_error::VirshleError;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeaDhcp {
@@ -238,8 +225,8 @@ impl KeaDhcp {
         &self,
         vm_name: &str,
     ) -> Result<Vec<RawLease>, VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let hostname = self.to_domain_name(IpAddr::V6(Ipv6Addr::UNSPECIFIED), vm_name)?;
@@ -271,8 +258,8 @@ impl KeaDhcp {
         &self,
         vm_name: &str,
     ) -> Result<Vec<RawLease>, VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let hostname = self.to_domain_name(IpAddr::V4(Ipv4Addr::UNSPECIFIED), vm_name)?;
@@ -307,8 +294,8 @@ impl KeaDhcp {
         Ok(leases)
     }
     pub async fn _get_ipv4_leases(&self) -> Result<Vec<RawLease>, VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let cmd = KeaCommand {
@@ -334,8 +321,8 @@ impl KeaDhcp {
         Ok(leases)
     }
     pub async fn _get_ipv6_leases(&self) -> Result<Vec<RawLease>, VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let cmd = KeaCommand {
@@ -363,7 +350,10 @@ impl KeaDhcp {
     /// Remove leases if associated vm doesn't exist.
     pub async fn clean_ipv4_leases(&self) -> Result<(), VirshleError> {
         // Get vms
-        let vms: Vec<String> = Vm::get_all()
+        let vms: Vec<String> = Vm::database()
+            .await?
+            .many()
+            .get()
             .await?
             .iter()
             .map(|e| e.name.clone())
@@ -385,7 +375,10 @@ impl KeaDhcp {
     /// Remove leases if associated vm doesn't exist.
     pub async fn clean_ipv6_leases(&self) -> Result<(), VirshleError> {
         // Get vms
-        let vms: Vec<String> = Vm::get_all()
+        let vms: Vec<String> = Vm::database()
+            .await?
+            .many()
+            .get()
             .await?
             .iter()
             .map(|e| e.name.clone())
@@ -413,8 +406,8 @@ impl KeaDhcp {
 
     // Delete a list of leases.
     pub async fn _delete_ipv6_leases(&self, leases: Vec<RawLease>) -> Result<(), VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let mut vec_req_map: Vec<HashMap<String, String>> = vec![];
@@ -444,8 +437,8 @@ impl KeaDhcp {
 
     // Delete a list of leases.
     pub async fn _delete_ipv4_leases(&self, leases: Vec<RawLease>) -> Result<(), VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let mut vec_req_map: Vec<HashMap<String, String>> = vec![];
@@ -474,8 +467,8 @@ impl KeaDhcp {
 
     // Delete a vm leases.
     pub async fn delete_ipv6_leases_by_name(&self, vm_name: &str) -> Result<(), VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let hostname = self.to_domain_name(IpAddr::V6(Ipv6Addr::UNSPECIFIED), vm_name)?;
@@ -509,8 +502,8 @@ impl KeaDhcp {
 
     // Delete a vm leases.
     pub async fn delete_ipv4_leases_by_name(&self, vm_name: &str) -> Result<(), VirshleError> {
-        let mut conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
-        let mut rest = RestClient::from(conn);
+        let conn = Connection::TcpConnection(TcpConnection::new(&self.url.clone().unwrap())?);
+        let mut rest: RestClient = conn.into();
         rest.open().await?;
 
         let hostname = self.to_domain_name(IpAddr::V4(Ipv4Addr::UNSPECIFIED), vm_name)?;

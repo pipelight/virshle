@@ -1,16 +1,14 @@
 // Clap completion script generation
-use clap::{CommandFactory, Parser};
 use clap_complete::{generate_to, Shell};
 
 // Filesystem manipulation
-use std::env;
 use std::fs;
 use std::path::Path;
 
 // Error Handling
 use miette::{IntoDiagnostic, Result};
 
-use virshle_core::cli::Cli;
+use virshle_cli::Cli;
 
 /**
 Generate autocompletion scripts

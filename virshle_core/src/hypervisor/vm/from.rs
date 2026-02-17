@@ -1,120 +1,70 @@
-use super::{Vm, VmConfigPlus, VmNet, VmTemplate};
-use crate::hypervisor::{disk::utils, Disk, DiskTemplate};
+use crate::hypervisor::{disk::utils, Disk, Vm};
+
+// Database
+use crate::database::*;
 
 // Pretty print
 use bat::PrettyPrinter;
-use crossterm::{execute, style::Stylize, terminal::size};
-use log::{info, log_enabled, Level};
-
-use serde::{Deserialize, Serialize};
+use crossterm::{style::Stylize, terminal::size};
+use log::{log_enabled, Level};
 
 // Filesystem manipulation
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
-//Database
-use crate::database;
-use crate::database::connect_db;
-use crate::database::entity::{prelude::*, *};
-use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult};
+use std::convert::Into;
+
+use uuid::Uuid;
+
+use virshle_network::connection::{Connection, SshConnection, TcpConnection, UnixConnection, Uri};
 
 // Global configuration
 use crate::config::MANAGED_DIR;
 
 // Error Handling
-use log::error;
-use miette::{Error, IntoDiagnostic, Result};
-use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
+use miette::Result;
+use tracing::trace;
+use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 
-impl From<vm::Model> for Vm {
-    fn from(record: vm::Model) -> Self {
-        let definition: Vm = serde_json::from_value(record.definition).unwrap();
-        Self {
-            uuid: Uuid::parse_str(&record.uuid).unwrap(),
-            name: record.name,
+impl TryInto<Vm> for &vm::Model {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Vm, Self::Error> {
+        let definition: Vm = serde_json::from_value(self.definition.clone())?;
+        let vm = Vm {
+            uuid: Uuid::parse_str(&self.uuid)?,
+            name: self.name.clone(),
             ..definition
-        }
-    }
-}
-
-impl Vm {
-    pub fn from(e: &VmTemplate) -> Result<Self, VirshleError> {
-        let mut vm = Vm {
-            vcpu: e.vcpu,
-            vram: e.vram.clone(),
-            net: e.net.clone(),
-            ..Default::default()
         };
-        ensure_directories(e, &mut vm)?;
-        create_disks(e, &mut vm)?;
         Ok(vm)
     }
 }
-
-/*
-* Ensure vm storage directories exists on host.
-*/
-pub fn ensure_directories(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
-    let directories = [
-        format!("{MANAGED_DIR}/vm/{}", vm.uuid),
-        format!("{MANAGED_DIR}/vm/{}/disk", vm.uuid),
-        format!("{MANAGED_DIR}/vm/{}/net", vm.uuid),
-    ];
-    for directory in directories {
-        let path = Path::new(&directory);
-        if !path.exists() {
-            fs::create_dir_all(&directory)?;
-        }
+impl TryInto<Connection> for Vm {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Connection, Self::Error> {
+        (&self).try_into()
     }
-    Ok(())
 }
-
-/*
-* Copy template disks (if some)
-* to vm storage directory and set file permissions.
-*/
-pub fn create_disks(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
-    if let Some(disks) = &template.disk {
-        for disk in disks {
-            let source = utils::shellexpand(&disk.path)?;
-            let target = format!("{MANAGED_DIR}/vm/{}/disk/{}", vm.uuid, disk.name);
-
-            // Create disk on host drive
-            let file = fs::File::create(&target)?;
-            fs::copy(&source, &target)?;
-
-            // Set permissions
-            let mut perms = fs::metadata(&target)?.permissions();
-            perms.set_mode(0o766);
-            fs::set_permissions(&target, perms)?;
-
-            // Push disk path to vm def
-            vm.disk.push(Disk {
-                name: disk.name.clone(),
-                path: target,
-                readonly: Some(false),
-            })
-        }
+impl TryInto<Connection> for &mut Vm {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Connection, Self::Error> {
+        (&*self).try_into()
     }
-    Ok(())
 }
-
-impl VmTemplate {
-    pub fn from_file(file_path: &str) -> Result<Self, VirshleError> {
-        let string = fs::read_to_string(file_path)?;
-        Self::from_toml(&string)
-    }
-    pub fn from_toml(string: &str) -> Result<Self, VirshleError> {
-        let res = toml::from_str::<Self>(string);
-        let item: Self = match res {
-            Ok(res) => res,
-            Err(e) => {
-                let err = CastError::TomlError(TomlError::new(e, string));
-                return Err(err.into());
-            }
+impl TryInto<Connection> for &Vm {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Connection, Self::Error> {
+        let uri = self.vmm().get_socket().unwrap();
+        let conn = match Uri::new(&uri).unwrap() {
+            Uri::SshUri(v) => Connection::SshConnection(SshConnection {
+                uri: v,
+                ssh_handle: None,
+            }),
+            Uri::LocalUri(v) => Connection::UnixConnection(UnixConnection { uri: v }),
+            Uri::TcpUri(v) => Connection::TcpConnection(TcpConnection { uri: v }),
         };
-        Ok(item)
+        trace!("created connection for vm: {}", self.uuid);
+        Ok(conn)
     }
 }
 
@@ -162,7 +112,8 @@ impl Vm {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::path::PathBuf;
+    use crate::config::VmTemplate;
+    use miette::IntoDiagnostic;
 
     #[test]
     fn display_vm_to_toml() -> Result<()> {

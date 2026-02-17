@@ -1,26 +1,22 @@
-use crate::hypervisor::{Template, UserData, Vm, VmConfigPlus, VmTemplate};
-use crate::database;
+use crate::config::UserData;
+use crate::hypervisor::VmConfigPlus;
 
 use super::Config;
 
 // Global vars
-use super::{CONFIG_DIR, MANAGED_DIR};
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
 // Config
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // Error Handling
-use miette::{Error, IntoDiagnostic, Result};
-use tracing::{error, info, trace, warn};
-use virshle_error::{CastError, LibError, TomlError, VirshleError, WrapError};
+use miette::{Error, Result};
+use tracing::{error, trace};
+use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 
-pub const CONFIG: Lazy<Arc<Mutex<Config>>> =
-    Lazy::new(|| Arc::new(Mutex::new(Config::default())));
+pub const CONFIG: Lazy<Arc<Mutex<Config>>> = Lazy::new(|| Arc::new(Mutex::new(Config::default())));
 
 impl Config {
     /*

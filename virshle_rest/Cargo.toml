@@ -1,0 +1,71 @@
+[package]
+name = "virshle_rest"
+version = "0.1.2"
+edition = "2021"
+
+[dependencies]
+thiserror.workspace = true
+miette = { workspace = true, features = ["fancy"] }
+log.workspace = true
+env_logger.workspace = true
+tokio = { workspace = true, features = ["mio", "tracing"] }
+tokio-scoped.workspace = true
+bon.workspace = true
+bat.workspace = true
+
+russh.workspace = true
+radicle-crypto.workspace = true
+# sqlite3-sys.workspace = true
+
+virshle_error = { path = "../virshle_error" }
+virshle_core = { path = "../virshle_core" }
+virshle_network = { path = "../virshle_network" }
+pipelight_exec.workspace = true
+# pipelight_exec = { path = "../../pipelight/pipelight_exec" }
+
+serde_json = { version = "1.0.128", features = ["preserve_order"] }
+serde = { version = "1.0.210", features = ["derive"] }
+tabled.workspace = true
+convert_case = "0.10.0"
+uuid = { version = "1.10.0", features = ["serde", "v4"] }
+
+human_bytes = "0.4.3"
+rand = "0.9.0"
+regex = "1.10.6"
+
+reqwest = "0.13.1"
+hyper = { version = "1.4.1", features = ["full"] }
+http-body-util = "0.1.2"
+hyper-util = "0.1.9"
+
+url = "2.5.2"
+async-trait = "0.1.88"
+axum = { version = "0.8.3", features = ["json"] }
+
+macaddr = { version = "1.0.1", features = ["serde", "serde_std"] }
+futures = "0.3.31"
+users = "0.11.0"
+tower-http = { version = "0.6.2", features = ["trace"] }
+sysinfo = { version = "0.37.0", features = ["serde"] }
+
+tower = { version = "0.5.2", features = ["util"] }
+
+## Cloud hypervisor and deps
+# vmm = { git = "https://github.com/cloud-hypervisor/cloud-hypervisor", tag = "v50.0", features = [
+#   "kvm",
+# ] }
+
+serde_with = "3.12.0"
+ipnet = { version = "2.11.0", features = ["serde"] }
+chrono = { version = "0.4.41", features = ["now", "serde"] }
+jiff = { version = "0.2.15", features = ["serde"] }
+dirs = "6.0.0"
+bytes = "1.10.1"
+
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-log.workspace = true
+# derivative = "2.2.0"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"

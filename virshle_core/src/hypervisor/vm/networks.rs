@@ -1,23 +1,22 @@
-use super::{NetType, Vm, VmNet};
-use crate::config::Config;
+use crate::config::{Config, NetType, VmNet};
+use crate::hypervisor::Vm;
 use crate::network::{
-    dhcp::{DhcpType, FakeDhcp, KeaDhcp, Lease},
+    dhcp::{DhcpType, FakeDhcp, Lease},
     ip,
-    ip::fd,
     ovs::{OvsBridge, OvsPort},
 };
 
 use std::fs;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 use std::path::Path;
 
 // Error Handling
-use miette::{IntoDiagnostic, Result};
-use tracing::{info, trace};
+use miette::Result;
+use tracing::trace;
 use virshle_error::{LibError, VirshleError};
 
 impl Vm {
-    pub fn networks(&self) -> VmNetMethods {
+    pub fn networks(&self) -> VmNetMethods<'_> {
         VmNetMethods { vm: self }
     }
 }
@@ -38,8 +37,9 @@ impl VmNetMethods<'_> {
     /// Create network <name> on host (and ovs configuration).
     #[tracing::instrument(skip_all)]
     pub fn create_one(&self, name: &str) -> Result<(), VirshleError> {
-        if let Some(networks) = self.vm.net {
-            let net = networks.iter().filter(|e| e.name == name).first();
+        if let Some(e) = self.vm.net.clone() {
+            let nets: Vec<VmNet> = e.into_iter().filter(|e| e.name == name).collect();
+            let net = nets.first();
             match net {
                 Some(v) => {
                     self._create(v)?;
@@ -52,8 +52,8 @@ impl VmNetMethods<'_> {
     /// Create all networks associated to Vm on host (and ovs configuration).
     #[tracing::instrument(skip_all)]
     pub fn create_all(&self) -> Result<(), VirshleError> {
-        trace!("creating networks for vm {:#?}", self.name);
-        if let Some(networks) = &self.net {
+        trace!("creating networks for vm {:#?}", self.vm.name);
+        if let Some(networks) = &self.vm.net {
             for net in networks {
                 // Clean up
                 self._delete(&net)?;
@@ -65,12 +65,12 @@ impl VmNetMethods<'_> {
     /// Create a network on host (and ovs configuration).
     fn _create(&self, net: &VmNet) -> Result<(), VirshleError> {
         // This results in "machin_name-network_name".
-        let port_name = format!("vm-{}--{}", self.name, net.name);
+        let port_name = format!("vm-{}--{}", self.vm.name, net.name);
         match &net._type {
             // Vhost type does not work on when bridged to ovs-bridge of type "system",
             // the bridge must be of type "netdev".
             NetType::Vhost(v) => {
-                let socket_path = self.get_net_socket(&net)?;
+                let socket_path = self.vm.get_net_socket(&net)?;
                 OvsBridge::get_vm_switch()?.create_dpdk_port(&port_name, &socket_path)?;
             }
             // Tap do not work on ovs-bridge of type "netdev",
@@ -103,8 +103,9 @@ impl VmNetMethods<'_> {
     }
     /// Remove network <name> from host (and ovs configuration).
     pub fn delete_one(&self, name: &str) -> Result<(), VirshleError> {
-        if let Some(networks) = self.vm.net {
-            let net = networks.iter().filter(|e| e.name == name).first();
+        if let Some(e) = self.vm.net.clone() {
+            let nets: Vec<VmNet> = e.into_iter().filter(|e| e.name == name).collect();
+            let net = nets.first();
             match net {
                 Some(v) => {
                     self._delete(v)?;
@@ -116,8 +117,8 @@ impl VmNetMethods<'_> {
     }
     /// Remove all networks associated to Vm from host (and ovs configuration).
     pub fn delete_all(&self) -> Result<(), VirshleError> {
-        if let Some(networks) = &self.net {
-            for net in networks {
+        if let Some(e) = &self.vm.net {
+            for net in e {
                 self._delete(&net)?;
             }
         }
@@ -142,13 +143,14 @@ impl VmNetMethods<'_> {
             NetType::Vhost(_) => {
                 // Delete existing socket if any because
                 // cloud-hypervisor will attempt to create a new socket or fail.
-                let socket_path = self.get_net_socket(&net)?;
+                let socket_path = self.vm.get_net_socket(&net)?;
                 let path = Path::new(&socket_path);
                 if path.exists() {
                     fs::remove_file(&socket_path).ok();
                 }
             }
         };
+        Ok(())
     }
 }
 
@@ -178,7 +180,7 @@ impl VmLeaseMethods<'_> {
     }
     /// Return vm leases,
     /// or error out if nothing found
-    async fn get_all(&self) -> Result<Vec<Lease>, VirshleError> {
+    pub async fn get_all(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut leases: Vec<Lease> = vec![];
 
         match Config::get()?.dhcp {

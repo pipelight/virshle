@@ -6,23 +6,16 @@ use std::path::Path;
 // Process management
 use pipelight_exec::{Finder, Process, Status};
 use std::io::Write;
-use std::process::{Command, Stdio};
 
-use crate::hypervisor::{Vm,, VmInfo, VmTemplate};
+use crate::config::VmTemplate;
+use crate::hypervisor::Vm;
 
-// Global configuration
-use crate::config::MANAGED_DIR;
-
-// Http
-use crate::connection::{Connection, ConnectionHandle, UnixConnection};
-use crate::http_request::{Rest, RestClient};
-
-pub use types::{VmInfoResponse, VmRemoveDeviceData, VmState, VmConfig};
+pub use types::{VmConfig, VmInfoResponse, VmRemoveDeviceData, VmState};
 
 // Error Handling
-use miette::{IntoDiagnostic, Result};
-use tracing::{debug, error, info, trace};
-use virshle_error::{LibError, VirshleError};
+use miette::Result;
+use tracing::info;
+use virshle_error::VirshleError;
 
 impl Vm {
     pub fn vmm(&self) -> VmmMethods<'_> {
@@ -53,7 +46,7 @@ impl VmmMethods<'_> {
         #[cfg(not(debug_assertions))]
         finder.kill()?;
 
-        let socket = &self.get().socket()?;
+        let socket = &self.get_socket()?;
         let path = Path::new(&socket);
         if path.exists() {
             #[cfg(debug_assertions)]
@@ -89,12 +82,8 @@ impl VmmMethods<'_> {
         // If we can't establish connection to socket,
         // this means cloud-hypervisor is dead.
         // So we start a new viable process.
-        let mut conn = Connection::from(self.vm);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/vmm.ping");
 
-        if rest.open().await.is_err() || rest.ping().await.is_err() {
+        if self.api()?.ping().await.is_err() {
             match attach {
                 Some(true) => {
                     cmd = format!(
@@ -114,7 +103,7 @@ impl VmmMethods<'_> {
                     info!("launching: {:#?}", &cmd);
                 }
                 _ => {
-                    cmd = format!("{} --api-socket {}", &cmd, &self.get().socket()?);
+                    cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
                     Process::new()
                         .stdin(&cmd)
                         .orphan()
@@ -126,7 +115,7 @@ impl VmmMethods<'_> {
             };
 
             // Wait until socket is created
-            let socket = &self.get().socket()?;
+            let socket = &self.get_socket()?;
             let path = Path::new(socket);
             while !path.exists() {
                 tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;

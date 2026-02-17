@@ -1,8 +1,7 @@
-pub mod account;
+mod display;
 pub mod from;
 pub mod getters;
 pub mod init;
-pub mod template;
 
 // High level methods to orchestrate VMs.
 pub mod crud;
@@ -16,25 +15,17 @@ pub mod database;
 pub mod networks;
 
 // Reexports
-pub use account::Account;
+pub use crate::config::{DiskTemplate, UserData, VmNet};
+pub use display::VmTable;
 pub use getters::VmInfo;
-pub use init::{InitData, UserData, VmData};
-
-use crate::hypervisor::{disk::utils, DiskInfo, DiskTemplate};
-use crate::network::ip;
+pub use init::{InitData, VmData};
 
 // Time
-use chrono::{DateTime, NaiveDateTime, Utc};
-
-use std::fs::File;
-use std::os::fd::{AsFd, AsRawFd, RawFd};
+use chrono::{NaiveDateTime, Utc};
 
 // Serde
-use convert_case::{Case, Casing};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::{from_slice, Value};
-use std::fmt;
 
 // Socket
 use std::fs;
@@ -47,34 +38,14 @@ use uuid::Uuid;
 
 use pipelight_exec::Process;
 
-// Http
-use crate::connection::{Connection, ConnectionHandle, UnixConnection};
-use crate::http_request::{Rest, RestClient};
-
 // Error Handling
-use miette::{IntoDiagnostic, Result};
-use tracing::{debug, error, info, trace};
-use virshle_error::{LibError, VirshleError};
-
-/// A partial Vm definition, with optional disk, network...
-/// All those usually mandatory fields will be handled by virshle with
-/// autoconfigured default.
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct VmTemplate {
-    pub name: String,
-    pub vcpu: u64,
-    pub vram: String,
-    pub uuid: Option<Uuid>,
-    pub disk: Option<Vec<DiskTemplate>>,
-    pub net: Option<Vec<VmNet>>,
-    pub config: Option<VmConfigPlus>,
-}
+use miette::Result;
+use virshle_error::VirshleError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub struct VmConfigPlus {
     /// The account the vm is linked to.
     pub inner: Option<String>,
-
     // Unused
     pub autostart: bool,
 }
@@ -98,48 +69,6 @@ impl Default for VmConfigPlus {
             autostart: false,
         }
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-pub struct VmNet {
-    pub name: String,
-    #[serde(rename = "type")]
-    pub _type: NetType,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum NetType {
-    Vhost(Vhost),
-    Tap(Tap),
-    // Can't pass macvtap through the Cloud-hypervisor http API.
-    // Must be deprecated because actual ch implementation sucks!
-    #[serde(rename = "macvtap")]
-    MacVTap(Tap),
-}
-impl fmt::Display for NetType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let string = match self {
-            NetType::Vhost(v) => "vhost".to_owned(),
-            NetType::Tap(v) => "tap".to_owned(),
-            NetType::MacVTap(v) => "macvtap".to_owned(),
-        };
-        write!(f, "{}", string)
-    }
-}
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-pub struct Tap {
-    // Set static mac address or random if none.
-    pub mac: Option<String>,
-    // Request a static ipv4 ip on the interface.
-    pub ip: Option<String>,
-}
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-pub struct Vhost {
-    // Set static mac address or random if none.
-    pub mac: Option<String>,
-    // Request a static ipv4 ip on the interface.
-    pub ip: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
@@ -186,7 +115,6 @@ impl Default for Vm {
         }
     }
 }
-
 impl Vm {
     /// Widden vsock permissions to allow ssh connection from the owning group.
     ///

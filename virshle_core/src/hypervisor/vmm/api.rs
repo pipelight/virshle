@@ -6,10 +6,12 @@ use crate::hypervisor::{
 };
 
 // Http
-use crate::connection::{Connection, ConnectionHandle, UnixConnection};
-use crate::http_request::{Rest, RestClient};
 use crate::hypervisor::vmm::types::NetConfig;
 use hyper::StatusCode;
+use virshle_network::{
+    connection::{Connection, ConnectionHandle, UnixConnection},
+    http::{Rest, RestClient},
+};
 
 // Error Handling
 use miette::{IntoDiagnostic, Result};
@@ -36,7 +38,7 @@ impl VmmMethods<'_> {
         if let Some(networks) = config.net {
             for e in networks {
                 if let Some(id) = e.id {
-                    self.api().remove_device(&id).await?;
+                    self.api()?.remove_device(&id).await?;
                     // Delete network from host.
                 }
             }
@@ -46,15 +48,15 @@ impl VmmMethods<'_> {
 }
 
 impl VmmMethods<'_> {
-    pub fn api(&self) -> VmmApiMethods {
-        let conn = Connection::from(self.vm);
-        let mut rest = RestClient::from(conn);
+    pub fn api(&self) -> Result<VmmApiMethods, VirshleError> {
+        let conn: Connection = self.vm.try_into()?;
+        let mut rest: RestClient = conn.into();
         rest.base_url("/api/v1");
         rest.ping_url(&format!("{}{}", "/api/v1", "/vmm.ping"));
-        VmmApiMethods {
+        Ok(VmmApiMethods {
             vm: self.vm,
             client: rest,
-        }
+        })
     }
 }
 pub struct VmmApiMethods<'a> {

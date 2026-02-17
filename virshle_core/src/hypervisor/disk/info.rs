@@ -1,12 +1,15 @@
-use crate::hypervisor::{Disk, DiskTemplate};
+use crate::config::DiskTemplate;
+use crate::hypervisor::Disk;
 use serde::{Deserialize, Serialize};
 
-use crate::display::utils::{display_some_bool, display_some_bytes};
+use crate::utils::display::{display_some_bool, display_some_bytes};
 use tabled::Tabled;
 
+// Display
+use human_bytes::human_bytes;
+
 // Error Handling
-use log::{log_enabled, Level};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use virshle_error::VirshleError;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Tabled)]
@@ -45,5 +48,46 @@ impl DiskInfo {
             readonly: e.readonly,
         };
         Ok(info)
+    }
+}
+
+impl DiskInfo {
+    pub fn display_some_vec(disks: &Option<Vec<DiskInfo>>) -> String {
+        let mut res = "".to_owned();
+        if let Some(disks) = disks {
+            let mut summary: Vec<String> = vec![];
+            for e in disks {
+                if let Some(size) = e.size {
+                    let size = human_bytes(size as f64);
+
+                    let oneline = format!("{} -> {} ({size})", e.name, e.path);
+                    summary.push(oneline);
+                } else {
+                    let oneline = format!("{} -> {}", e.name, e.path);
+                    summary.push(oneline);
+                }
+            }
+            res = summary.join("\n");
+        }
+        res
+    }
+    pub fn display_some_vec_short(disks: &Option<Vec<DiskInfo>>) -> String {
+        let mut res = "".to_owned();
+        if let Some(disks) = disks {
+            let mut summary: Vec<String> = vec![];
+            for e in disks {
+                if let Some(size) = e.size {
+                    let size = human_bytes(size as f64);
+
+                    let oneline = format!("{} ({size})", e.name);
+                    summary.push(oneline);
+                } else {
+                    let oneline = format!("{}", e.name,);
+                    summary.push(oneline);
+                }
+            }
+            res = summary.join("\n");
+        }
+        res
     }
 }

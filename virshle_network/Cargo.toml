@@ -1,0 +1,42 @@
+[package]
+name = "virshle_network"
+version = "0.1.3"
+edition = "2021"
+
+[dependencies]
+thiserror.workspace = true
+miette.workspace = true
+tokio = { workspace = true, features = ["tracing"] }
+bon.workspace = true
+
+virshle_error = { path = "../virshle_error" }
+
+serde_json = { version = "1.0.128", features = ["preserve_order"] }
+serde = { version = "1.0.210", features = ["derive"] }
+uuid = { version = "1.10.0", features = ["serde", "v4"] }
+convert_case = "0.10.0"
+owo-colors.workspace = true
+
+# Ssh
+russh.workspace = true
+# Http
+reqwest = "0.13.1"
+hyper = { version = "1.4.1", features = ["full"] }
+http-body-util = "0.1.2"
+hyper-util = "0.1.9"
+url = "2.5.2"
+axum = { version = "0.8.3", features = ["json"] }
+
+# Cli
+macaddr = { version = "1.0.1", features = ["serde", "serde_std"] }
+futures = "0.3.31"
+users = "0.11.0"
+
+# Log/Tracing
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["ansi", "env-filter"] }
+tracing-log = "0.2.0"
+derivative = "2.2.0"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"

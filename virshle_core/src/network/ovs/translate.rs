@@ -1,5 +1,5 @@
 use super::convert;
-use crate::hypervisor::network::interface::Bridge;
+use crate::network::interface::Bridge;
 
 use std::rc::Rc;
 

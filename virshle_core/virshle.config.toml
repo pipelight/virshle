@@ -1,19 +1,45 @@
 #########################
+# This deamon/host configuration
+[node]
+# alias = "<location>-<branch>-<n>"
+alias = "deku-dev-1"
+private_key = "/var/lib/virshle/node/id_ed25519"
+# file = ""
+
+# Network
+## Kea dhcp
+[dhcp]
+[dhcp.kea]
+url = "tcp://localhost:5547"
+suffix = "vm"
+
+## Fake dhcp when no dhcp available on network
+# [dhcp.fake.pool.main]
+# subnet = "2a02:842b:6361:ad01::/64"
+# range = ["2a02:842b:6361:ad01::1ff", "2a02:842b:6361:ad01::ffff"]
+
+#########################
 # Nodes
+# The cli can communicate with remote nodes.
+# If none is whitelisted you will by default commande the local node.
 
 # Instance (This host credentials)
-[[node]]
-name = "local"
+[[nodes]]
 url = "unix:///var/lib/virshle/virshle.sock"
 weight = 20
+# Whitelist the node by adding its pubkey.
+# public_key = "/var/lib/virshle/node/peers/id_ed25519.pub"
+
+# file = ""
+
 
 # [[node]]
-# name = "local-ssh"
+# alias = "local-ssh"
 # url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 # weight = 0
 #
 # [[node]]
-# name = "rpi4b"
+# alias = "rpi4b"
 # url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
 # weight = 10
 
@@ -21,6 +47,8 @@ weight = 20
 #########################
 # Testing Templates: 
 # for testing vm
+
+# No network
 [[template.vm]]
 name = "xxs-offline"
 vcpu = 1
@@ -29,6 +57,7 @@ vram = "2GiB"
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
 
+# Tap network device
 [[template.vm]]
 name = "xxs-tap"
 vcpu = 1
@@ -40,6 +69,8 @@ path = "~/Iso/nixos.xxs.efi.img"
 name = "main"
 [template.vm.net.type.tap]
 
+# Macvtap network device
+# Not working yet as of Cloud-hypervisor 42.0 but still we get prepared.
 [[template.vm]]
 name = "xxs-macvtap"
 vcpu = 1
@@ -53,6 +84,8 @@ name = "main"
 
 
 #########################
+# Templates: 
+# vm standard sizes with decents presets.
 
 [[template.vm]]
 name = "xxs"
@@ -64,10 +97,6 @@ path = "~/Iso/nixos.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
-
-#########################
-# Templates: 
-# vm standard sizes with decents presets.
 
 [[template.vm]]
 name = "xs"
@@ -91,18 +120,18 @@ path = "~/Iso/nixos.s.efi.img"
 name = "main"
 [template.vm.net.type.tap]
 
-[[template.vm]]
-name = "m"
-vcpu = 4
-vram = "8GiB"
-[[template.vm.disk]]
-name = "os"
-path = "~/Iso/nixos.m.efi.img"
-[[template.vm.net]]
-name = "main"
-[template.vm.net.type.tap]
-
 # Big vms (for beta release)
+
+# [[template.vm]]
+# name = "m"
+# vcpu = 4
+# vram = "8GiB"
+# [[template.vm.disk]]
+# name = "os"
+# path = "~/Iso/nixos.m.efi.img"
+# [[template.vm.net]]
+# name = "main"
+# [template.vm.net.type.tap]
 
 # [[template.vm]]
 # name = "l"
@@ -110,28 +139,18 @@ name = "main"
 # vram = "10GiB"
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Iso/nixos.efi.img"
-# size = "150GiB"
-#
+# path = "~/Iso/nixos.l.efi.img"
+# [[template.vm.net]]
+# name = "main"
+# [template.vm.net.type.tap]
+
 # [[template.vm]]
 # name = "xl"
 # vcpu = 8
 # vram = "16GiB"
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Iso/nixos.efi.img"
-# size = "180GiB"
-
-#########################
-# Network
-
-## Kea dhcp
-[dhcp]
-[dhcp.kea]
-url = "tcp://localhost:5547"
-suffix = "vm"
-
-## Fake dhcp when no dhcp available on network
-# [dhcp.fake.pool.main]
-# subnet = "2a02:842b:6361:ad01::/64"
-# range = ["2a02:842b:6361:ad01::1ff", "2a02:842b:6361:ad01::ffff"]
+# path = "~/Iso/nixos.xl.efi.img"
+# [[template.vm.net]]
+# name = "main"
+# [template.vm.net.type.tap]

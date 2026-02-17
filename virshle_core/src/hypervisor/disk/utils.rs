@@ -58,26 +58,6 @@ pub fn reverse_human_bytes(string: &str) -> Result<u64, VirshleError> {
             .into())
     }
 }
-/// Expand tild "~" in file path.
-pub fn shellexpand(relpath: &str) -> Result<String, VirshleError> {
-    let source: String = match relpath.starts_with("~") {
-        false => relpath.to_owned(),
-        true => relpath.replace("~", dirs::home_dir().unwrap().to_str().unwrap()),
-    };
-
-    let path = Path::new(&source);
-    if path.exists() {
-        Ok(source)
-    } else {
-        let message = format!("Couldn't find file {:#?} expended to {:#?}.", relpath, path);
-        error!("{:#?}", message);
-        let err = LibError::builder()
-            .msg(&message)
-            .help("Are you sure the file exist?")
-            .build();
-        return Err(err.into());
-    }
-}
 
 pub fn make_empty_file(path: &str) -> Result<(), VirshleError> {
     let cmds = vec![format!("dd if=/dev/null of={path} bs=1M seek=10")];

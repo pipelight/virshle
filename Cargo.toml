@@ -10,6 +10,9 @@ members = [
   # Generate sqlite database
   "virshle_migration",
 
+  "virshle_cli",
+  "virshle_network",
+  "virshle_rest",
   "virshle_core",
 
   # Error definitions
@@ -21,13 +24,37 @@ members = [
 
 thiserror = "2.0.12"
 miette = "7.2.0"
-tracing = "0.1.41"
+
+once_cell = "1.19.0"
+
+# Log/Tracing
 log = "0.4.22"
 env_logger = "0.11.5"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["ansi", "env-filter"] }
+tracing-log = "0.2.0"
+derivative = "2.2.0"
+
+uuid = { version = "1.10.0", features = ["serde", "v4"] }
+chrono = { version = "0.4.41", features = ["now", "serde"] }
 
 pipelight_error = "0.2.14"
+pipelight_exec = "0.4.11"
 bon = "3.5.1"
 tokio = { version = "1.40.0", features = ["full"] }
+tokio-scoped = "0.2.0"
 
+russh = "0.57.0"
+
+human_bytes = "0.4.3"
+owo-colors = "4.1.0"
 bat = "0.25.0"
-russh = "0.56.0"
+tabled = { version = "0.20.0", features = ["ansi"] }
+crossterm = "0.29.0"
+
+# repository = "https://app.radicle.xyz/seeds/seed.radicle.xyz/rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5"
+radicle-crypto = { version = "0.14.0", git = "https://seed.radicle.xyz/z3gqcJUoA1n9HaHKufZs5FCSGazv5.git" }
+# sqlite3-sys = { version = "0.18.0", features = ["bundle"] }
+
+# Database
+sea-orm = "1.1.19"

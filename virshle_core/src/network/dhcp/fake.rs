@@ -1,8 +1,6 @@
 use super::IpPool;
-use ipnet::{
-    IpAddrRange, IpNet, IpSub, IpSubnets, Ipv4AddrRange, Ipv6AddrRange, Ipv6Net, Ipv6Subnets,
-};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use ipnet::{IpAddrRange, IpNet, Ipv4AddrRange, Ipv6AddrRange};
+use std::net::{IpAddr, Ipv6Addr};
 
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -10,18 +8,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use crate::config::Config;
-
 //Database
 use crate::database;
 use crate::database::connect_db;
-use crate::database::entity::{prelude::*, *};
 use sea_orm::ColumnTrait;
-use sea_orm::{prelude::*, query::*, sea_query::OnConflict, ActiveValue, InsertResult};
+use sea_orm::{prelude::*, query::*};
 
 // Error handling
-use miette::{IntoDiagnostic, Result};
-use virshle_error::{LibError, VirshleError, WrapError};
+use miette::Result;
+use virshle_error::{LibError, VirshleError};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct FakeDhcp {
@@ -125,7 +120,6 @@ impl IpPool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use miette::Result;
 
     #[tokio::test]
     async fn test_get_random_ip() -> Result<()> {

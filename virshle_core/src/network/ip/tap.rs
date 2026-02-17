@@ -16,7 +16,7 @@ use virshle_error::{LibError, VirshleError, WrapError};
 // Process
 use crate::exec::exec_cmds;
 
-use crate::hypervisor::network::{
+use crate::network::{
     interface,
     ip::{get_interfaces, get_main_interface},
     ovs::OvsBridge,

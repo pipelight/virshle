@@ -8,24 +8,24 @@
 * to be sent to cloud-hypervisor http api,
 * in just a few lines.
 */
-use crate::config::Config;
+use crate::config::{Config, NetType};
 use crate::hypervisor::{
     disk::{utils::reverse_human_bytes, Disk},
-    network::{dhcp::DhcpType, ip, utils},
-    vm::{NetType, Vm},
+    vm::Vm,
 };
+use crate::network::{dhcp::DhcpType, utils};
+
+use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use std::future::Future;
 use std::net::IpAddr;
 
 // Error handling
-use log::info;
-use miette::{Error, IntoDiagnostic, Result};
-use virshle_error::{LibError, VirshleError, WrapError};
+use miette::Result;
+use virshle_error::{LibError, VirshleError};
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct VmConfig {
@@ -181,7 +181,6 @@ pub enum VmState {
     Paused,
     BreakPoint,
 }
-
 impl FromStr for VmState {
     type Err = VirshleError;
     fn from_str(s: &str) -> Result<Self, VirshleError> {
@@ -199,6 +198,19 @@ impl FromStr for VmState {
             }
         };
         Ok(res)
+    }
+}
+impl VmState {
+    pub fn display(&self) -> String {
+        let res = match self {
+            VmState::NotCreated => "not_created".white().to_string(),
+            VmState::Created => "created".blue().to_string(),
+            VmState::Running => "running".green().to_string(),
+            VmState::Paused => "paused".yellow().to_string(),
+            VmState::Shutdown => "shutdown".red().to_string(),
+            VmState::BreakPoint => "breakpoint".white().to_string(),
+        };
+        format!("{}", res)
     }
 }
 
@@ -373,8 +385,8 @@ impl VmConfig {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hypervisor::VmTemplate;
-    use miette::{IntoDiagnostic, Result};
+    use crate::config::VmTemplate;
+    use miette::Result;
     use std::path::PathBuf;
 
     #[tokio::test]
@@ -398,7 +410,7 @@ mod test {
         let vm_template = VmTemplate::from_toml(&toml)?;
         println!("{:#?}", vm_template);
 
-        let vm = Vm::from(&vm_template)?;
+        let vm: Vm = vm_template.try_into()?;
         println!("{:#?}", vm);
 
         let vmm_config = VmConfig::from(&vm).await?;
