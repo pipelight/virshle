@@ -13,6 +13,9 @@ bon.workspace = true
 bat.workspace = true
 
 russh.workspace = true
+rand_core.workspace = true
+rand = "0.9.0"
+
 radicle-crypto.workspace = true
 # sqlite3-sys.workspace = true
 
@@ -35,7 +38,6 @@ toml = { version = "0.9.5", features = ["parse", "preserve_order"] }
 crossterm = "0.29.0"
 once_cell.workspace = true
 human_bytes = "0.4.3"
-rand = "0.9.0"
 regex = "1.10.6"
 
 reqwest = "0.13.1"

@@ -4,8 +4,10 @@ use virshle_core::{
         vm::{UserData, Vm, VmInfo, VmTable},
         vmm::types::{VmInfoResponse, VmState},
     },
-    node::{Node, NodeInfo},
+    node::{NodeInfo, Peer},
 };
+use virshle_network::connection::{Connection, ConnectionHandle, ConnectionState};
+use virshle_network::http::{Rest, RestClient};
 
 pub use pipelight_exec::Status;
 
@@ -15,6 +17,7 @@ use uuid::Uuid;
 
 // Error handling
 use miette::Result;
+use tracing::warn;
 use virshle_error::VirshleError;
 
 pub trait RestDefaultMethods {
@@ -34,8 +37,8 @@ pub trait NodeManyDefaultMethods {
     // async fn get_info_many(&self) -> Result<HashMap<Node, NodeInfo>, VirshleError>;
 }
 pub trait TemplateDefaultMethods {
-    async fn get_many(&self) -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError>;
-    async fn get_info_many(&self) -> Result<HashMap<Node, Vec<VmTemplateTable>>, VirshleError>;
+    async fn get_many(&self) -> Result<HashMap<Peer, Vec<VmTemplate>>, VirshleError>;
+    async fn get_info_many(&self) -> Result<HashMap<Peer, Vec<VmTemplateTable>>, VirshleError>;
     async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError>;
 }
 
@@ -54,32 +57,31 @@ pub struct GetManyVmArgs {
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CreateVmArgs {
     pub template_name: Option<String>,
-    user_data: Option<UserData>,
+    pub user_data: Option<UserData>,
 }
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CreateManyVmArgs {
     pub ntimes: Option<u8>,
     pub template_name: Option<String>,
-    user_data: Option<UserData>,
+    pub user_data: Option<UserData>,
 }
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct StartVmArgs {
     pub id: Option<u64>,
     pub uuid: Option<Uuid>,
     pub name: Option<String>,
-    user_data: Option<UserData>,
+    pub user_data: Option<UserData>,
 }
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct StartManyVmParams {
-    pub id: Option<u64>,
-    pub uuid: Option<Uuid>,
-    pub name: Option<String>,
-    user_data: Option<UserData>,
+pub struct StartManyVmArgs {
+    pub vm_state: Option<VmState>,
+    pub account_uuid: Option<Uuid>,
+    pub user_data: Option<UserData>,
 }
 
 pub trait VmDefaultMethods {
     async fn get(&self, args: GetVmArgs) -> Result<Vm, VirshleError>;
-    async fn get_many(&self, args: GetManyVmArgs) -> Result<HashMap<Node, Vec<Vm>>, VirshleError>;
+    async fn get_many(&self, args: GetManyVmArgs) -> Result<HashMap<Peer, Vec<Vm>>, VirshleError>;
 
     async fn create(
         &self,
@@ -114,4 +116,34 @@ pub trait VmDefaultMethods {
 
     async fn get_info(&self, args: GetVmArgs) -> Result<VmTable, VirshleError>;
     async fn get_info_many(&self, args: GetManyVmArgs) -> Result<Vec<VmTable>, VirshleError>;
+}
+
+pub async fn alerte_connection_state(rest: &RestClient) -> Result<(), VirshleError> {
+    // Logging
+    let state = rest.connection.get_state().await?;
+    let message = format!("node {:#?} unreachable", node.name);
+    match state {
+        ConnectionState::SshAuthError => {
+            let message = format!("node {:#?} ssh authenticaton rejected", node.name);
+            warn!("{}", &message)
+        }
+        ConnectionState::Unreachable => {
+            let message = format!("node {:#?} is unreachable", node.name);
+            warn!("{}", &message)
+        }
+        ConnectionState::Down => {
+            let message = format!("node {:#?} host is down", node.name);
+            warn!("{}", &message)
+        }
+        ConnectionState::DaemonDown => {
+            let message = format!("node {:#?} daemon is down", node.name);
+            warn!("{}", &message)
+        }
+        ConnectionState::SocketNotFound => {
+            let message = format!("node {:#?} no socket found", node.name);
+            warn!("{}", &message)
+        }
+        _ => {}
+    };
+    Ok(())
 }

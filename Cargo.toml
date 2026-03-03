@@ -40,11 +40,15 @@ chrono = { version = "0.4.41", features = ["now", "serde"] }
 
 pipelight_error = "0.2.14"
 pipelight_exec = "0.4.11"
-bon = "3.5.1"
+bon = "3.9.0"
 tokio = { version = "1.40.0", features = ["full"] }
 tokio-scoped = "0.2.0"
 
 russh = "0.57.0"
+# russh deps
+rand_core = "0.6.4"
+# rand_core = "0.10.0-rc-3"
+# rand_core = "0.9.5"
 
 human_bytes = "0.4.3"
 owo-colors = "4.1.0"

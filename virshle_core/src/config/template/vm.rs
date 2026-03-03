@@ -1,6 +1,6 @@
 use crate::config::DiskTemplate;
 use crate::hypervisor::{Disk, DiskInfo, Vm, VmConfigPlus};
-use crate::node::Node;
+use crate::node::Peer;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
@@ -52,22 +52,22 @@ impl VmTemplate {
     }
 }
 impl VmTemplate {
-    pub async fn display_by_nodes(items: HashMap<Node, Vec<Self>>) -> Result<(), VirshleError> {
+    pub async fn display_by_peers(items: HashMap<Peer, Vec<Self>>) -> Result<(), VirshleError> {
         // Convert vm to pretty printable type
-        let mut tables: HashMap<Node, Vec<VmTemplateTable>> = HashMap::new();
-        for (node, vms) in items {
+        let mut tables: HashMap<Peer, Vec<VmTemplateTable>> = HashMap::new();
+        for (peer, vms) in items {
             let mut vms_table: Vec<VmTemplateTable> = vec![];
             for vm in vms {
                 let e = VmTemplateTable::from(&vm)?;
                 vms_table.push(e);
             }
-            tables.insert(node, vms_table);
+            tables.insert(peer, vms_table);
         }
 
         // Display vm by nodes with table header
-        for (node, table) in tables {
-            let name = node.alias()?.bright_purple().bold().to_string();
-            let header: String = match Uri::new(&node.url)? {
+        for (peer, table) in tables {
+            let name = peer.alias()?.bright_purple().bold().to_string();
+            let header: String = match Uri::new(&peer.url)? {
                 Uri::SshUri(e) => format!(
                     "{name} on {}@{}",
                     e.user.yellow().bold(),

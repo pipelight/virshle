@@ -4,12 +4,11 @@
 # alias = "<location>-<branch>-<n>"
 alias = "deku-dev-1"
 private_key = "/var/lib/virshle/node/id_ed25519"
-# file = ""
+public_key = "/var/lib/virshle/node/id_ed25519.pub"
 
 # Network
 ## Kea dhcp
-[dhcp]
-[dhcp.kea]
+[network.dhcp.kea]
 url = "tcp://localhost:5547"
 suffix = "vm"
 
@@ -24,7 +23,7 @@ suffix = "vm"
 # If none is whitelisted you will by default commande the local node.
 
 # Instance (This host credentials)
-[[nodes]]
+[[peers]]
 url = "unix:///var/lib/virshle/virshle.sock"
 weight = 20
 # Whitelist the node by adding its pubkey.

@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 // Node
 use crate::server::Server;
-use virshle_core::node::{Node, NodeInfo};
+use virshle_core::node::{NodeInfo, Peer};
 
 pub use pipelight_exec::{Finder, Status};
 
@@ -52,6 +52,9 @@ impl Methods {
     pub fn node(&self) -> NodeMethods {
         NodeMethods
     }
+    pub fn peers(&self) -> PeerMethods {
+        PeerMethods
+    }
     pub fn template(&self) -> TemplateMethods {
         TemplateMethods
     }
@@ -67,6 +70,8 @@ struct Methods {
 
 #[derive(Default, Clone)]
 struct NodeMethods;
+#[derive(Default, Clone)]
+struct PeerMethods;
 #[derive(Default, Clone)]
 struct TemplateMethods;
 #[derive(Default, Clone)]
@@ -94,12 +99,12 @@ impl TemplateDefaultMethods for TemplateMethods {
             Ok(false)
         }
     }
-    async fn get_many(&self) -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
+    async fn get_many(&self) -> Result<HashMap<Peer, Vec<VmTemplate>>, VirshleError> {
         let config = Config::get()?;
         if let Some(template) = config.template {
             if let Some(vm_templates) = template.vm {
                 let mut list = HashMap::new();
-                list.insert(config.nodes(), vm_templates);
+                list.insert(config.node(), vm_templates);
                 return Ok(list);
             }
         }
@@ -109,7 +114,7 @@ impl TemplateDefaultMethods for TemplateMethods {
             .build()
             .into())
     }
-    async fn get_info_many(&self) -> Result<HashMap<Node, Vec<VmTemplateTable>>, VirshleError> {
+    async fn get_info_many(&self) -> Result<HashMap<Peer, Vec<VmTemplateTable>>, VirshleError> {
         let vm_templates = VmTemplate::get_all()?;
         let mut info = vec![];
         for e in vm_templates {
@@ -177,7 +182,7 @@ impl VmDefaultMethods for VmMethods {
             let template = config.get_template(&name)?;
 
             // Safeguard before creating.
-            Node::can_create_vm(&template).await?;
+            Peer::can_create_vm(&template).await?;
 
             let mut vm = Vm::from(&template)?;
             vm = vm.create(user_data).await?;
@@ -202,7 +207,7 @@ impl VmDefaultMethods for VmMethods {
             let mut tasks = vec![];
             let mut vms = vec![];
             for i in 0..args.ntimes.unwrap() {
-                Node::can_create_vm(&template).await?;
+                Peer::can_create_vm(&template).await?;
                 let mut vm = Vm::from(&template)?;
                 tasks.push(tokio::spawn({
                     let user_data = user_data.clone();

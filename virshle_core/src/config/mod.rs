@@ -14,13 +14,17 @@ pub use user_data::{Account, UserData};
 use crate::database;
 use crate::hypervisor::Vm;
 use crate::network::{dhcp::DhcpType, ovs};
-use crate::node::Node;
+use crate::node::Peer;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
 use std::fs;
 use std::path::Path;
+// Ssh
+use rand_core::OsRng;
+// use rand::rngs::OsRng;
+use russh::keys::{ssh_key::Algorithm, PrivateKey, PublicKey};
 
 // Error Handling
 use log::{debug, info};
@@ -35,34 +39,12 @@ pub const MAX_RAM_RESERVATION: f64 = 250_f64;
 pub const MAX_CPU_RESERVATION: f64 = 300_f64;
 pub const MAX_DISK_RESERVATION: f64 = 95_f64;
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct NodeConfig {
-    pub alias: Option<String>,
-    pub private_key: String,
-    pub public_key: String,
-}
-impl Into<Node> for NodeConfig {
-    fn into(self) -> Node {
-        (&self).into()
-    }
-}
-impl Into<Node> for &NodeConfig {
-    fn into(self) -> Node {
-        Node {
-            alias: self.alias.clone(),
-            url: "".to_owned(),
-            weight: None,
-            public_key: Some(self.public_key.clone()),
-        }
-    }
-}
-
 /// The main virshle cli and daemon configuration struct.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     // Server
     /// The local node configuration
-    pub node: Option<NodeConfig>,
+    node: Option<NodeConfig>,
     /// Vm templates
     pub template: Option<TemplateConfig>,
     /// Network configuration
@@ -70,15 +52,16 @@ pub struct Config {
 
     // Client
     /// List of remote node
-    nodes: Option<Vec<Node>>,
+    peer: Option<Vec<Peer>>,
 }
 impl Default for Config {
     fn default() -> Self {
         Self {
+            peer: Some(vec![Peer::default()]),
+
             node: None,
-            nodes: Some(vec![Node::default()]),
-            dhcp: None,
             template: None,
+            dhcp: None,
         }
     }
 }
@@ -161,12 +144,19 @@ impl Config {
 
 // Getters
 impl Config {
-    pub fn nodes(&self) -> Result<Vec<Node>, VirshleError> {
-        let nodes: Vec<Node> = match &self.nodes {
-            Some(node) => node.to_owned(),
-            None => vec![Node::default()],
+    pub fn node(&self) -> Result<Node, VirshleError> {
+        let res = match &self.node {
+            Some(v) => v.try_into()?,
+            None => Node::default(),
         };
-        Ok(nodes)
+        Ok(res)
+    }
+    pub fn peers(&self) -> Result<Vec<Peer>, VirshleError> {
+        let peers: Vec<Peer> = match &self.peer {
+            Some(peer) => peer.to_owned(),
+            None => vec![Peer::default()],
+        };
+        Ok(peers)
     }
     pub fn get_templates(&self) -> Result<Vec<VmTemplate>, VirshleError> {
         if let Some(template) = &self.template {
@@ -192,6 +182,72 @@ impl Config {
                 let err = LibError::builder().msg(&message).help(&help).build();
                 Err(err.into())
             }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct NodeConfig {
+    pub alias: Option<String>,
+    pub private_key: String,
+    pub public_key: String,
+    pub passive: Option<bool>,
+}
+impl TryInto<Node> for NodeConfig {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Node, Self::Error> {
+        (&self).try_into()
+    }
+}
+impl TryInto<Node> for &NodeConfig {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Node, Self::Error> {
+        let private_key = fs::read_to_string(&self.private_key)?;
+        let public_key = fs::read_to_string(&self.public_key)?;
+        Ok(Node {
+            alias: Some("Self".to_owned()),
+            private_key,
+            public_key,
+            passive: false,
+        })
+    }
+}
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
+pub struct Node {
+    pub alias: Option<String>,
+    pub private_key: String,
+    pub public_key: String,
+    pub passive: bool,
+}
+impl Default for Node {
+    fn default() -> Self {
+        let key_pair = PrivateKey::random(&mut OsRng, Algorithm::Ed25519).unwrap();
+        let public_key = key_pair.public_key().to_openssh().unwrap();
+        let private_key = key_pair
+            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
+            .unwrap()
+            .to_string();
+        Node {
+            alias: Some("Self".to_owned()),
+            private_key,
+            public_key,
+            passive: false,
+        }
+    }
+}
+
+impl Into<Peer> for Node {
+    fn into(self) -> Peer {
+        (&self).into()
+    }
+}
+impl Into<Peer> for &Node {
+    fn into(self) -> Peer {
+        Peer {
+            alias: self.alias.clone(),
+            url: "".to_owned(),
+            weight: None,
+            public_key: Some(self.public_key.clone()),
         }
     }
 }

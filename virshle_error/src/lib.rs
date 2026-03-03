@@ -13,12 +13,13 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::error;
 
-#[derive(Debug, Error, Diagnostic)]
+#[derive(Debug, Error, Diagnostic, Deserialize)]
 pub enum VirshleError {
     ////////////////////////////////
     // Lib native errors
     #[error(transparent)]
     #[diagnostic(transparent)]
+    #[serde(skip)]
     WrapError(#[from] WrapError),
 
     #[error(transparent)]
@@ -37,81 +38,95 @@ pub enum VirshleError {
     // Type convertion
     #[error(transparent)]
     #[diagnostic(code(parse::error))]
+    #[serde(skip)]
     ParseIntError(#[from] std::num::ParseIntError),
 
     #[error(transparent)]
     #[diagnostic(code(parse::error))]
+    #[serde(skip)]
     ParseError(#[from] url::ParseError),
 
     #[error(transparent)]
     #[diagnostic(code(serde::error))]
+    #[serde(skip)]
     SerdeError(#[from] serde_json::Error),
 
     #[error(transparent)]
     #[diagnostic(code(virshle::bat::error))]
+    #[serde(skip)]
     StrumError(#[from] strum::ParseError),
 
     #[error(transparent)]
     #[diagnostic(code(virshle::bat::error))]
+    #[serde(skip)]
     BatError(#[from] bat::error::Error),
 
     #[error(transparent)]
     #[diagnostic(transparent)]
+    #[serde(skip)]
     CastError(#[from] CastError),
 
     #[error(transparent)]
     #[diagnostic(code(virshle::io::error))]
+    #[serde(skip)]
     IoError(#[from] std::io::Error),
 
     #[error(transparent)]
     #[diagnostic(code(virshle::io::error))]
+    #[serde(skip)]
     Utf8Error(#[from] std::string::FromUtf8Error),
 
     #[error(transparent)]
     #[diagnostic(code(virshle::io::error))]
+    #[serde(skip)]
     UuidError(#[from] uuid::Error),
 
     #[error(transparent)]
     #[diagnostic(code(virshle::csv::error))]
+    #[serde(skip)]
     CsvError(#[from] csv::Error),
 
     ////////////////////////////////
     // Process execution
     #[error(transparent)]
     #[diagnostic(transparent)]
+    #[serde(skip)]
     PipelightError(#[from] PipelightError),
 
     // Database
     #[error(transparent)]
     #[diagnostic(code(sea_orm::error))]
+    #[serde(skip)]
     SeaOrmError(#[from] sea_orm::DbErr),
 
     // Http
     #[error(transparent)]
     #[diagnostic(code(hyper::error))]
+    #[serde(skip)]
     HyprError(#[from] hyper::Error),
 
     #[error(transparent)]
     #[diagnostic(code(hyper::error))]
+    #[serde(skip)]
     HyprHttpError(#[from] hyper::http::Error),
 
     // Env var error
     // Mainly use to get ssh_auth_agent socket.
     #[error(transparent)]
     #[diagnostic(code(env::error))]
+    #[serde(skip)]
     EnvError(#[from] std::env::VarError),
 
     // Env var error
     // Mainly use to get ssh_auth_agent socket.
     #[error(transparent)]
     #[diagnostic(code(future::error))]
+    #[serde(skip)]
     JoinError(#[from] tokio::task::JoinError),
 }
 
-/**
-A config error with help higher origin
-Can be recursively chained.
-*/
+/// A config error with help higher origin
+/// Can be recursively chained.
 #[derive(Debug, Error, Diagnostic)]
 #[error("{}", message)]
 #[diagnostic(code(virshle::wrap::error))]
@@ -134,10 +149,8 @@ impl WrapError {
         }
     }
 }
-/**
-A root cause error with no inner origin
-*/
-#[derive(Debug, Error, Diagnostic)]
+/// A root cause error with no inner origin
+#[derive(Debug, Error, Diagnostic, Deserialize)]
 #[error("{}", message)]
 #[diagnostic(code(virshle::lib::error))]
 pub struct LibError {
@@ -156,7 +169,7 @@ impl LibError {
     }
 }
 
-#[derive(Debug, Error, Diagnostic)]
+#[derive(Debug, Error, Diagnostic, Deserialize)]
 pub enum ConnectionError {
     #[error("socket not found")]
     SocketNotFound,
@@ -169,14 +182,17 @@ pub enum ConnectionError {
 
     #[error(transparent)]
     #[diagnostic(code(ssh::error))]
+    #[serde(skip)]
     RusshError(#[from] russh::Error),
 
     #[error(transparent)]
     #[diagnostic(code(ssh::error))]
+    #[serde(skip)]
     SshKeyError(#[from] russh::keys::Error),
 
     #[error(transparent)]
     #[diagnostic(code(ssh::error))]
+    #[serde(skip)]
     SshAgentError(#[from] russh::AgentAuthError),
 }
 

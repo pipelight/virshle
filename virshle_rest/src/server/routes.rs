@@ -21,7 +21,7 @@ use virshle_core::{
         vm::{Vm, VmInfo},
         vmm::types::{VmInfoResponse, VmState},
     },
-    node::{Node, NodeInfo},
+    node::NodeInfo,
 };
 // Error handling
 use miette::Result;
@@ -71,10 +71,10 @@ impl Server {
             )
             // Vm
             .route(
-                "/vm/all",
+                "/vm/many",
                 post(async move |Json(params): Json<GetManyVmArgs>| {
                     let methods = Server::methods();
-                    Result::<Json<HashMap<Node, Vec<Vm>>>, VirshleError>::Ok(Json(
+                    Result::<Json<HashMap<Peer, Vec<Vm>>>, VirshleError>::Ok(Json(
                         methods.vm().get_many(params).await?,
                     ))
                 }),

@@ -89,11 +89,9 @@ pub struct HostRam {
     pub reserved: u64,
 }
 impl HostRam {
-    /*
-     * Get the amount of cpu that is reserved for VMs
-     * wheter they are running, and using it or not.
-     * (from vm definitions in the node database)
-     */
+    /// Get the amount of cpu that is reserved for VMs
+    /// wheter they are running, and using it or not.
+    /// (from vm definitions in the node database)
     pub async fn get_reserved() -> Result<u64, VirshleError> {
         let vms = Vm::database().await?.many().get().await?;
         let total_ram: u64 = vms
@@ -133,7 +131,7 @@ impl HostRam {
 pub struct HostCpu {
     pub number: u64,
     pub usage: f64,
-    // The number of cpu reserved for VMs.
+    /// The number of cpu reserved for VMs.
     pub reserved: u64,
 }
 impl HostCpu {
@@ -188,10 +186,9 @@ pub struct HostDisk {
     pub size: u64,
     pub used: u64,
     pub available: u64,
+    /// The disk space reserved for Vm storage.
     pub reserved: u64,
-    // The disk space reserved for Vm storage.
 }
-
 impl HostDisk {
     pub async fn get() -> Result<Self, VirshleError> {
         let managed_path = Path::new(&MANAGED_DIR).canonicalize().unwrap();
@@ -221,7 +218,6 @@ impl HostDisk {
         let err = LibError::builder().msg(&message).help(&help).build();
         Err(err.into())
     }
-
     pub async fn get_reserved() -> Result<u64, VirshleError> {
         let vms = Vm::database().await?.many().get().await?;
         let n_cpus: u64 = vms
@@ -235,7 +231,6 @@ impl HostDisk {
             .sum();
         Ok(n_cpus)
     }
-
     pub async fn get_percentage_reserved(&self) -> Result<f64, VirshleError> {
         let res = self.reserved as f64 / self.size as f64 * 100.0;
         Ok(res)

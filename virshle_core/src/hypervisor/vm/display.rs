@@ -1,5 +1,5 @@
 use crate::hypervisor::{DiskInfo, Vm, VmState};
-use crate::node::Node;
+use crate::node::Peer;
 use crate::utils::display;
 
 // Time
@@ -18,6 +18,10 @@ use log::{log_enabled, Level};
 use miette::Result;
 use virshle_error::VirshleError;
 
+/// A struct that is used to send VM info between peers and display VM info.
+/// Peers do not send the raw VM struct over the wire
+/// because it lacks a lot of dynamicaly retrievable informations.
+/// See it as a snapshot of vm X at time T.
 #[derive(Default, Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Tabled)]
 pub struct VmTable {
     #[tabled(display("display::display_id"))]
@@ -90,7 +94,7 @@ impl VmTable {
 }
 
 impl VmTable {
-    pub async fn display_by_nodes(items: HashMap<Node, Vec<Self>>) -> Result<(), VirshleError> {
+    pub async fn display_by_nodes(items: HashMap<Peer, Vec<Self>>) -> Result<(), VirshleError> {
         // Display vm by nodes with table header
         for (node, table) in items {
             let header = node.header()?;

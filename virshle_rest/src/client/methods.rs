@@ -1,13 +1,16 @@
 use crate::client::Client;
 
 use crate::commons::{
+    CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
+};
+use crate::commons::{
     NodeDefaultMethods, RestDefaultMethods, TemplateDefaultMethods, VmDefaultMethods,
 };
 
 use virshle_core::{
-    config::{Config, UserData, VmTemplate},
+    config::{Config, Node, UserData, VmTemplate},
     hypervisor::{Vm, VmInfo, VmState, VmTable},
-    node::{HostInfo, Node, NodeInfo},
+    node::{HostInfo, NodeInfo, Peer},
 };
 
 // Connections and Http
@@ -18,6 +21,7 @@ use bon::bon;
 use rand::seq::IndexedRandom;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 // Error handling
 use miette::Result;
@@ -28,10 +32,9 @@ impl Client {
     /// Retrieves working nodes from configuration
     /// and return a rest api convenience helper.
     pub async fn api(&mut self) -> Result<Methods, VirshleError> {
-        let nodes = Config::get()?.nodes()?;
-        let mut res: HashMap<String, (Node, RestClient)> = HashMap::new();
-        for node in nodes {
-            let conn: Connection = node.clone().try_into().unwrap();
+        let mut res: HashMap<String, (Peer, RestClient)> = HashMap::new();
+        for peer in Config::get()?.peers()? {
+            let conn: Connection = peer.clone().try_into().unwrap();
             let mut client: RestClient = conn.into();
             client.base_url("/api/v1");
             client.ping_url("/api/v1/node/ping");
@@ -43,69 +46,71 @@ impl Client {
             // if client.open().await.is_ok() && client.ping().await.is_ok() {
             //     res.insert(node.alias()?, client);
             // }
-            res.insert(node.alias()?, (node, client));
+            res.insert(peer.alias()?, (peer, client));
         }
-        Ok(Methods { nodes: res })
+
+        let node: Peer = Config::get()?.node()?.into();
+        let conn: Connection = node.clone().try_into().unwrap();
+        let mut client: RestClient = conn.into();
+        client.base_url("/api/v1");
+        client.ping_url("/api/v1/node/ping");
+        client.open().await.is_ok();
+        client.ping().await.is_ok();
+
+        Ok(Methods {
+            peers: res,
+            node: (node, client),
+        })
     }
 }
-#[derive(Default)]
 struct Methods {
     /// List of node aliases and their associated rest client.
-    nodes: HashMap<String, (Node, RestClient)>,
+    peers: HashMap<String, (Peer, RestClient)>,
+    node: (Peer, RestClient),
 }
 impl Methods {
+    pub fn node(&mut self) -> NodeMethods {
+        NodeMethods { api: self }
+    }
+    pub fn peer(&mut self) -> PeerMethods {
+        PeerMethods { api: self }
+    }
     pub fn template(&mut self) -> TemplateMethods {
-        TemplateMethods { nodes: &self.nodes }
+        TemplateMethods { api: self }
     }
     pub fn vm(&mut self) -> VmMethods {
-        VmMethods { nodes: &self.nodes }
-    }
-    pub fn node(&mut self) -> NodeMethods {
-        NodeMethods { nodes: &self.nodes }
+        VmMethods { api: self }
     }
 }
-#[derive(Clone)]
 struct NodeMethods<'a> {
-    nodes: &'a HashMap<String, (Node, RestClient)>,
+    api: &'a mut Methods,
 }
-#[derive(Clone)]
+struct PeerMethods<'a> {
+    api: &'a mut Methods,
+}
 struct TemplateMethods<'a> {
-    nodes: &'a HashMap<String, (Node, RestClient)>,
+    api: &'a mut Methods,
 }
-#[derive(Clone)]
 struct VmMethods<'a> {
-    nodes: &'a HashMap<String, (Node, RestClient)>,
+    api: &'a mut Methods,
 }
 
 #[bon]
-// impl NodeDefaultMethods for NodeMethods {
-impl NodeMethods {
+impl NodeMethods<'_> {
     #[builder(finish_fn = exec)]
     async fn get_info(
         &mut self,
-        alias: Option<String>,
-    ) -> Result<HashMap<Node, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
-        let mut res = HashMap::new();
-        match alias {
-            None => {
-                for (node, rest) in self.nodes.values_mut() {
-                    let (node, info) = Self::_get_info(node, rest).await?;
-                    res.insert(node, info);
-                }
-            }
-            Some(alias) => {
-                if let Some((node, rest)) = self.nodes.get_mut(&alias) {
-                    let (node, info) = Self::_get_info(node, rest).await?;
-                    res.insert(node, info);
-                }
-            }
-        }
+    ) -> Result<HashMap<Peer, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
+        let (ref peer, ref mut rest) = self.api.node;
+        let mut res: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
+        let info = Self::_get_info(peer, rest).await?;
+        res.insert(peer.clone(), info);
         Ok(res)
     }
     async fn _get_info(
-        node: &Node,
+        node: &Peer,
         rest: &mut RestClient,
-    ) -> Result<(Node, (ConnectionState, Option<NodeInfo>)), VirshleError> {
+    ) -> Result<(ConnectionState, Option<NodeInfo>), VirshleError> {
         let mut info: Option<NodeInfo> = None;
         let state = rest.connection.get_state().await?;
         match state {
@@ -116,6 +121,7 @@ impl NodeMethods {
             }
             _ => {
                 let help = format!("ConnectionState: {}", state.display());
+                let message = format!("Node {:#?} is unreachable.", node.alias());
                 let err: VirshleError = LibError::builder()
                     .msg("Node {:#?} is unreachable.")
                     .help(&help)
@@ -124,33 +130,20 @@ impl NodeMethods {
                 warn!("{:#?}", err);
             }
         };
-        Ok((node.to_owned(), (state, info)))
+        Ok((state, info))
     }
-
-    #[builder]
     #[builder(finish_fn = exec)]
-    async fn ping(&mut self, alias: Option<String>) -> Result<HashMap<Node, bool>, VirshleError> {
-        let mut res = HashMap::new();
-        match alias {
-            None => {
-                for (node, rest) in self.nodes.values_mut() {
-                    let (node, bool) = Self::_ping(node, rest).await?;
-                    res.insert(node, bool);
-                }
-            }
-            Some(alias) => {
-                if let Some((node, rest)) = self.nodes.get_mut(&alias) {
-                    let (node, bool) = Self::_ping(node, rest).await?;
-                    res.insert(node, bool);
-                }
-            }
-        };
+    async fn ping(&mut self, alias: Option<String>) -> Result<HashMap<Peer, bool>, VirshleError> {
+        let mut res: HashMap<Peer, bool> = HashMap::new();
+        let (ref peer, ref mut rest) = self.api.node;
+        let bool = Self::_ping(peer, rest).await?;
+        res.insert(peer.clone(), bool);
         Ok(res)
     }
-    async fn _ping(node: &Node, rest: &mut RestClient) -> Result<(Node, bool), VirshleError> {
-        let bool = match rest.ping().await {
+    async fn _ping(peer: &Peer, rest: &mut RestClient) -> Result<bool, VirshleError> {
+        let res = match rest.ping().await {
             Ok(v) => {
-                info!("Node {:#?} is pingable.", node.alias());
+                info!("Node {:#?} is pingable.", peer.alias());
                 Ok(v)
             }
             Err(e) => {
@@ -166,27 +159,152 @@ impl NodeMethods {
                 Err(err)
             }
         };
-        Ok((node.to_owned(), bool.is_ok()))
+        Ok(res.is_ok())
     }
 }
 
-impl NodeMethods<'_> {
-    // Get random non-saturated node.
-    pub async fn get_by_random(&mut self) -> Result<Node, VirshleError> {
-        let nodes: HashMap<Node, (ConnectionState, Option<NodeInfo>)> =
-            self.get_info().exec().await?;
+#[bon]
+impl PeerMethods<'_> {
+    #[builder(finish_fn = exec)]
+    async fn get_info(
+        &mut self,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
+        let mut res: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
+        match alias {
+            None => {
+                for (node, rest) in self.api.peers.values_mut() {
+                    let info = Self::_get_info(node, rest).await?;
+                    res.insert(node.clone(), info);
+                }
+            }
+            Some(alias) => {
+                if let Some((node, rest)) = self.api.peers.get_mut(&alias) {
+                    let info = Self::_get_info(node, rest).await?;
+                    res.insert(node.clone(), info);
+                }
+            }
+        }
+        Ok(res)
+    }
+    async fn _get_info(
+        node: &Peer,
+        rest: &mut RestClient,
+    ) -> Result<(ConnectionState, Option<NodeInfo>), VirshleError> {
+        let mut info: Option<NodeInfo> = None;
+        let state = rest.connection.get_state().await?;
+        match state {
+            ConnectionState::DaemonUp => {
+                if rest.open().await.is_ok() && rest.ping().await.is_ok() {
+                    info = rest.get("/node/info").await?.to_value().await.ok();
+                }
+            }
+            _ => {
+                let help = format!("ConnectionState: {}", state.display());
+                let message = format!("Peer {:#?} is unreachable.", node.alias());
+                let err: VirshleError = LibError::builder()
+                    .msg("Peer {:#?} is unreachable.")
+                    .help(&help)
+                    .build()
+                    .into();
+                warn!("{:#?}", err);
+            }
+        };
+        Ok((state, info))
+    }
+    #[builder(finish_fn = exec)]
+    async fn ping(&mut self, alias: Option<String>) -> Result<HashMap<Peer, bool>, VirshleError> {
+        let mut res: HashMap<Peer, bool> = HashMap::new();
+        match alias {
+            None => {
+                for (peer, rest) in self.api.peers.values_mut() {
+                    let bool = Self::_ping(peer, rest).await?;
+                    res.insert(peer.clone(), bool);
+                }
+            }
+            Some(alias) => {
+                if let Some((peer, rest)) = self.api.peers.get_mut(&alias) {
+                    let bool = Self::_ping(peer, rest).await?;
+                    res.insert(peer.clone(), bool);
+                }
+            }
+        };
+        Ok(res)
+    }
+    async fn _ping(peer: &Peer, rest: &mut RestClient) -> Result<bool, VirshleError> {
+        let res = match rest.ping().await {
+            Ok(v) => {
+                info!("Peer {:#?} is pingable.", peer.alias());
+                Ok(v)
+            }
+            Err(e) => {
+                let state = rest.connection.get_state().await?;
+                let help = format!("ConnectionState: {}", state.display());
+                let err: VirshleError = WrapError::builder()
+                    .origin(e.into())
+                    .msg("Node {:#?} did not answer.")
+                    .help(&help)
+                    .build()
+                    .into();
+                warn!("{:#?}", err);
+                Err(err)
+            }
+        };
+        Ok(res.is_ok())
+    }
+}
 
-        let mut ref_vec: Vec<&Node> = vec![];
-        for (node, (state, info)) in &nodes {
+struct PeerGetterMethods<'a> {
+    api: &'a mut Methods,
+}
+impl PeerMethods<'_> {
+    pub fn get(&mut self) -> PeerGetterMethods {
+        PeerGetterMethods { api: self.api }
+    }
+}
+#[bon]
+impl PeerGetterMethods<'_> {
+    pub fn default(&mut self) -> Result<(&Peer, &mut RestClient), VirshleError> {
+        let (ref peer, ref mut rest) = self.api.node;
+        Ok((peer, rest))
+    }
+    pub fn alias(&mut self, alias: &str) -> Result<(&Peer, &mut RestClient), VirshleError> {
+        match self.api.peers.get_mut(alias) {
+            Some((peer, rest)) => Ok((peer, rest)),
+            None => {
+                let message = format!("Couldn't get peer {}", alias);
+                let help = "You should list available peers.";
+                let err = LibError::builder().msg(&message).help(help).build();
+                Err(err.into())
+            }
+        }
+    }
+    #[builder(finish_fn = exec)]
+    pub fn alias_or_default(
+        &mut self,
+        alias: Option<String>,
+    ) -> Result<(&Peer, &mut RestClient), VirshleError> {
+        match alias {
+            None => self.default(),
+            Some(v) => self.alias(&v),
+        }
+    }
+    // Get random non-saturated node.
+    pub async fn random(&mut self) -> Result<Peer, VirshleError> {
+        let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+            self.api.peer().get_info().exec().await?;
+
+        let mut ref_vec: Vec<&Peer> = vec![];
+        for (peer, (state, info)) in &peers {
             if let Some(info) = info {
                 // Remove saturated nodes
                 if info.get_saturation_index().await? < 1.0 {
-                    ref_vec.push(&node)
+                    ref_vec.push(peer)
                 }
             }
         }
         match ref_vec.choose(&mut rand::rng()) {
-            Some(node) => Ok(node.to_owned().to_owned()),
+            Some(peer) => Ok(peer.to_owned().to_owned()),
             None => Err(LibError::builder()
                 .msg("Couldn't get a proper node.")
                 .help("Nodes unreachable or saturated!")
@@ -195,22 +313,22 @@ impl NodeMethods<'_> {
         }
     }
 
-    // Get random non-saturated node with weight.
-    pub async fn get_by_load_balance(&mut self) -> Result<Node, VirshleError> {
-        let nodes: HashMap<Node, (ConnectionState, Option<NodeInfo>)> =
-            self.get_info().exec().await?;
+    /// Get random non-saturated node with weight.
+    pub async fn load_balance(&mut self) -> Result<Peer, VirshleError> {
+        let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+            self.api.node().get_info().exec().await?;
 
-        let mut ref_vec: Vec<&Node> = vec![];
-        for (node, (state, info)) in &nodes {
+        let mut ref_vec: Vec<&Peer> = vec![];
+        for (peer, (state, info)) in &peers {
             if let Some(info) = info {
                 // Remove saturated nodes
                 if info.get_saturation_index().await? < 1.0 {
-                    let weighted_vec: Vec<&Node>;
+                    let weighted_vec: Vec<&Peer>;
                     // Add weight to node
-                    if let Some(weight) = node.weight {
-                        weighted_vec = std::iter::repeat_n(node, weight as usize).collect();
+                    if let Some(weight) = peer.weight {
+                        weighted_vec = std::iter::repeat_n(peer, weight as usize).collect();
                     } else {
-                        weighted_vec = vec![&node];
+                        weighted_vec = vec![peer];
                     }
                     ref_vec.extend(weighted_vec);
                 }
@@ -226,18 +344,18 @@ impl NodeMethods<'_> {
         }
     }
 
-    // Get random non-saturated node by round-robin.
-    pub async fn get_by_saturation_index(&mut self) -> Result<Node, VirshleError> {
-        let nodes: HashMap<Node, (ConnectionState, Option<NodeInfo>)> =
-            self.get_info().exec().await?;
+    /// Get random non-saturated node by round-robin.
+    pub async fn lowest_saturation_index(&mut self) -> Result<Peer, VirshleError> {
+        let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+            self.api.node().get_info().exec().await?;
 
-        let mut ref_vec: Vec<(f64, &Node)> = vec![];
-        for (node, (state, info)) in &nodes {
+        let mut ref_vec: Vec<(f64, &Peer)> = vec![];
+        for (peer, (state, info)) in &peers {
             if let Some(info) = info {
                 // Remove saturated nodes
                 if info.get_saturation_index().await? < 1.0 {
                     let s_index = info.get_saturation_index().await?;
-                    ref_vec.push((s_index, &node));
+                    ref_vec.push((s_index, &peer));
                 }
             }
         }
@@ -254,80 +372,89 @@ impl NodeMethods<'_> {
                 .into()),
         }
     }
-
-    // If self node can create the requested template
-    pub async fn can_create_vm(vm_template: &VmTemplate) -> Result<(), VirshleError> {
-        let info = HostInfo::get().await?;
-        // Check saturation
-        if info.disk.is_saturated().await?
-            || info.ram.is_saturated().await?
-            || info.cpu.is_saturated().await?
-        {
-            return Err(LibError::builder()
-                .msg("Not allowed to create VM: node is saturated.")
-                .help("Try deleting unused VMs or change saturation indexes in config.")
-                .build()
-                .into());
-        // Check remaining disk space
-        } else if let Some(disks) = &vm_template.disk {
-            let disks_total_size: u64 = disks.into_iter().map(|e| e.get_size().unwrap_or(0)).sum();
-            if disks_total_size < info.disk.available {
-                return Ok(());
-            } else {
-                let help = format!(
-                    "Not enough disk space for new vm from template {:#?}",
-                    vm_template.name
-                );
-                warn!("{}", help);
-                return Err(LibError::builder()
-                    .msg("Couldn't create Vm")
-                    .help(&help)
-                    .build()
-                    .into());
-            }
-        } else {
-            Ok(())
-        }
-    }
 }
 
+#[bon]
 impl TemplateMethods<'_> {
-    async fn get_many(&self) -> Result<HashMap<Node, Vec<VmTemplate>>, VirshleError> {
-        let nodes = Node::get_all()?;
-        let mut templates: HashMap<Node, Vec<VmTemplate>> = HashMap::new();
-        for node in nodes {
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-
-            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
-                let node_templates: Vec<VmTemplate> =
-                    rest.get("/template/all").await?.to_value().await?;
-                templates.insert(node, node_templates);
+    #[builder(finish_fn = exec)]
+    async fn get(
+        &mut self,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Vec<VmTemplate>>, VirshleError> {
+        let mut res: HashMap<Peer, Vec<VmTemplate>> = HashMap::new();
+        match alias {
+            None => {
+                for (peer, rest) in self.api.peers.values_mut() {
+                    let templates = Self::_get(peer, rest).await?;
+                    res.insert(peer.clone(), templates);
+                }
             }
-        }
+            Some(alias) => {
+                if let Some((peer, rest)) = self.api.peers.get_mut(&alias) {
+                    let templates = Self::_get(peer, rest).await?;
+                    res.insert(peer.clone(), templates);
+                }
+            }
+        };
+        Ok(res)
+    }
+    async fn _get(peer: &Peer, rest: &mut RestClient) -> Result<Vec<VmTemplate>, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let templates: Vec<VmTemplate> = rest.get("/template/get.many").await?.to_value().await?;
         Ok(templates)
     }
-    async fn get_info_many(&self) -> Result<HashMap<Node, Vec<VmTemplateTable>>, VirshleError> {
-        Ok(templates)
+    #[builder(finish_fn = exec)]
+    async fn reclaim(
+        &mut self,
+        template_name: Option<String>,
+        user_data: Option<UserData>,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, bool>, VirshleError> {
+        let mut res: HashMap<Peer, bool> = HashMap::new();
+        match alias {
+            None => {
+                for (peer, rest) in self.api.peers.values_mut() {
+                    let bool = Self::_reclaim(
+                        peer,
+                        rest,
+                        CreateVmArgs {
+                            template_name: template_name.clone(),
+                            user_data: user_data.clone(),
+                        },
+                    )
+                    .await?;
+                    res.insert(peer.clone(), bool);
+                }
+            }
+            Some(alias) => {
+                if let Some((peer, rest)) = self.api.peers.get_mut(&alias) {
+                    let bool = Self::_reclaim(
+                        peer,
+                        rest,
+                        CreateVmArgs {
+                            template_name,
+                            user_data,
+                        },
+                    )
+                    .await?;
+                    res.insert(peer.clone(), bool);
+                }
+            }
+        };
+        Ok(res)
     }
-    async fn reclaim(args: CreateVmArgs, node_name: Option<String>) -> Result<bool, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-
+    async fn _reclaim(
+        node: &Peer,
+        rest: &mut RestClient,
+        args: CreateVmArgs,
+    ) -> Result<bool, VirshleError> {
         if let Some(template_name) = args.template_name.clone() {
             info!(
                 "[start] reclaiming resources to create a vm from template {:#?} on node {:#?}",
-                template_name, node.name
+                template_name,
+                node.alias()
             );
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-            rest.open().await?;
-            rest.ping().await?;
-
             let can_create_vm: bool = rest
                 .put("/template/reclaim", Some(args))
                 .await?
@@ -336,7 +463,8 @@ impl TemplateMethods<'_> {
 
             info!(
                 "[end] reclaiming resources to create a vm from template {:#?} on node {:#?}",
-                template_name, node.name
+                template_name,
+                node.alias()
             );
             Ok(can_create_vm)
         } else {
@@ -349,38 +477,82 @@ impl TemplateMethods<'_> {
     }
 }
 
+struct VmGetterMethods<'a> {
+    api: &'a mut Methods,
+}
 impl VmMethods<'_> {
+    pub fn get(&mut self) -> VmGetterMethods {
+        VmGetterMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmGetterMethods<'_> {
     /// Get a hashmap/dict of all vms per (reachable) node.
     /// - node: the node name set in the virshle config file.
     /// - node: an optional account uuid.
-    pub async fn get_all(
-        args: Option<GetManyVmArgs>,
-        node_name: Option<String>,
-    ) -> Result<HashMap<Node, Vec<Vm>>, VirshleError> {
-        // Single or Multiple node search.
-        let config = VirshleConfig::get()?;
-        let nodes = if let Some(name) = node_name {
-            vec![Node::get_by_name(&name)?]
-        } else {
-            Node::get_all()?
-        };
-
-        let mut vms: HashMap<Node, Vec<Vm>> = HashMap::new();
-
-        for node in nodes {
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-
-            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
-                let node_vms: Vec<Vm> =
-                    rest.post("/vm/all", args.clone()).await?.to_value().await?;
-                vms.insert(node, node_vms);
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &mut self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
+        /// Specific peer name.
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Vec<VmTable>>, VirshleError> {
+        let mut res: HashMap<Peer, Vec<VmTable>> = HashMap::new();
+        match alias {
+            None => {
+                for (peer, rest) in self.api.peers.values_mut() {
+                    let vms = Self::_many(
+                        peer,
+                        rest,
+                        Some(GetManyVmArgs {
+                            vm_state: state,
+                            account_uuid: account,
+                        }),
+                    )
+                    .await?;
+                    res.insert(peer.clone(), vms);
+                }
+            }
+            Some(alias) => {
+                let mut method = self.api.peer();
+                let mut getter = method.get();
+                let (peer, rest) = getter.alias(&alias)?;
+                let vms = Self::_many(
+                    peer,
+                    rest,
+                    Some(GetManyVmArgs {
+                        vm_state: state,
+                        account_uuid: account,
+                    }),
+                )
+                .await?;
+                res.insert(peer.clone(), vms);
             }
         }
+        Ok(res)
+    }
+    pub async fn _many(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<GetManyVmArgs>,
+    ) -> Result<Vec<VmTable>, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let vms: Vec<VmTable> = rest.post("/vm/get", args.clone()).await?.to_value().await?;
         Ok(vms)
     }
+}
+struct VmCreateMethods<'a> {
+    api: &'a mut Methods,
+}
+impl VmMethods<'_> {
+    pub fn create(&mut self) -> VmCreateMethods {
+        VmCreateMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmCreateMethods<'_> {
     /// Create a virtual machine on a given node.
     ///
     /// # Arguments
@@ -388,48 +560,44 @@ impl VmMethods<'_> {
     /// * `args` - a struct containing node name and vm template name.
     /// * `vm_config_plus`: additional vm configuration to store in db.
     ///
-    pub async fn create(
-        args: CreateVmArgs,
-        node_name: Option<String>,
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &mut self,
+        template: Option<String>,
         user_data: Option<UserData>,
-    ) -> Result<VmTable, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-
-        // Create a vm from template.
-        if let Some(template_name) = args.template_name.clone() {
-            info!(
-                "[start] creating new vm from template {:#?} on node {:#?}",
-                template_name, node.name
-            );
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-            rest.open().await?;
-            rest.ping().await?;
-
-            let vm: Vm = rest
-                .put("/vm/create", Some((args, user_data)))
-                .await?
-                .to_value()
-                .await?;
-            conn.close();
-
-            info!(
-                "[end] created vm {:#?} from template {:#?} on node {:#?}",
-                vm.name, template_name, node.name
-            );
-            Ok(VmTable::from(&vm).await?)
-        } else {
-            Err(LibError::builder()
-                .msg("Couldn't create a Vm")
-                .help("A template name was not provided.")
-                .build()
-                .into())
-        }
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Result<VmTable, VirshleError>>, VirshleError> {
+        let mut res: HashMap<Peer, Result<VmTable, VirshleError>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vm: Result<VmTable, VirshleError> = Self::_one(
+            peer,
+            rest,
+            Some(CreateVmArgs {
+                user_data,
+                template_name: template,
+            }),
+        )
+        .await;
+        res.insert(peer.clone(), vm);
+        Ok(res)
     }
-    /// Create a virtual machine on a given node.
+    pub async fn _one(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<CreateVmArgs>,
+    ) -> Result<VmTable, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let vm: Result<VmTable, VirshleError> = rest
+            .post("/vm/create", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        vm
+    }
+    /// Create multiple virtual machines on a given node.
     ///
     /// # Arguments
     ///
@@ -437,349 +605,323 @@ impl VmMethods<'_> {
     ///     and how many vms to create.
     /// * `vm_config_plus`: additional vm configuration to store in db.
     ///
-    pub async fn create_many(
-        args: CreateManyVmArgs,
-        node_name: Option<String>,
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &mut self,
+        n: Option<u8>,
+        template: Option<String>,
         user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-
-        // Create a vm from template.
-        if let Some(template_name) = args.template_name.clone() {
-            info!(
-                "[start] creating new vm from template {:#?} on node {:#?}",
-                template_name, node.name
-            );
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-            rest.open().await?;
-            rest.ping().await?;
-
-            let res: HashMap<Status, Vec<Vm>> = rest
-                .put("/vm/create.many", Some((args, user_data)))
-                .await?
-                .to_value()
-                .await?;
-            conn.close();
-
-            log_response("create", &node.name, &res)?;
-            Ok(res)
-        } else {
-            Err(LibError::builder()
-                .msg("Couldn't create a Vm")
-                .help("A template name was not provided.")
-                .build()
-                .into())
-        }
-    }
-
-    pub async fn delete(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<VmTable, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-
-        info!("[start] deleting a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let vm: Vm = rest
-            .put("/vm/delete", Some(args.clone()))
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        info!("[end] deleted vm {:#?} on node {:#?}", vm.name, node.name);
-
-        Ok(VmTable::from(&vm).await?)
-    }
-    /// Bulk operation
-    /// Stop many virtual machine on a node.
-    pub async fn delete_many(
-        args: GetManyVmArgs,
-        node_name: Option<String>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] deleting many vms on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let res: HashMap<Status, Vec<Vm>> = rest
-            .put("/vm/delete.many", Some(args.clone()))
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        log_response("delete", &node.name, &res)?;
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
+        let mut res: HashMap<Peer, Vec<Result<VmTable, VirshleError>>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vms = Self::_many(
+            peer,
+            rest,
+            Some(CreateManyVmArgs {
+                ntimes: n,
+                user_data,
+                template_name: template,
+            }),
+        )
+        .await?;
+        res.insert(peer.clone(), vms);
         Ok(res)
     }
-    /// Start a virtual machine on a node.
-    pub async fn start(
-        args: GetVmArgs,
-        node_name: Option<String>,
-        user_data: Option<UserData>,
-    ) -> Result<VmTable, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] starting a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
+    pub async fn _many(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<CreateManyVmArgs>,
+    ) -> Result<Vec<Result<VmTable, VirshleError>>, VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-
-        let vm: Vm = rest
-            .put("/vm/start", Some((args, user_data)))
+        let vms: Vec<Result<VmTable, VirshleError>> = rest
+            .post("/vm/create.many", args.clone())
             .await?
             .to_value()
             .await?;
-        conn.close();
+        Ok(vms)
+    }
+}
 
-        info!("[end] started vm {:#?} on node {:#?}", vm.name, node.name);
+struct VmDeleteMethods<'a> {
+    api: &'a mut Methods,
+}
+impl VmMethods<'_> {
+    pub fn delete(&mut self) -> VmDeleteMethods {
+        VmDeleteMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmDeleteMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &mut self,
+        id: Option<u64>,
+        uuid: Option<Uuid>,
+        name: Option<String>,
 
-        Ok(VmTable::from(&vm).await?)
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Result<VmTable, VirshleError>>, VirshleError> {
+        let mut res: HashMap<Peer, Result<VmTable, VirshleError>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vm: Result<VmTable, VirshleError> = Self::_one(
+            peer,
+            rest,
+            Some(GetVmArgs {
+                //
+                id,
+                uuid,
+                name,
+            }),
+        )
+        .await;
+        res.insert(peer.clone(), vm);
+        Ok(res)
+    }
+    pub async fn _one(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<GetVmArgs>,
+    ) -> Result<VmTable, VirshleError> {
+        let vm: Result<VmTable, VirshleError> = rest
+            .post("/vm/delete", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        vm
+    }
+    /// Bulk operation
+    /// Delete many virtual machine on a node.
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &mut self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
+        let mut res: HashMap<Peer, Vec<Result<VmTable, VirshleError>>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vms = Self::_many(
+            peer,
+            rest,
+            Some(GetManyVmArgs {
+                vm_state: state,
+                account_uuid: account,
+            }),
+        )
+        .await?;
+        res.insert(peer.clone(), vms);
+        Ok(res)
+    }
+    pub async fn _many(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<GetManyVmArgs>,
+    ) -> Result<Vec<Result<VmTable, VirshleError>>, VirshleError> {
+        let vms: Vec<Result<VmTable, VirshleError>> = rest
+            .post("/vm/delete.many", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        Ok(vms)
+    }
+}
+
+struct VmStartMethods<'a> {
+    api: &'a mut Methods,
+}
+impl VmMethods<'_> {
+    pub fn start(&mut self) -> VmStartMethods {
+        VmStartMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmStartMethods<'_> {
+    /// Start a virtual machine on a node.
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &mut self,
+        id: Option<u64>,
+        uuid: Option<Uuid>,
+        name: Option<String>,
+        user_data: Option<UserData>,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Result<VmTable, VirshleError>>, VirshleError> {
+        let mut res: HashMap<Peer, Result<VmTable, VirshleError>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vm: Result<VmTable, VirshleError> = Self::_one(
+            peer,
+            rest,
+            Some(StartVmArgs {
+                id,
+                uuid,
+                name,
+                user_data,
+            }),
+        )
+        .await;
+        res.insert(peer.clone(), vm);
+        Ok(res)
+    }
+    pub async fn _one(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<StartVmArgs>,
+    ) -> Result<VmTable, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let vm: Result<VmTable, VirshleError> = rest
+            .post("/vm/start", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        vm
     }
     /// Bulk operation
     /// Start many virtual machine on a node.
-    pub async fn start_many(
-        args: GetManyVmArgs,
-        node_name: Option<String>,
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &mut self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
         user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] starting many vms on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let res: HashMap<Status, Vec<Vm>> = rest
-            .put("/vm/start.many", Some((args.clone(), user_data.clone())))
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        log_response("start", &node.name, &res)?;
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
+        let mut res: HashMap<Peer, Vec<Result<VmTable, VirshleError>>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vms = Self::_many(
+            peer,
+            rest,
+            Some(StartManyVmArgs {
+                vm_state: state,
+                account_uuid: account,
+                user_data,
+            }),
+        )
+        .await?;
+        res.insert(peer.clone(), vms);
+        // log_response("start", &node.name, &res)?;
         Ok(res)
     }
-
-    /// Bulk operation
-    /// Stop many virtual machine on a node.
-    pub async fn shutdown_many(
-        args: GetManyVmArgs,
-        node_name: Option<String>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] shutting down many vms on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
+    pub async fn _many(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<StartManyVmArgs>,
+    ) -> Result<Vec<Result<VmTable, VirshleError>>, VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-
-        let res: HashMap<Status, Vec<Vm>> = rest
-            .put("/vm/shutdown.many", Some(args.clone()))
+        let vms: Vec<Result<VmTable, VirshleError>> = rest
+            .post("/vm/start.many", args.clone())
             .await?
             .to_value()
             .await?;
-        conn.close();
-
-        log_response("shutdown", &node.name, &res)?;
-        Ok(res)
-    }
-    /// Stop a virtual machine on a node.
-    pub async fn shutdown(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<VmTable, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] shutting down a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let vm: Vm = rest
-            .put("/vm/shutdown", Some(args.clone()))
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        info!(
-            "[end] shutted down vm {:#?} on node {:#?}",
-            vm.name, node.name
-        );
-
-        Ok(VmTable::from(&vm).await?)
-    }
-    pub async fn get_definition(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<Vm, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching info for on a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let vm: Vm = rest
-            .post(
-                "/vm/definition",
-                Some(GetVmArgs {
-                    uuid: args.uuid,
-                    id: args.id,
-                    name: args.name.clone(),
-                }),
-            )
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        info!(
-            "[end] fetched info on vm {:#?} on node {:#?}",
-            vm.name, node.name
-        );
-        Ok(vm)
-    }
-
-    pub async fn get_info(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<VmTable, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching info for on a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let vm: VmTable = rest
-            .post(
-                "/vm/info",
-                Some(GetVmArgs {
-                    uuid: args.uuid,
-                    id: args.id,
-                    name: args.name.clone(),
-                }),
-            )
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        info!(
-            "[end] fetched info on vm {:#?} on node {:#?}",
-            vm.name, node.name
-        );
-
-        Ok(vm)
-    }
-
-    /// Bulk
-    /// Get a hashmap/dict of all vms per (reachable) node.
-    /// - node: the node name set in the virshle config file.
-    /// - node: an optional account uuid.
-    pub async fn get_info_many(
-        args: Option<GetManyVmArgs>,
-        node_name: Option<String>,
-    ) -> Result<HashMap<Node, Vec<VmTable>>, VirshleError> {
-        // Single or Multiple node search.
-        let config = VirshleConfig::get()?;
-        let nodes = if let Some(name) = node_name {
-            vec![Node::get_by_name(&name)?]
-        } else {
-            Node::get_all()?
-        };
-
-        let mut vms: HashMap<Node, Vec<VmTable>> = HashMap::new();
-
-        for node in nodes {
-            let mut conn = Connection::from(&node);
-            let mut rest = RestClient::from(&mut conn);
-            rest.base_url("/api/v1");
-            rest.ping_url("/api/v1/node/ping");
-
-            if rest.open().await.is_ok() && rest.ping().await.is_ok() {
-                let node_vms: Vec<VmTable> = rest
-                    .post("/vm/info.many", args.clone())
-                    .await?
-                    .to_value()
-                    .await?;
-                vms.insert(node, node_vms);
-            } else {
-                // Logging
-                let state = rest.connection.get_state().await?;
-                let message = format!("node {:#?} unreachable", node.name);
-                match state {
-                    ConnectionState::SshAuthError => {
-                        let message = format!("node {:#?} ssh authenticaton rejected", node.name);
-                        warn!("{}", &message)
-                    }
-                    ConnectionState::Unreachable => {
-                        let message = format!("node {:#?} is unreachable", node.name);
-                        warn!("{}", &message)
-                    }
-                    ConnectionState::Down => {
-                        let message = format!("node {:#?} host is down", node.name);
-                        warn!("{}", &message)
-                    }
-                    ConnectionState::DaemonDown => {
-                        let message = format!("node {:#?} daemon is down", node.name);
-                        warn!("{}", &message)
-                    }
-                    ConnectionState::SocketNotFound => {
-                        let message = format!("node {:#?} no socket found", node.name);
-                        warn!("{}", &message)
-                    }
-                    _ => {}
-                };
-            }
-        }
         Ok(vms)
     }
+}
+struct VmShutdownMethods<'a> {
+    api: &'a mut Methods,
+}
+impl VmMethods<'_> {
+    pub fn shutdown(&mut self) -> VmShutdownMethods {
+        VmShutdownMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmShutdownMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &mut self,
+        id: Option<u64>,
+        uuid: Option<Uuid>,
+        name: Option<String>,
 
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Result<VmTable, VirshleError>>, VirshleError> {
+        let mut res: HashMap<Peer, Result<VmTable, VirshleError>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vm: Result<VmTable, VirshleError> = Self::_one(
+            peer,
+            rest,
+            Some(GetVmArgs {
+                //
+                id,
+                uuid,
+                name,
+            }),
+        )
+        .await;
+        res.insert(peer.clone(), vm);
+        Ok(res)
+    }
+    pub async fn _one(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<GetVmArgs>,
+    ) -> Result<VmTable, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let vm: Result<VmTable, VirshleError> = rest
+            .post("/vm/shutdown", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        vm
+    }
+    /// Bulk operation
+    /// Delete many virtual machine on a node.
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &mut self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
+        let mut res: HashMap<Peer, Vec<Result<VmTable, VirshleError>>> = HashMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vms = Self::_many(
+            peer,
+            rest,
+            Some(GetManyVmArgs {
+                vm_state: state,
+                account_uuid: account,
+            }),
+        )
+        .await?;
+        res.insert(peer.clone(), vms);
+        Ok(res)
+    }
+    pub async fn _many(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<GetManyVmArgs>,
+    ) -> Result<Vec<Result<VmTable, VirshleError>>, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let vms: Vec<Result<VmTable, VirshleError>> = rest
+            .post("/vm/shutdown.many", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        Ok(vms)
+    }
+}
+
+impl VmMethods<'_> {
     pub async fn get_raw_ch_info(
         args: GetVmArgs,
         node_name: Option<String>,

@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use virshle_network::connection::ConnectionState;
 
-use crate::node::{Node, NodeInfo};
+use crate::node::{NodeInfo, Peer};
 
 // Random
 use rand::prelude::IndexedRandom;
@@ -12,6 +12,41 @@ use rand::prelude::IndexedRandom;
 use miette::Result;
 use tracing::warn;
 use virshle_error::{LibError, VirshleError};
+
+// /// If self node can create the requested template
+// pub async fn can_create_vm(vm_template: &VmTemplate) -> Result<(), VirshleError> {
+//     let info = HostInfo::get().await?;
+//     // Check saturation
+//     if info.disk.is_saturated().await?
+//         || info.ram.is_saturated().await?
+//         || info.cpu.is_saturated().await?
+//     {
+//         return Err(LibError::builder()
+//             .msg("Not allowed to create VM: node is saturated.")
+//             .help("Try deleting unused VMs or change saturation indexes in config.")
+//             .build()
+//             .into());
+//     // Check remaining disk space
+//     } else if let Some(disks) = &vm_template.disk {
+//         let disks_total_size: u64 = disks.into_iter().map(|e| e.get_size().unwrap_or(0)).sum();
+//         if disks_total_size < info.disk.available {
+//             return Ok(());
+//         } else {
+//             let help = format!(
+//                 "Not enough disk space for new vm from template {:#?}",
+//                 vm_template.name
+//             );
+//             warn!("{}", help);
+//             return Err(LibError::builder()
+//                 .msg("Couldn't create Vm")
+//                 .help(&help)
+//                 .build()
+//                 .into());
+//         }
+//     } else {
+//         Ok(())
+//     }
+// }
 
 // impl Node {
 //     // Get random non-saturated node.

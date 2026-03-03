@@ -1,5 +1,5 @@
 use super::info::{HostCpu, HostDisk, HostRam, NodeInfo};
-use super::Node;
+use crate::node::Peer;
 use crate::utils::display;
 
 use virshle_network::{connection::ConnectionState, Uri};
@@ -42,7 +42,7 @@ pub struct CpuTable {
 }
 impl HostCpu {
     pub async fn display_many(
-        items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
+        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let header = "cpu".blue();
         println!("{}", header);
@@ -57,7 +57,7 @@ impl HostCpu {
         Ok(())
     }
     pub async fn display(
-        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+        item: &(Peer, (ConnectionState, Option<NodeInfo>)),
     ) -> Result<(), VirshleError> {
         let section = "cpu".blue();
         let node = item.0.header()?;
@@ -72,7 +72,7 @@ impl HostCpu {
 }
 
 impl CpuTable {
-    async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
+    async fn from(e: &(Peer, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
         if let Some(node_info) = node_info {
@@ -163,7 +163,7 @@ pub struct RamTable {
 }
 impl HostRam {
     pub async fn display_many(
-        items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
+        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let header = "ram".blue();
         println!("{}", header);
@@ -178,7 +178,7 @@ impl HostRam {
         Ok(())
     }
     pub async fn display(
-        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+        item: &(Peer, (ConnectionState, Option<NodeInfo>)),
     ) -> Result<(), VirshleError> {
         let section = "ram".blue();
         let node = item.0.header()?;
@@ -250,7 +250,7 @@ impl HostRam {
     }
 }
 impl RamTable {
-    async fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
+    async fn from(e: &(Peer, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
         if let Some(node_info) = node_info {
@@ -377,7 +377,7 @@ pub struct HostDiskTable {
 }
 impl HostDisk {
     pub async fn display_many(
-        items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
+        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let header = "disk".blue();
         println!("{}", header);
@@ -392,7 +392,7 @@ impl HostDisk {
         Ok(())
     }
     pub async fn display(
-        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+        item: &(Peer, (ConnectionState, Option<NodeInfo>)),
     ) -> Result<(), VirshleError> {
         let section = "disk".blue();
         let node = item.0.header()?;
@@ -407,7 +407,7 @@ impl HostDisk {
 }
 impl HostDiskTable {
     fn from(
-        e: &(Node, (ConnectionState, Option<NodeInfo>)),
+        e: &(Peer, (ConnectionState, Option<NodeInfo>)),
     ) -> Result<HostDiskTable, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
@@ -531,9 +531,9 @@ pub struct NodeTable {
     #[tabled(display = "display::display_some_bytes")]
     pub disk: Option<u64>,
 }
-impl Node {
+impl Peer {
     pub async fn display_many(
-        items: HashMap<Node, (ConnectionState, Option<NodeInfo>)>,
+        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
         for item in items {
@@ -545,7 +545,7 @@ impl Node {
         Ok(())
     }
     pub async fn display(
-        item: &(Node, (ConnectionState, Option<NodeInfo>)),
+        item: &(Peer, (ConnectionState, Option<NodeInfo>)),
     ) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
         let e = NodeTable::from(&item)?;
@@ -573,7 +573,7 @@ impl Node {
 }
 
 impl NodeTable {
-    fn from(e: &(Node, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
+    fn from(e: &(Peer, (ConnectionState, Option<NodeInfo>))) -> Result<Self, VirshleError> {
         let (node, (state, node_info)) = e;
         let table;
         if let Some(node_info) = node_info {
