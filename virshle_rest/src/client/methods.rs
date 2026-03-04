@@ -477,6 +477,136 @@ impl TemplateMethods<'_> {
     }
 }
 
+impl VmMethods<'_> {
+    pub async fn get_raw_ch_info(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<String, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        rest.base_url("/api/v1/ch");
+        let res: String = rest
+            .post(
+                "/vm.info.raw",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_string()
+            .await?;
+
+        conn.close();
+        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
+
+        Ok(res)
+    }
+
+    pub async fn get_ch_info(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<VmInfoResponse, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        rest.base_url("/api/v1/ch");
+        let res: VmInfoResponse = rest
+            .post(
+                "/vm.info",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+        conn.close();
+
+        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
+        Ok(res)
+    }
+    pub async fn get_vsock_path(
+        args: GetVmArgs,
+        node_name: Option<String>,
+    ) -> Result<String, VirshleError> {
+        // Set node to be queried
+        let node = Node::unwrap_or_default(node_name).await?;
+        info!("[start] fetching info for on a vm on node {:#?}", node.name);
+
+        let mut conn = Connection::from(&node);
+        let mut rest = RestClient::from(&mut conn);
+        rest.base_url("/api/v1");
+        rest.ping_url("/api/v1/node/ping");
+        rest.open().await?;
+        rest.ping().await?;
+
+        let path: String = rest
+            .post(
+                "/vm/get_vsock_path",
+                Some(GetVmArgs {
+                    uuid: args.uuid,
+                    id: args.id,
+                    name: args.name.clone(),
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+        conn.close();
+
+        info!("[end] fetched info on a vm on node {:#?}", node.name);
+        Ok(path)
+    }
+
+    /// Log response
+    pub fn log_response(
+        tag: &str,
+        node: &str,
+        response: &HashMap<Status, Vec<Vm>>,
+    ) -> Result<(), VirshleError> {
+        let tag = format!("[{tag}]");
+        for (k, v) in response.iter() {
+            match k {
+                Status::Failed => {
+                    let tag = tag.red();
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("{tag} failed for vms [{}] on node {node}", vms_name);
+                }
+                Status::Succeeded => {
+                    let tag = tag.green();
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("{tag} succedded for vms [{}] on node {node}", vms_name);
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+}
+
 struct VmGetterMethods<'a> {
     api: &'a mut Methods,
 }
@@ -918,135 +1048,5 @@ impl VmShutdownMethods<'_> {
             .to_value()
             .await?;
         Ok(vms)
-    }
-}
-
-impl VmMethods<'_> {
-    pub async fn get_raw_ch_info(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<String, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        rest.base_url("/api/v1/ch");
-        let res: String = rest
-            .post(
-                "/vm.info.raw",
-                Some(GetVmArgs {
-                    uuid: args.uuid,
-                    id: args.id,
-                    name: args.name.clone(),
-                }),
-            )
-            .await?
-            .to_string()
-            .await?;
-
-        conn.close();
-        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
-
-        Ok(res)
-    }
-
-    pub async fn get_ch_info(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<VmInfoResponse, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        rest.base_url("/api/v1/ch");
-        let res: VmInfoResponse = rest
-            .post(
-                "/vm.info",
-                Some(GetVmArgs {
-                    uuid: args.uuid,
-                    id: args.id,
-                    name: args.name.clone(),
-                }),
-            )
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
-        Ok(res)
-    }
-    pub async fn get_vsock_path(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<String, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching info for on a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        let path: String = rest
-            .post(
-                "/vm/get_vsock_path",
-                Some(GetVmArgs {
-                    uuid: args.uuid,
-                    id: args.id,
-                    name: args.name.clone(),
-                }),
-            )
-            .await?
-            .to_value()
-            .await?;
-        conn.close();
-
-        info!("[end] fetched info on a vm on node {:#?}", node.name);
-        Ok(path)
-    }
-
-    /// Log response
-    pub fn log_response(
-        tag: &str,
-        node: &str,
-        response: &HashMap<Status, Vec<Vm>>,
-    ) -> Result<(), VirshleError> {
-        let tag = format!("[{tag}]");
-        for (k, v) in response.iter() {
-            match k {
-                Status::Failed => {
-                    let tag = tag.red();
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!("{tag} failed for vms [{}] on node {node}", vms_name);
-                }
-                Status::Succeeded => {
-                    let tag = tag.green();
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!("{tag} succedded for vms [{}] on node {node}", vms_name);
-                }
-                _ => {}
-            }
-        }
-        Ok(())
     }
 }
