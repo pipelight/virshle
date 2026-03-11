@@ -1,8 +1,10 @@
 use crate::Vm;
 use sysinfo::{Disks, System};
 
+use crate::config::VmTemplate;
 use crate::config::MANAGED_DIR;
 use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
+
 use crate::hypervisor::disk::utils;
 
 use std::path::Path;
@@ -12,6 +14,7 @@ use virshle_network::connection::ConnectionState;
 
 // Error handling
 use miette::{IntoDiagnostic, Result};
+use tracing::warn;
 use virshle_error::{LibError, VirshleError, WrapError};
 
 #[derive(Default, Debug, Clone, Deserialize, Serialize)]
@@ -43,6 +46,38 @@ impl NodeInfo {
             / (weight_disk + weight_ram + weight_cpu);
 
         Ok(index)
+    }
+    pub async fn can_create_vm(&self, vm_template: &VmTemplate) -> Result<(), VirshleError> {
+        // Check saturation
+        if self.host_info.disk.is_saturated().await?
+            || self.host_info.ram.is_saturated().await?
+            || self.host_info.cpu.is_saturated().await?
+        {
+            return Err(LibError::builder()
+                .msg("Not allowed to create VM: node is saturated.")
+                .help("Try deleting unused VMs or change saturation indexes in config.")
+                .build()
+                .into());
+        // Check remaining disk space
+        } else if let Some(disks) = &vm_template.disk {
+            let disks_total_size: u64 = disks.into_iter().map(|e| e.get_size().unwrap_or(0)).sum();
+            if disks_total_size < self.host_info.disk.available {
+                return Ok(());
+            } else {
+                let help = format!(
+                    "Not enough disk space for new vm from template {:#?}",
+                    vm_template.name
+                );
+                warn!("{}", help);
+                return Err(LibError::builder()
+                    .msg("Couldn't create Vm")
+                    .help(&help)
+                    .build()
+                    .into());
+            }
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -77,6 +112,7 @@ impl HostInfo {
             disk: HostDisk::get().await?,
         })
     }
+    // If self node can create the requested template
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialOrd, PartialEq)]

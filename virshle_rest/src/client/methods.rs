@@ -9,7 +9,7 @@ use crate::commons::{
 
 use virshle_core::{
     config::{Config, Node, UserData, VmTemplate},
-    hypervisor::{Vm, VmInfo, VmState, VmTable},
+    hypervisor::{Vm, VmInfo, VmInfoResponse, VmState, VmTable},
     node::{HostInfo, NodeInfo, Peer},
 };
 
@@ -98,14 +98,9 @@ struct VmMethods<'a> {
 #[bon]
 impl NodeMethods<'_> {
     #[builder(finish_fn = exec)]
-    async fn get_info(
-        &mut self,
-    ) -> Result<HashMap<Peer, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
+    async fn get_info(&mut self) -> Result<(ConnectionState, Option<NodeInfo>), VirshleError> {
         let (ref peer, ref mut rest) = self.api.node;
-        let mut res: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
-        let info = Self::_get_info(peer, rest).await?;
-        res.insert(peer.clone(), info);
-        Ok(res)
+        Self::_get_info(peer, rest).await
     }
     async fn _get_info(
         node: &Peer,
@@ -133,12 +128,10 @@ impl NodeMethods<'_> {
         Ok((state, info))
     }
     #[builder(finish_fn = exec)]
-    async fn ping(&mut self, alias: Option<String>) -> Result<HashMap<Peer, bool>, VirshleError> {
+    async fn ping(&mut self, alias: Option<String>) -> Result<bool, VirshleError> {
         let mut res: HashMap<Peer, bool> = HashMap::new();
         let (ref peer, ref mut rest) = self.api.node;
-        let bool = Self::_ping(peer, rest).await?;
-        res.insert(peer.clone(), bool);
-        Ok(res)
+        Self::_ping(peer, rest).await
     }
     async fn _ping(peer: &Peer, rest: &mut RestClient) -> Result<bool, VirshleError> {
         let res = match rest.ping().await {
@@ -316,7 +309,7 @@ impl PeerGetterMethods<'_> {
     /// Get random non-saturated node with weight.
     pub async fn load_balance(&mut self) -> Result<Peer, VirshleError> {
         let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
-            self.api.node().get_info().exec().await?;
+            self.api.peer().get_info().exec().await?;
 
         let mut ref_vec: Vec<&Peer> = vec![];
         for (peer, (state, info)) in &peers {
@@ -347,7 +340,7 @@ impl PeerGetterMethods<'_> {
     /// Get random non-saturated node by round-robin.
     pub async fn lowest_saturation_index(&mut self) -> Result<Peer, VirshleError> {
         let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
-            self.api.node().get_info().exec().await?;
+            self.api.peer().get_info().exec().await?;
 
         let mut ref_vec: Vec<(f64, &Peer)> = vec![];
         for (peer, (state, info)) in &peers {
@@ -477,54 +470,27 @@ impl TemplateMethods<'_> {
     }
 }
 
-impl VmMethods<'_> {
-    pub async fn get_raw_ch_info(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<String, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
-        rest.open().await?;
-        rest.ping().await?;
-
-        rest.base_url("/api/v1/ch");
-        let res: String = rest
-            .post(
-                "/vm.info.raw",
-                Some(GetVmArgs {
-                    uuid: args.uuid,
-                    id: args.id,
-                    name: args.name.clone(),
-                }),
-            )
-            .await?
-            .to_string()
-            .await?;
-
-        conn.close();
-        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
-
-        Ok(res)
+struct VmVmmMethods<'a> {
+    api: &'a mut Methods,
+}
+impl VmVmmMethods<'_> {
+    pub fn get(&mut self) -> VmVmmMethods {
+        VmVmmMethods { api: self.api }
     }
+}
 
-    pub async fn get_ch_info(
+#[bon]
+impl VmVmmMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn get_info(
+        &mut self,
         args: GetVmArgs,
-        node_name: Option<String>,
+        json: Option<bool>,
+        alias: Option<String>,
     ) -> Result<VmInfoResponse, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching CH info for a vm on node {:#?}", node.name);
-
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
         rest.open().await?;
         rest.ping().await?;
 
@@ -533,31 +499,30 @@ impl VmMethods<'_> {
             .post(
                 "/vm.info",
                 Some(GetVmArgs {
-                    uuid: args.uuid,
                     id: args.id,
                     name: args.name.clone(),
+                    uuid: args.uuid,
                 }),
             )
             .await?
             .to_value()
             .await?;
-        conn.close();
 
-        info!("[end] fetched CH info for a vm on node {:#?}", node.name);
         Ok(res)
     }
-    pub async fn get_vsock_path(
-        args: GetVmArgs,
-        node_name: Option<String>,
-    ) -> Result<String, VirshleError> {
-        // Set node to be queried
-        let node = Node::unwrap_or_default(node_name).await?;
-        info!("[start] fetching info for on a vm on node {:#?}", node.name);
+}
 
-        let mut conn = Connection::from(&node);
-        let mut rest = RestClient::from(&mut conn);
-        rest.base_url("/api/v1");
-        rest.ping_url("/api/v1/node/ping");
+#[bon]
+impl VmMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn get_vsock_path(
+        &mut self,
+        args: GetVmArgs,
+        alias: Option<String>,
+    ) -> Result<String, VirshleError> {
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
         rest.open().await?;
         rest.ping().await?;
 
@@ -573,37 +538,9 @@ impl VmMethods<'_> {
             .await?
             .to_value()
             .await?;
-        conn.close();
 
-        info!("[end] fetched info on a vm on node {:#?}", node.name);
+        // info!("[end] fetched info on a vm on node {:#?}", peer.name);
         Ok(path)
-    }
-
-    /// Log response
-    pub fn log_response(
-        tag: &str,
-        node: &str,
-        response: &HashMap<Status, Vec<Vm>>,
-    ) -> Result<(), VirshleError> {
-        let tag = format!("[{tag}]");
-        for (k, v) in response.iter() {
-            match k {
-                Status::Failed => {
-                    let tag = tag.red();
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!("{tag} failed for vms [{}] on node {node}", vms_name);
-                }
-                Status::Succeeded => {
-                    let tag = tag.green();
-                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                    let vms_name = vms_name.join(" ");
-                    info!("{tag} succedded for vms [{}] on node {node}", vms_name);
-                }
-                _ => {}
-            }
-        }
-        Ok(())
     }
 }
 

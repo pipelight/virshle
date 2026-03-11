@@ -1,28 +1,26 @@
 use axum::response::IntoResponse;
+use axum::routing::get;
 use http_body_util::BodyExt;
 use std::vec::Vec;
+use virshle_core::node::HostInfo;
 
+use pipelight_exec::{Finder, Status};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-// Node
 use crate::server::Server;
-use virshle_core::node::{NodeInfo, Peer};
-
-pub use pipelight_exec::{Finder, Status};
 
 use crate::commons::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
-use crate::commons::{
-    NodeDefaultMethods, RestDefaultMethods, TemplateDefaultMethods, VmDefaultMethods,
-};
+use crate::commons::{NodeDefaultMethods, TemplateDefaultMethods, VmDefaultMethods};
 
 // Hypervisor
 use virshle_core::{
-    config::{Config, UserData, VmTemplate, VmTemplateTable},
+    config::{Config, Node, UserData, VmTemplate, VmTemplateTable},
     hypervisor::{
-        vm::{Vm, VmInfo, VmTable},
+        vm::{Vm, VmTable},
         vmm::types::{VmInfoResponse, VmState},
     },
+    node::{NodeInfo, Peer},
 };
 
 // Connections and Http
@@ -36,8 +34,7 @@ use virshle_error::{LibError, VirshleError};
 
 impl Server {
     pub fn methods() -> Result<Methods, VirshleError> {
-        if let Some(node) = Config::get()?.node {
-            let node: Node = node.into();
+        if let Some(node) = Config::get()?.node().ok() {
             return Ok(Methods { node });
         } else {
             let err = LibError::builder()
@@ -52,7 +49,7 @@ impl Methods {
     pub fn node(&self) -> NodeMethods {
         NodeMethods
     }
-    pub fn peers(&self) -> PeerMethods {
+    pub fn peer(&self) -> PeerMethods {
         PeerMethods
     }
     pub fn template(&self) -> TemplateMethods {
@@ -77,13 +74,24 @@ struct TemplateMethods;
 #[derive(Default, Clone)]
 struct VmMethods;
 
-impl NodeDefaultMethods for NodeMethods {
-    async fn ping(&self) -> Result<(), VirshleError> {
+impl NodeMethods {
+    pub async fn ping(&self) -> Result<(), VirshleError> {
         Ok(())
     }
-    async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
+    pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
         let res = NodeInfo::get().await?;
-        let mut list = HashMap::new();
+        // let mut list = HashMap::new();
+        // list.insert(self.node, v);
+        Ok(res)
+    }
+}
+impl PeerMethods {
+    pub async fn ping(&self) -> Result<(), VirshleError> {
+        Ok(())
+    }
+    pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
+        let res = NodeInfo::get().await?;
+        // let mut list = HashMap::new();
         // list.insert(self.node, v);
         Ok(res)
     }
@@ -93,13 +101,15 @@ impl TemplateDefaultMethods for TemplateMethods {
     async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError> {
         if let Some(name) = &args.template_name {
             let vm_template = VmTemplate::get_by_name(name)?;
-            let can = Node::can_create_vm(&vm_template).await.is_ok();
+            let node = NodeInfo::get().await?;
+            let can = node.can_create_vm(&vm_template).await.is_ok();
+
             Ok(can)
         } else {
             Ok(false)
         }
     }
-    async fn get_many(&self) -> Result<HashMap<Peer, Vec<VmTemplate>>, VirshleError> {
+    async fn get_many(&self) -> Result<Vec<VmTemplate>, VirshleError> {
         let config = Config::get()?;
         if let Some(template) = config.template {
             if let Some(vm_templates) = template.vm {

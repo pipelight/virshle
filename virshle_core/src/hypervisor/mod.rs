@@ -13,4 +13,4 @@ pub mod vmm;
 
 pub use vm::{InitData, UserData};
 pub use vm::{Vm, VmConfigPlus, VmData, VmInfo, VmTable};
-pub use vmm::VmState;
+pub use vmm::{VmInfoResponse, VmState};

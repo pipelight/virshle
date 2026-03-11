@@ -28,7 +28,7 @@ pub trait RestDefaultMethods {
 
 pub trait NodeDefaultMethods {
     async fn ping(&self) -> Result<(), VirshleError>;
-    async fn get_info(&self, alias: Option<String>) -> Result<NodeInfo, VirshleError>;
+    // async fn get_info(&self, alias: Option<String>) -> Result<NodeInfo, VirshleError>;
     // async fn get_info_many(&self) -> Result<HashMap<Node, NodeInfo>, VirshleError>;
 }
 pub trait NodeManyDefaultMethods {
@@ -118,32 +118,62 @@ pub trait VmDefaultMethods {
     async fn get_info_many(&self, args: GetManyVmArgs) -> Result<Vec<VmTable>, VirshleError>;
 }
 
-pub async fn alerte_connection_state(rest: &RestClient) -> Result<(), VirshleError> {
+pub async fn alerte_connection_state(
+    peer: &Peer,
+    rest: &mut RestClient,
+) -> Result<(), VirshleError> {
     // Logging
     let state = rest.connection.get_state().await?;
-    let message = format!("node {:#?} unreachable", node.name);
+    let alias = peer.alias()?;
     match state {
         ConnectionState::SshAuthError => {
-            let message = format!("node {:#?} ssh authenticaton rejected", node.name);
+            let message = format!("peer {:#?} ssh authenticaton rejected", alias);
             warn!("{}", &message)
         }
         ConnectionState::Unreachable => {
-            let message = format!("node {:#?} is unreachable", node.name);
+            let message = format!("peer {:#?} is unreachable", alias);
             warn!("{}", &message)
         }
         ConnectionState::Down => {
-            let message = format!("node {:#?} host is down", node.name);
+            let message = format!("peer {:#?} host is down", alias);
             warn!("{}", &message)
         }
         ConnectionState::DaemonDown => {
-            let message = format!("node {:#?} daemon is down", node.name);
+            let message = format!("peer {:#?} daemon is down", alias);
             warn!("{}", &message)
         }
         ConnectionState::SocketNotFound => {
-            let message = format!("node {:#?} no socket found", node.name);
+            let message = format!("peer {:#?} no socket found", alias);
             warn!("{}", &message)
         }
         _ => {}
     };
     Ok(())
 }
+
+// /// Log response
+// pub fn log_response(
+//     tag: &str,
+//     node: &str,
+//     response: &HashMap<Peer, Result<Vec<Vm>, VirshleError>>,
+// ) -> Result<(), VirshleError> {
+//     let tag = format!("[{tag}]");
+//     for (peer, res) in response.iter() {
+//         match v {
+//             Ok(x) => {
+//                 let tag = tag.red();
+//                 let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+//                 let vms_name = vms_name.join(" ");
+//                 info!("{tag} failed for vms [{}] on node {node}", vms_name);
+//             }
+//             Status::Succeeded => {
+//                 let tag = tag.green();
+//                 let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+//                 let vms_name = vms_name.join(" ");
+//                 info!("{tag} succedded for vms [{}] on node {node}", vms_name);
+//             }
+//             _ => {}
+//         }
+//     }
+//     Ok(())
+// }

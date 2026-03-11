@@ -21,7 +21,7 @@ use virshle_core::{
         vm::{Vm, VmInfo},
         vmm::types::{VmInfoResponse, VmState},
     },
-    node::NodeInfo,
+    node::{HostInfo, NodeInfo, Peer},
 };
 // Error handling
 use miette::Result;
@@ -37,14 +37,14 @@ impl Server {
             .route(
                 "/node/ping",
                 get(async || {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<()>, VirshleError>::Ok(Json(methods.clone().node().ping().await?))
                 }),
             )
             .route(
                 "/node/info",
                 get(async || {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<NodeInfo>, VirshleError>::Ok(Json(
                         methods.node().get_info().await?,
                     ))
@@ -54,8 +54,8 @@ impl Server {
             .route(
                 "/template/all",
                 get(async || {
-                    let methods = Server::methods();
-                    Result::<Json<HashMap<Node, Vec<VmTemplate>>>, VirshleError>::Ok(Json(
+                    let methods = Server::methods()?;
+                    Result::<Json<HashMap<Peer, Vec<VmTemplate>>>, VirshleError>::Ok(Json(
                         methods.template().get_many().await?,
                     ))
                 }),
