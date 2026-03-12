@@ -1,6 +1,6 @@
 use crate::config::DiskTemplate;
 use crate::hypervisor::{Disk, DiskInfo, Vm, VmConfigPlus};
-use crate::node::Peer;
+use crate::peer::Peer;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};

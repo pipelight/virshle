@@ -54,7 +54,7 @@ impl TryInto<Connection> for &mut Vm {
 impl TryInto<Connection> for &Vm {
     type Error = VirshleError;
     fn try_into(self) -> Result<Connection, Self::Error> {
-        let uri = self.vmm().get_socket().unwrap();
+        let uri = self.vmm().get_socket_uri().unwrap();
         let conn = match Uri::new(&uri).unwrap() {
             Uri::SshUri(v) => Connection::SshConnection(SshConnection {
                 uri: v,

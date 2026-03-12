@@ -1,5 +1,5 @@
 use super::info::{HostCpu, HostDisk, HostRam, NodeInfo};
-use crate::node::Peer;
+use crate::peer::Peer;
 use crate::utils::display;
 
 use virshle_network::{connection::ConnectionState, Uri};

@@ -4,8 +4,7 @@ mod info;
 
 use crate::config::{Config, VmTemplate};
 pub use info::{HostCpu, HostDisk, HostInfo, HostRam, NodeInfo};
-
-use std::string::ToString;
+use std::str::FromStr;
 
 // Connection
 use virshle_network::connection::{
@@ -36,8 +35,17 @@ impl Peer {
         };
         Ok(res)
     }
+    /// Convert peer public key into relatively human readable string.
+    /// See radicle/heartwood crates for indepth functionning.
     pub fn did(&self) -> Result<String, VirshleError> {
-        Ok("did".to_string())
+        let mut did: String = "".to_owned();
+        if let Some(pem) = &self.public_key {
+            let public_key = russh::keys::PublicKey::from_str(pem).unwrap();
+            let bytes: &[u8; 32] = public_key.key_data().ed25519().unwrap().as_ref();
+            let rad_key = radicle_crypto::PublicKey::from(*bytes);
+            did = rad_key.to_human();
+        }
+        Ok(did)
     }
 }
 

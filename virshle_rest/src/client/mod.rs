@@ -1,5 +1,6 @@
+mod display;
 mod methods;
-mod test;
+mod tests;
 
 #[derive(Default, Clone)]
 pub struct Client;

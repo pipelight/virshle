@@ -1,9 +1,7 @@
 // Virshle daemon http Rest API
-
 mod client;
 mod commons;
 mod server;
-pub use commons::{NodeDefaultMethods, RestDefaultMethods};
 
 use virshle_core::config::MANAGED_DIR;
 
@@ -13,6 +11,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use tokio::net::UnixListener;
 
+pub use client::Client;
 pub use server::Server;
 
 // Error handling
@@ -20,9 +19,7 @@ use miette::Result;
 use virshle_error::VirshleError;
 
 impl Server {
-    /*
-     * Return the virshle daemon default socket path.
-     */
+    /// Return the virshle daemon default socket path.
     pub fn get_socket() -> Result<String, VirshleError> {
         let path = format!("{MANAGED_DIR}/virshle.sock");
         Ok(path)

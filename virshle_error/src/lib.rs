@@ -123,6 +123,11 @@ pub enum VirshleError {
     #[diagnostic(code(future::error))]
     #[serde(skip)]
     JoinError(#[from] tokio::task::JoinError),
+
+    #[error(transparent)]
+    #[diagnostic(code(future::error))]
+    #[serde(skip)]
+    GlobalTracerError(#[from] tracing::subscriber::SetGlobalDefaultError),
 }
 
 /// A config error with help higher origin

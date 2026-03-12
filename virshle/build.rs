@@ -1,4 +1,5 @@
 // Clap completion script generation
+use clap::CommandFactory;
 use clap_complete::{generate_to, Shell};
 
 // Filesystem manipulation

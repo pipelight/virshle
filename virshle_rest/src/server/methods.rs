@@ -1,17 +1,15 @@
-use axum::response::IntoResponse;
-use axum::routing::get;
 use http_body_util::BodyExt;
 use std::vec::Vec;
-use virshle_core::node::HostInfo;
 
 use pipelight_exec::{Finder, Status};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use crate::commons::vm_bulk_results_to_hashmap;
+use crate::commons::{
+    CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
+};
 use crate::server::Server;
-
-use crate::commons::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
-use crate::commons::{NodeDefaultMethods, TemplateDefaultMethods, VmDefaultMethods};
 
 // Hypervisor
 use virshle_core::{
@@ -20,10 +18,11 @@ use virshle_core::{
         vm::{Vm, VmTable},
         vmm::types::{VmInfoResponse, VmState},
     },
-    node::{NodeInfo, Peer},
+    peer::{HostInfo, NodeInfo, Peer},
 };
 
 // Connections and Http
+use bon::bon;
 use virshle_network::http::Rest;
 
 // Error handling
@@ -56,29 +55,31 @@ impl Methods {
         TemplateMethods
     }
     pub fn vm(&self) -> VmMethods {
-        VmMethods
+        VmMethods { api: self }
     }
 }
 #[derive(Default, Clone)]
-struct Methods {
+pub struct Methods {
     /// This node alias.
     node: Node,
 }
 
 #[derive(Default, Clone)]
-struct NodeMethods;
+pub struct NodeMethods;
 #[derive(Default, Clone)]
-struct PeerMethods;
+pub struct PeerMethods;
 #[derive(Default, Clone)]
-struct TemplateMethods;
-#[derive(Default, Clone)]
-struct VmMethods;
+pub struct TemplateMethods;
+#[derive(Clone)]
+pub struct VmMethods<'a> {
+    api: &'a Methods,
+}
 
 impl NodeMethods {
     pub async fn ping(&self) -> Result<(), VirshleError> {
         Ok(())
     }
-    pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
+    pub async fn info(&self) -> Result<NodeInfo, VirshleError> {
         let res = NodeInfo::get().await?;
         // let mut list = HashMap::new();
         // list.insert(self.node, v);
@@ -89,7 +90,7 @@ impl PeerMethods {
     pub async fn ping(&self) -> Result<(), VirshleError> {
         Ok(())
     }
-    pub async fn get_info(&self) -> Result<NodeInfo, VirshleError> {
+    pub async fn info(&self) -> Result<NodeInfo, VirshleError> {
         let res = NodeInfo::get().await?;
         // let mut list = HashMap::new();
         // list.insert(self.node, v);
@@ -97,8 +98,8 @@ impl PeerMethods {
     }
 }
 
-impl TemplateDefaultMethods for TemplateMethods {
-    async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError> {
+impl TemplateMethods {
+    pub async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError> {
         if let Some(name) = &args.template_name {
             let vm_template = VmTemplate::get_by_name(name)?;
             let node = NodeInfo::get().await?;
@@ -109,13 +110,11 @@ impl TemplateDefaultMethods for TemplateMethods {
             Ok(false)
         }
     }
-    async fn get_many(&self) -> Result<Vec<VmTemplate>, VirshleError> {
+    pub async fn get_many(&self) -> Result<Vec<VmTemplate>, VirshleError> {
         let config = Config::get()?;
         if let Some(template) = config.template {
             if let Some(vm_templates) = template.vm {
-                let mut list = HashMap::new();
-                list.insert(config.node(), vm_templates);
-                return Ok(list);
+                return Ok(vm_templates);
             }
         }
         Err(LibError::builder()
@@ -124,7 +123,7 @@ impl TemplateDefaultMethods for TemplateMethods {
             .build()
             .into())
     }
-    async fn get_info_many(&self) -> Result<HashMap<Peer, Vec<VmTemplateTable>>, VirshleError> {
+    pub async fn get_info_many(&self) -> Result<Vec<VmTemplateTable>, VirshleError> {
         let vm_templates = VmTemplate::get_all()?;
         let mut info = vec![];
         for e in vm_templates {
@@ -135,12 +134,211 @@ impl TemplateDefaultMethods for TemplateMethods {
     }
 }
 
-impl VmDefaultMethods for VmMethods {
-    async fn start(
+pub struct VmGetterMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn get(&self) -> VmGetterMethods {
+        VmGetterMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmGetterMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
         &self,
-        args: GetVmArgs,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+    ) -> Result<VmTable, VirshleError> {
+        let vm = Self::_one(GetVmArgs { id, name, uuid }).await?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
+    }
+    async fn _one(args: GetVmArgs) -> Result<Vm, VirshleError> {
+        let vm = Vm::database()
+            .await?
+            .one()
+            .maybe_id(args.id)
+            .maybe_name(args.name)
+            .maybe_uuid(args.uuid)
+            .get()
+            .await?;
+        Ok(vm)
+    }
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
+    ) -> Result<Vec<VmTable>, VirshleError> {
+        let vms = Self::_many(GetManyVmArgs {
+            vm_state: state,
+            account_uuid: account,
+        })
+        .await?;
+        let res: Vec<VmTable> = VmTable::from_vec(&vms).await?;
+        Ok(res)
+    }
+    async fn _many(args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let vms = Vm::database()
+            .await?
+            .many()
+            .maybe_account_uuid(args.account_uuid)
+            .maybe_vm_state(args.vm_state)
+            .get()
+            .await?;
+        Ok(vms)
+    }
+}
+
+pub struct VmCreateMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn create(&self) -> VmCreateMethods<'_> {
+        VmCreateMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmCreateMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &self,
+        template: Option<String>,
         user_data: Option<UserData>,
-    ) -> Result<Vm, VirshleError> {
+    ) -> Result<VmTable, VirshleError> {
+        let vm = Self::_one(CreateVmArgs {
+            template_name: template,
+            user_data,
+        })
+        .await?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
+    }
+    async fn _one(args: CreateVmArgs) -> Result<Vm, VirshleError> {
+        let config = Config::get()?;
+
+        match args.template_name {
+            Some(name) => {
+                let template = config.get_template_by_name(&name)?;
+                let mut vm: Vm = template.try_into()?;
+
+                // Safeguard before creating.
+                // Peer::can_create_vm(&template).await?;
+                match args.user_data {
+                    Some(_) => {
+                        let vm = vm.create(args.user_data).await?;
+                        Ok(vm)
+                    }
+                    None => Err(LibError::builder()
+                        .msg("Couldn't create Vm.")
+                        .help("No valid template provided")
+                        .build()
+                        .into()),
+                }
+            }
+            None => Err(LibError::builder()
+                .msg("Couldn't create Vm.")
+                .help("No user_data provided")
+                .build()
+                .into()),
+        }
+    }
+    // Return a VmTable (Vm informations at a specific timestamp).
+    // It is not possible to return a Result through Json, so we return a tuple
+    // of Vm info and the operation State
+    //
+    // TODO: Return Status + Reason
+    // Add some reason to the operation state.
+    //
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &self,
+        n: Option<u8>,
+        template: Option<String>,
+        user_data: Option<UserData>,
+    ) -> Result<Vec<VmTable>, VirshleError> {
+        let vms = Self::_many(CreateManyVmArgs {
+            template_name: template,
+            user_data,
+            ntimes: n,
+        })
+        .await?;
+        let mut res: Vec<VmTable> = vec![];
+        for vm in vms {
+            let vm = VmTable::from(&vm).await?;
+            res.push(vm);
+        }
+        Ok(res)
+    }
+    async fn _many(args: CreateManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
+        let config = Config::get()?;
+        if args.template_name.is_some() && args.ntimes.is_some() {
+            let template = config.get_template_by_name(&args.template_name.unwrap())?;
+
+            let mut tasks = vec![];
+            for i in 0..args.ntimes.unwrap() {
+                // Peer::can_create_vm(&template).await?;
+                let vm: Vm = template.clone().try_into()?;
+                tasks.push(tokio::spawn({
+                    let user_data = args.user_data.clone();
+                    async move {
+                        let mut vm = vm.clone();
+                        vm.create(user_data).await
+                    }
+                }));
+            }
+            let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+                futures::future::join_all(tasks).await;
+            let mut res: Vec<Vm> = vec![];
+            for result in results {
+                match result? {
+                    Ok(vm) => res.push(vm),
+                    Err(_) => {}
+                }
+            }
+            Ok(res)
+        } else {
+            Err(LibError::builder()
+                .msg("Couldn't create Vm")
+                .help("No valid template provided")
+                .build()
+                .into())
+        }
+    }
+}
+
+pub struct VmStartMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn start(&self) -> VmStartMethods {
+        VmStartMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmStartMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+        user_data: Option<UserData>,
+        attach: Option<bool>,
+    ) -> Result<VmTable, VirshleError> {
+        let vm = Self::_one(StartVmArgs {
+            id,
+            name,
+            uuid,
+            user_data,
+        })
+        .await?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
+    }
+    async fn _one(args: StartVmArgs) -> Result<Vm, VirshleError> {
         let mut vm = Vm::database()
             .await?
             .one()
@@ -149,24 +347,27 @@ impl VmDefaultMethods for VmMethods {
             .maybe_uuid(args.uuid)
             .get()
             .await?;
-        vm.start(user_data.clone(), None).await?;
+        vm.start(args.user_data.clone(), None).await?;
         Ok(vm)
     }
-    async fn start_many(
+
+    #[builder(finish_fn = exec)]
+    pub async fn many(
         &self,
-        args: GetManyVmArgs,
+        state: Option<VmState>,
+        account: Option<Uuid>,
         user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
         let vms = Vm::database()
             .await?
             .many()
-            .maybe_account_uuid(args.account_uuid)
-            .maybe_vm_state(args.vm_state)
+            .maybe_account_uuid(account)
+            .maybe_vm_state(state)
             .get()
             .await?;
 
         let mut tasks = vec![];
-        for mut vm in vms.clone() {
+        for vm in vms.clone() {
             tasks.push(tokio::spawn({
                 let user_data = user_data.clone();
                 async move {
@@ -177,71 +378,34 @@ impl VmDefaultMethods for VmMethods {
         }
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
-        let response = Self::vm_bulk_results_to_response(vms, results)?;
-        Self::log_response_op("start", &response)?;
-        Ok(response)
+        let res: HashMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        Ok(res)
     }
-    async fn create(
+}
+
+pub struct VmDeleteMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn delete(&self) -> VmDeleteMethods {
+        VmDeleteMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmDeleteMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
         &self,
-        args: CreateVmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<Vm, VirshleError> {
-        let config = Config::get()?;
-
-        if let Some(name) = &args.template_name {
-            let template = config.get_template(&name)?;
-
-            // Safeguard before creating.
-            Peer::can_create_vm(&template).await?;
-
-            let mut vm = Vm::from(&template)?;
-            vm = vm.create(user_data).await?;
-            Ok(vm)
-        } else {
-            Err(LibError::builder()
-                .msg("Couldn't create Vm")
-                .help("No valid template provided")
-                .build()
-                .into())
-        }
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+    ) -> Result<VmTable, VirshleError> {
+        let vm = Self::_one(GetVmArgs { id, name, uuid }).await?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
     }
-    async fn create_many(
-        &self,
-        args: CreateManyVmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        let config = Config::get()?;
-        if args.template_name.is_some() && args.ntimes.is_some() {
-            let template = config.get_template(&args.template_name.unwrap())?;
-
-            let mut tasks = vec![];
-            let mut vms = vec![];
-            for i in 0..args.ntimes.unwrap() {
-                Peer::can_create_vm(&template).await?;
-                let mut vm = Vm::from(&template)?;
-                tasks.push(tokio::spawn({
-                    let user_data = user_data.clone();
-                    async move {
-                        let mut vm = vm.clone();
-                        vm.create(user_data).await
-                    }
-                }));
-            }
-            let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
-                futures::future::join_all(tasks).await;
-            let response = Self::vm_bulk_results_to_response(vms, results)?;
-            Self::log_response_op("create", &response)?;
-            Ok(response)
-        } else {
-            Err(LibError::builder()
-                .msg("Couldn't create Vm")
-                .help("No valid template provided")
-                .build()
-                .into())
-        }
-    }
-    async fn delete(&self, args: GetVmArgs) -> Result<Vm, VirshleError> {
-        let vm = Vm::database()
+    async fn _one(args: GetVmArgs) -> Result<Vm, VirshleError> {
+        let mut vm = Vm::database()
             .await?
             .one()
             .maybe_id(args.id)
@@ -252,15 +416,18 @@ impl VmDefaultMethods for VmMethods {
         vm.delete().await?;
         Ok(vm)
     }
-    async fn delete_many(
+
+    #[builder(finish_fn = exec)]
+    pub async fn many(
         &self,
-        args: GetManyVmArgs,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        state: Option<VmState>,
+        account: Option<Uuid>,
+    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
         let vms = Vm::database()
             .await?
             .many()
-            .maybe_account_uuid(args.account_uuid)
-            .maybe_vm_state(args.vm_state)
+            .maybe_account_uuid(account)
+            .maybe_vm_state(state)
             .get()
             .await?;
 
@@ -268,19 +435,40 @@ impl VmDefaultMethods for VmMethods {
         for vm in vms.clone() {
             tasks.push(tokio::spawn({
                 async move {
-                    let vm = vm.clone();
+                    let mut vm = vm.clone();
                     vm.delete().await
                 }
             }));
         }
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
-        let response = Self::vm_bulk_results_to_response(vms, results)?;
-        Self::log_response_op("delete", &response)?;
-        Ok(response)
+        let res: HashMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        Ok(res)
     }
+}
 
-    async fn shutdown(&self, args: GetVmArgs) -> Result<Vm, VirshleError> {
+pub struct VmShutdownMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn shutdown(&self) -> VmShutdownMethods {
+        VmShutdownMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmShutdownMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn one(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+    ) -> Result<VmTable, VirshleError> {
+        let vm = Self::_one(GetVmArgs { id, name, uuid }).await?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
+    }
+    async fn _one(args: GetVmArgs) -> Result<Vm, VirshleError> {
         let vm = Vm::database()
             .await?
             .one()
@@ -292,17 +480,21 @@ impl VmDefaultMethods for VmMethods {
         vm.shutdown().await.ok();
         Ok(vm)
     }
-    async fn shutdown_many(
+
+    #[builder(finish_fn = exec)]
+    pub async fn many(
         &self,
-        args: GetManyVmArgs,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
+        state: Option<VmState>,
+        account: Option<Uuid>,
+    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
         let vms = Vm::database()
             .await?
             .many()
-            .maybe_account_uuid(args.account_uuid)
-            .maybe_vm_state(args.vm_state)
+            .maybe_account_uuid(account)
+            .maybe_vm_state(state)
             .get()
             .await?;
+
         let mut tasks = vec![];
         for vm in vms.clone() {
             tasks.push(tokio::spawn({
@@ -314,58 +506,12 @@ impl VmDefaultMethods for VmMethods {
         }
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
-        let response = Self::vm_bulk_results_to_response(vms, results)?;
-        Self::log_response_op("shutdown", &response)?;
-        Ok(response)
-    }
-
-    async fn get(&self, args: GetVmArgs) -> Result<Vm, VirshleError> {
-        let vm = Vm::database()
-            .await?
-            .one()
-            .maybe_id(args.id)
-            .maybe_name(args.name)
-            .maybe_uuid(args.uuid)
-            .get()
-            .await?;
-        Ok(vm)
-    }
-
-    async fn get_many(&self, args: GetManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let vms = Vm::database()
-            .await?
-            .many()
-            .maybe_account_uuid(args.account_uuid)
-            .maybe_vm_state(args.vm_state)
-            .get()
-            .await?;
-        Ok(vms)
-    }
-    async fn get_info(&self, args: GetVmArgs) -> Result<VmTable, VirshleError> {
-        let vm = Vm::database()
-            .await?
-            .one()
-            .maybe_id(args.id)
-            .maybe_name(args.name)
-            .maybe_uuid(args.uuid)
-            .get()
-            .await?;
-        let table = VmTable::from(&vm).await?;
-        Ok(table)
-    }
-    async fn get_info_many(&self, args: GetManyVmArgs) -> Result<Vec<VmTable>, VirshleError> {
-        let vms = Vm::database()
-            .await?
-            .many()
-            .maybe_account_uuid(args.account_uuid)
-            .maybe_vm_state(args.vm_state)
-            .get()
-            .await?;
-        let table: Vec<VmTable> = VmTable::from_vec(&vms).await?;
-        Ok(table)
+        let res: HashMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        Ok(res)
     }
 }
-impl VmMethods {
+
+impl VmMethods<'_> {
     /*
      * TODO:
      * It should forward vm tty to user tty or ssh session!
@@ -422,7 +568,7 @@ impl VmMethods {
             .maybe_uuid(args.uuid)
             .get()
             .await?;
-        let info = vm.vmm().api().info().await?;
+        let info = vm.vmm().api()?.info().await?;
         Ok(info.into())
     }
     pub async fn get_raw_ch_info(&self, args: GetVmArgs) -> Result<String, VirshleError> {
@@ -434,7 +580,7 @@ impl VmMethods {
             .maybe_uuid(args.uuid)
             .get()
             .await?;
-        let info = vm.vmm().api()._info().await?;
+        let info = vm.vmm().api()?._info().await?;
         Ok(info.into())
     }
 
@@ -447,7 +593,7 @@ impl VmMethods {
             .maybe_uuid(args.uuid)
             .get()
             .await?;
-        vm.vmm().api().ping().await
+        vm.vmm().api()?.ping().await
     }
     pub async fn get_vsock_path(&self, args: GetVmArgs) -> Result<String, VirshleError> {
         let vm = Vm::database()
@@ -460,72 +606,6 @@ impl VmMethods {
             .await?;
         let path = vm.get_vsocket()?;
         Ok(path)
-    }
-    /// Convert bulk operations result like start.many
-    /// into HashMap of successful and failed operations.
-    #[tracing::instrument]
-    pub fn vm_bulk_results_to_response(
-        vms: Vec<Vm>,
-        results: Vec<Result<Result<Vm, VirshleError>, JoinError>>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError> {
-        let mut response: HashMap<Status, Vec<Vm>> =
-            HashMap::from([(Status::Succeeded, vec![]), (Status::Failed, vec![])]);
-        for res in results {
-            match res? {
-                Err(e) => {}
-                Ok(vm) => {
-                    response.get_mut(&Status::Succeeded).unwrap().push(vm);
-                }
-            }
-        }
-
-        // Vm not contained in Result::Ok() or by deduction in Err().
-        // Can't do a comparison on Vm to Vm because some actions mutates
-        // the vm so it will always return a false so we must use the Vm uuid.
-        let succeeded_uuid: Vec<Uuid> = response
-            .get(&Status::Succeeded)
-            .unwrap()
-            .iter()
-            .map(|e| e.uuid)
-            .collect();
-        let failed: Vec<Vm> = vms
-            .iter()
-            .filter(|e| !succeeded_uuid.contains(&e.uuid))
-            .map(|e| e.to_owned())
-            .collect();
-
-        response.get_mut(&Status::Failed).unwrap().extend(failed);
-        Ok(response)
-    }
-    /// Log response
-    #[tracing::instrument(skip(response), name = "bulk op")]
-    pub fn log_response_op(
-        tag: &str,
-        response: &HashMap<Status, Vec<Vm>>,
-    ) -> Result<(), VirshleError> {
-        let tag = format!("[bulk-op][{tag}]");
-        for (k, v) in response.iter() {
-            match k {
-                Status::Failed => {
-                    let tag = tag.red();
-                    if !v.is_empty() {
-                        let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                        let vms_name = vms_name.join(" ");
-                        info!("{tag} failed for vms [{}]", vms_name);
-                    }
-                }
-                Status::Succeeded => {
-                    let tag = tag.green();
-                    if !v.is_empty() {
-                        let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
-                        let vms_name = vms_name.join(" ");
-                        info!("{tag} succeeded for vms [{}]", vms_name);
-                    }
-                }
-                _ => {}
-            }
-        }
-        Ok(())
     }
 }
 

@@ -119,8 +119,7 @@ mod test {
 
     #[tokio::test]
     async fn test_init_disk() -> Result<()> {
-        // let vm = Vm::default();
-        let vms = Vm::get_all().await?;
+        let vms = Vm::database().await?.many().get().await?;
         let mut vm = vms.first().unwrap().to_owned();
 
         let init_disk = InitDisk { vm: &mut vm };

@@ -170,6 +170,7 @@ pub enum VhostMode {
 * to simpler structs for virshle to display.
 */
 
+/// The state of the Vm returned by the Vmm.
 #[derive(Default, Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum VmState {
     // cloud-hypervisor

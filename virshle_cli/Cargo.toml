@@ -15,6 +15,7 @@ bat.workspace = true
 
 virshle_error = { path = "../virshle_error" }
 virshle_rest = { path = "../virshle_rest" }
+virshle_core = { path = "../virshle_core" }
 
 pipelight_exec = "0.4.11"
 # pipelight_exec = { path = "../../pipelight/pipelight_exec" }

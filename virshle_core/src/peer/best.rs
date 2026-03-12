@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use virshle_network::connection::ConnectionState;
 
-use crate::node::{NodeInfo, Peer};
+use crate::peer::{NodeInfo, Peer};
 
 // Random
 use rand::prelude::IndexedRandom;

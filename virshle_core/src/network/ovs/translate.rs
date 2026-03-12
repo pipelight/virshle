@@ -297,7 +297,7 @@ impl OvsInterface {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hypervisor::network::interface::Bridge;
+    use crate::network::interface::Bridge;
 
     // Brigdges
     // #[test]

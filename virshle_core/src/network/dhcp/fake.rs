@@ -120,6 +120,8 @@ impl IpPool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ipnet::Ipv6Net;
+    use miette::IntoDiagnostic;
 
     #[tokio::test]
     async fn test_get_random_ip() -> Result<()> {

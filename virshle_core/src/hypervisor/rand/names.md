@@ -17,10 +17,12 @@ madara uchiha
 asuma sarutobi
 
 rock lee
+might guy
 neji hyuga
 sakura haruno
 kakashi hatake
 choji akimichi
+shikamaru nara
 
 ## Bnha
 
@@ -115,6 +117,35 @@ reiner braun
 
 erwin smith
 
+## Tokio Ghoul
+
+ken kaneki
+rize kamishiro
+
+## Fruit basket
+
+tohru honda
+kyo sohma
+yuki sohma
+momiji sohma
+
+## Sentenced to be a hero
+
+xylo forbatz
+teoritta kami
+
+## Bottom tier
+
+### SAO
+
+kirigaya kazuto
+yuuki asuna
+
+### DanMachi
+
+bell cranel
+welf crozzo
+
 # Goat
 
 mary poppins
@@ -128,18 +159,6 @@ claire beauchamp
 buzz lightyear
 anakin skywalker
 clark kent
-
-## Tokio Ghoul
-
-ken kaneki
-rize kamishiro
-
-## Fruit basket
-
-tohru honda
-kyo sohma
-yuki sohma
-momiji sohma
 
 ## HP
 

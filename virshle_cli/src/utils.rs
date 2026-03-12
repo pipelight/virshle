@@ -1,16 +1,16 @@
 use owo_colors::OwoColorize;
-use spinoff::{spinners, Color, Spinner};
+// use spinoff::{spinners, Color, Spinner};
 
 use std::collections::HashMap;
 
-use crate::cli::Cli;
-use crate::{Node, NodeInfo, Vm, VmInfo, VmState, VmTable, VmTemplate};
+use crate::Cli;
+use crate::{Node, NodeInfo, Vm, VmState, VmTable, VmTemplate};
 use pipelight_exec::Status;
 
 // Error handling
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tracing::{error, info, trace, warn};
-use virshle_error::{LibError, VirshleError, WrapError};
+use virshle_error::VirshleError;
 
 // Logger
 use env_logger::Builder;
@@ -56,6 +56,28 @@ pub fn logging_per_crate(verbosity: log::LevelFilter) -> Result<String, VirshleE
         _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
     };
     Ok(res.to_owned())
+}
+/// Build tracing
+pub fn set_test_tracer(verbosity: tracing::Level) -> Result<(), VirshleError> {
+    // Set verbosity
+    let filter = format!(
+        "{},{}",
+        verbosity.to_string().to_lowercase(),
+        tracing_per_crate(verbosity)?
+    );
+    let builder = FmtSubscriber::builder()
+        .with_max_level(verbosity)
+        // .with_file(false)
+        .with_env_filter(EnvFilter::try_new(filter).unwrap());
+
+    #[cfg(debug_assertions)]
+    let builder = builder.pretty();
+    #[cfg(not(debug_assertions))]
+    let builder = builder.compact();
+
+    let subscriber = builder.finish();
+    tracing::subscriber::set_global_default(subscriber).unwrap();
+    Ok(())
 }
 /// Build tracing
 pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {

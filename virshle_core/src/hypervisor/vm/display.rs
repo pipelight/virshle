@@ -1,5 +1,5 @@
 use crate::hypervisor::{DiskInfo, Vm, VmState};
-use crate::node::Peer;
+use crate::peer::Peer;
 use crate::utils::display;
 
 // Time
@@ -94,7 +94,7 @@ impl VmTable {
 }
 
 impl VmTable {
-    pub async fn display_by_nodes(items: HashMap<Peer, Vec<Self>>) -> Result<(), VirshleError> {
+    pub async fn display_by_peer(items: &HashMap<Peer, Vec<VmTable>>) -> Result<(), VirshleError> {
         // Display vm by nodes with table header
         for (node, table) in items {
             let header = node.header()?;
@@ -102,13 +102,13 @@ impl VmTable {
         }
         Ok(())
     }
-    pub fn display_w_header(items: Vec<Self>, header: &str) -> Result<(), VirshleError> {
+    pub fn display_w_header(items: &Vec<Self>, header: &str) -> Result<(), VirshleError> {
         println!("\n{}", header);
         Self::display(items);
         Ok(())
     }
-    pub fn display(items: Vec<Self>) -> Result<(), VirshleError> {
-        let mut res = Table::new(&items);
+    pub fn display(items: &Vec<Self>) -> Result<(), VirshleError> {
+        let mut res = Table::new(items);
 
         // Ips
         let some_ips: Vec<_> = items
@@ -193,7 +193,7 @@ mod test {
         ];
 
         println!("");
-        VmTable::display(vms)?;
+        VmTable::display(&vms)?;
         Ok(())
     }
 }

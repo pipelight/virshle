@@ -1,20 +1,23 @@
 mod definition;
 mod load;
+mod node;
 mod template;
 mod user_data;
 
 // Reexport
+pub use definition::Definition;
+pub use node::{Node, NodeConfig};
 pub use template::{
     disk::DiskTemplate,
     vm::{NetType, VmNet, VmTemplate, VmTemplateTable},
     TemplateConfig,
 };
-pub use user_data::{Account, UserData};
+pub use user_data::{Account, SshParams, User, UserData};
 
 use crate::database;
 use crate::hypervisor::Vm;
 use crate::network::{dhcp::DhcpType, ovs};
-use crate::node::Peer;
+use crate::peer::Peer;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
@@ -182,72 +185,6 @@ impl Config {
                 let err = LibError::builder().msg(&message).help(&help).build();
                 Err(err.into())
             }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct NodeConfig {
-    pub alias: Option<String>,
-    pub private_key: String,
-    pub public_key: String,
-    pub passive: Option<bool>,
-}
-impl TryInto<Node> for NodeConfig {
-    type Error = VirshleError;
-    fn try_into(self) -> Result<Node, Self::Error> {
-        (&self).try_into()
-    }
-}
-impl TryInto<Node> for &NodeConfig {
-    type Error = VirshleError;
-    fn try_into(self) -> Result<Node, Self::Error> {
-        let private_key = fs::read_to_string(&self.private_key)?;
-        let public_key = fs::read_to_string(&self.public_key)?;
-        Ok(Node {
-            alias: Some("Self".to_owned()),
-            private_key,
-            public_key,
-            passive: false,
-        })
-    }
-}
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
-pub struct Node {
-    pub alias: Option<String>,
-    pub private_key: String,
-    pub public_key: String,
-    pub passive: bool,
-}
-impl Default for Node {
-    fn default() -> Self {
-        let key_pair = PrivateKey::random(&mut OsRng, Algorithm::Ed25519).unwrap();
-        let public_key = key_pair.public_key().to_openssh().unwrap();
-        let private_key = key_pair
-            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
-            .unwrap()
-            .to_string();
-        Node {
-            alias: Some("Self".to_owned()),
-            private_key,
-            public_key,
-            passive: false,
-        }
-    }
-}
-
-impl Into<Peer> for Node {
-    fn into(self) -> Peer {
-        (&self).into()
-    }
-}
-impl Into<Peer> for &Node {
-    fn into(self) -> Peer {
-        Peer {
-            alias: self.alias.clone(),
-            url: "".to_owned(),
-            weight: None,
-            public_key: Some(self.public_key.clone()),
         }
     }
 }

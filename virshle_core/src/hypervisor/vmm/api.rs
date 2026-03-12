@@ -26,6 +26,11 @@ impl VmmMethods<'_> {
         let path = format!("{MANAGED_DIR}/vm/{}/ch.sock", self.vm.uuid);
         Ok(path)
     }
+    pub fn get_socket_uri(&self) -> Result<String, VirshleError> {
+        let socket = self.get_socket().unwrap();
+        let uri = format!("unix://{socket}");
+        Ok(uri)
+    }
     pub async fn refresh_networks(&mut self) -> Result<(), VirshleError> {
         self._remove_networks().await?;
         Ok(())
@@ -48,7 +53,7 @@ impl VmmMethods<'_> {
 }
 
 impl VmmMethods<'_> {
-    pub fn api(&self) -> Result<VmmApiMethods, VirshleError> {
+    pub fn api(&self) -> Result<VmmApiMethods<'_>, VirshleError> {
         let conn: Connection = self.vm.try_into()?;
         let mut rest: RestClient = conn.into();
         rest.base_url("/api/v1");
@@ -75,22 +80,19 @@ impl VmmApiMethods<'_> {
     }
     /// Create the virtual machine process, but do not boot.
     pub async fn create(&mut self) -> Result<(), VirshleError> {
+        self.ping().await?;
         let config = VmConfig::from(self.vm).await?;
-        trace!("{:#?}", config);
+        debug!("Pushing config to vmm: {:#?}", config);
 
         let endpoint = "/vm.create";
         let res = self.client.put::<VmConfig>(endpoint, Some(config)).await?;
 
-        let data = &res.to_string().await?;
-        let data: VmInfoResponse = serde_json::from_str(&data)?;
-        trace!("{:#?}", data);
         Ok(())
     }
     /// Get info about the vm.
     pub async fn info(&mut self) -> Result<VmInfoResponse, VirshleError> {
         let data = self._info().await?;
         let data: VmInfoResponse = serde_json::from_str(&data)?;
-        trace!("{:#?}", data);
         Ok(data)
     }
     /// Get info about the vm as json.
@@ -100,24 +102,32 @@ impl VmmApiMethods<'_> {
         let endpoint = "/vm.info";
         let res = self.client.get(endpoint).await?;
         let data = &res.to_string().await?;
-        trace!("{:#?}", data);
         Ok(data.to_owned())
     }
     /// Return vm state,
     /// or the default state if couldn't connect to vm.
     pub async fn state(&mut self) -> Result<VmState, VirshleError> {
         // Safeguard
-        self.ping().await?;
         let endpoint = "/vm.info";
-        let res = self.client.get(endpoint).await?;
-        let state = match res.status() {
-            StatusCode::OK => {
-                let data = &res.to_string().await?;
-                let data: VmInfoResponse = serde_json::from_str(&data)?;
-                VmState::from(data.state)
+        let state: VmState;
+
+        match self.client.get(endpoint).await {
+            Ok(res) => {
+                state = match res.status() {
+                    StatusCode::OK => {
+                        let data = &res.to_string().await?;
+                        let data: VmInfoResponse = serde_json::from_str(&data)?;
+                        VmState::from(data.state)
+                    }
+                    StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
+                    _ => VmState::NotCreated,
+                };
             }
-            StatusCode::INTERNAL_SERVER_ERROR => VmState::NotCreated,
-            _ => VmState::NotCreated,
+            Err(e) => {
+                // Endpoint or socket do not exist.
+                trace!("{:#?}", e);
+                state = VmState::NotCreated
+            }
         };
         Ok(state)
     }
@@ -188,6 +198,93 @@ impl VmmApiMethods<'_> {
         let req = net_config;
         let res = self.client.put::<NetConfig>(endpoint, Some(req)).await?;
 
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::utils::testing;
+    use crate::{config::DiskTemplate, VmTemplate};
+    use pretty_assertions::assert_eq;
+
+    /// Create a testing Vm to try Vmm methods.
+    fn testing_vm() -> Result<Vm, VirshleError> {
+        let template = VmTemplate {
+            name: "test".to_owned(),
+            vcpu: 1,
+            vram: "1GiB".to_owned(),
+            uuid: None,
+            disk: Some(vec![DiskTemplate {
+                name: "os".to_owned(),
+                path: "/var/lib/virshle/cache/nixos.xxs.efi.img".to_owned(),
+
+                readonly: None,
+            }]),
+            net: None,
+            config: None,
+        };
+        let vm: Vm = template.try_into()?;
+        Ok(vm)
+    }
+
+    #[tokio::test]
+    async fn test_vmm() -> Result<()> {
+        testing::tracer()
+            .verbosity(tracing::Level::TRACE)
+            .db(true)
+            .set()?;
+
+        // Create and start a testing Vm
+        let mut vm = testing_vm()?;
+        vm.create(None).await?;
+        vm.start(None, None).await?;
+
+        // Ping
+        let res: Result<(), VirshleError> = vm.vmm().api()?.ping().await;
+        assert!(res.is_ok());
+        testing::unwind(res)?;
+
+        // Info
+        let res: Result<VmInfoResponse, VirshleError> = vm.vmm().api()?.info().await;
+        assert!(res.is_ok());
+        testing::unwind(res)?;
+        // State
+        let res: Result<VmState, VirshleError> = vm.vmm().api()?.state().await;
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap(), VmState::Running);
+        // Pause
+        let res: Result<(), VirshleError> = vm.vmm().api()?.pause().await;
+        assert!(res.is_ok());
+        let res: Result<VmState, VirshleError> = vm.vmm().api()?.state().await;
+        assert_eq!(res.unwrap(), VmState::Paused);
+        // Shutdown
+        let res: Result<(), VirshleError> = vm.vmm().api()?.shutdown().await;
+        assert!(res.is_ok());
+        let res: Result<VmState, VirshleError> = vm.vmm().api()?.state().await;
+        assert_eq!(res.unwrap(), VmState::Created);
+        // Boot
+        let res: Result<(), VirshleError> = vm.vmm().api()?.boot().await;
+        assert!(res.is_ok());
+        testing::unwind(res)?;
+
+        // Delete
+        let res: Result<(), VirshleError> = vm.vmm().api()?.delete().await;
+        assert!(res.is_ok());
+        let res: Result<VmState, VirshleError> = vm.vmm().api()?.state().await;
+        assert_eq!(res.unwrap(), VmState::NotCreated);
+
+        // Get a valide State (process NotCreated) even when Vmm process is not Running
+        // and  therefore cannot respond.
+        vm.vmm().kill_process()?;
+        let res: Result<VmState, VirshleError> = vm.vmm().api()?.state().await;
+        assert!(res.is_ok());
+        assert_eq!(res.unwrap(), VmState::NotCreated);
+
+        // Delete the testing Vm
+        vm.delete().await?;
         Ok(())
     }
 }

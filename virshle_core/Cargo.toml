@@ -9,6 +9,7 @@ miette = { workspace = true, features = ["fancy"] }
 log.workspace = true
 env_logger.workspace = true
 tokio = { workspace = true, features = ["mio", "tracing"] }
+tokio-scoped = "0.2.0"
 bon.workspace = true
 bat.workspace = true
 
@@ -87,8 +88,8 @@ sys-mount = { version = "3.0.1", features = ["loop"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["ansi", "env-filter"] }
 tracing-log = "0.2.0"
+tracing-test.workspace = true
 derivative = "2.2.0"
-tokio-scoped = "0.2.0"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"

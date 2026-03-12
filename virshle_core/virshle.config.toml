@@ -3,8 +3,10 @@
 [node]
 # alias = "<location>-<branch>-<n>"
 alias = "deku-dev-1"
-private_key = "/var/lib/virshle/node/id_ed25519"
-public_key = "/var/lib/virshle/node/id_ed25519.pub"
+# private_key = "/var/lib/virshle/node/id_ed25519"
+# public_key = "/var/lib/virshle/node/id_ed25519.pub"
+private_key = "./keys/default"
+public_key = "./keys/default.pub"
 
 # Network
 ## Kea dhcp

@@ -109,8 +109,7 @@ impl VmDbFunctions {
             None => None,
         };
 
-        let mut records: Vec<database::entity::vm::Model> = vec![];
-        records = match account {
+        let records: Vec<database::entity::vm::Model> = match account {
             Some(account) => {
                 account
                     .find_related(database::entity::prelude::Vm)
@@ -125,6 +124,7 @@ impl VmDbFunctions {
                     .await?
             }
         };
+
         let mut vms: Vec<Vm> = vec![];
         for e in records {
             let res: Result<Vm, serde_json::Error> = serde_json::from_value(e.definition);
@@ -151,7 +151,6 @@ impl VmDbFunctions {
         }
 
         // Filter by state
-        let mut vms = vec![];
         if let Some(vm_state) = vm_state {
             vms = Self::filter_by_state(vms, &vm_state).await?;
         }

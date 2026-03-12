@@ -5,7 +5,7 @@
 pub mod config;
 pub mod utils;
 
-pub mod node;
+pub mod peer;
 
 // Interact with host network configuration.
 pub mod network;

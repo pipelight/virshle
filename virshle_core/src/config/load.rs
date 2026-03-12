@@ -9,7 +9,8 @@ use std::sync::{Arc, Mutex};
 
 // Config
 use std::fs;
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
 
 // Error Handling
 use miette::{Error, Result};
@@ -19,41 +20,45 @@ use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 pub const CONFIG: Lazy<Arc<Mutex<Config>>> = Lazy::new(|| Arc::new(Mutex::new(Config::default())));
 
 impl Config {
-    /*
-     * Get config from crate directory
-     */
-    fn debug_path() -> PathBuf {
+    /// Get config from crate directory
+    #[tracing::instrument]
+    fn debug_path() -> Result<PathBuf, io::Error> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("./virshle.config.toml");
-        return path;
+        path = path.as_path().canonicalize()?;
+        trace!("Reading config file at {:#?}", path);
+        Ok(path)
     }
-    /*
-     * Get config from FHS path.
-     */
-    fn release_path() -> PathBuf {
+    /// Get config from FHS path.
+    #[tracing::instrument]
+    fn release_path() -> Result<PathBuf, io::Error> {
         let mut path = PathBuf::new();
         path.push("/etc/virshle/config.toml");
-        return path;
+        path = path.as_path().canonicalize()?;
+        trace!("Reading config file at {:#?}", path);
+        Ok(path)
     }
-    /*
-     * Return configuration from default file path.
-     */
+    /// Return configuration from default file path.
+    #[tracing::instrument]
     pub fn get() -> Result<Self, VirshleError> {
         // let config = CONFIG.lock().unwrap().clone();
         // Ok(config)
 
         #[cfg(debug_assertions)]
-        let path = Self::debug_path();
+        let path = Self::debug_path()?;
 
         #[cfg(not(debug_assertions))]
-        let path = Self::release_path();
+        let path = Self::release_path()?;
 
         let path = path.display().to_string();
-        let config = match Self::from_file(&path) {
-            Ok(v) => v,
+        match Self::from_file(&path) {
+            Ok(v) => {
+                trace!("Loaded config file.");
+                Ok(v)
+            }
             Err(e) => {
                 let message = format!("Couldn't find a configuration file.",);
-                let help = format!("Create a configuration file at /etc/virshle/config.toml");
+                let help = format!("Create a configuration file at {:#?}", path);
                 let err = WrapError::builder()
                     .msg(&message)
                     .help(&help)
@@ -61,12 +66,9 @@ impl Config {
                     .build();
 
                 error!("{}", err);
-                return Err(err.into());
+                Err(err.into())
             }
-        };
-
-        trace!("Found config file.");
-        Ok(config)
+        }
     }
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(path)?;
@@ -123,7 +125,9 @@ impl VmConfigPlus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tracing_test::traced_test;
 
+    #[traced_test]
     #[test]
     fn get_config_from_file() -> Result<()> {
         let res = Config::get()?;
@@ -136,9 +140,10 @@ mod tests {
         let toml = r#"
 
             [node]
-            [[node]]
             name = "self"
             url = "anon@localhost:22"
+            private_key = "/var/lib/virshle/keys/private_key"
+            public_key = "/var/lib/virshle/keys/public_key"
 
             [template]
             # Vms
@@ -147,7 +152,7 @@ mod tests {
             [[template.vm]]
             name = "xs"
             vcpu = 1
-            vram = 2
+            vram = "2GiB"
             [[template.vm.disk]]
             name = "os"
             path = "~/Iso/nixos.efi.raw"
@@ -156,7 +161,7 @@ mod tests {
             [[template.vm]]
             name = "s"
             vcpu = 2
-            vram = 4
+            vram = "4GiB"
             [[template.vm.disk]]
             name = "os"
             path = "~/Iso/nixos.efi.raw"
@@ -165,7 +170,7 @@ mod tests {
             [[template.vm]]
             name = "m"
             vcpu = 4
-            vram = 8
+            vram = "8GiB"
             [[template.vm.disk]]
             name = "os"
             path = "~/Iso/nixos.efi.raw"
@@ -174,7 +179,7 @@ mod tests {
             [[template.vm]]
             name = "l"
             vcpu = 6
-            vram = 10
+            vram = "10GiB"
             [[template.vm.disk]]
             name = "os"
             path = "~/Iso/nixos.efi.raw"
@@ -183,7 +188,7 @@ mod tests {
             [[template.vm]]
             name = "xl"
             vcpu = 8
-            vram = 16
+            vram = "16GiB"
             [[template.vm.disk]]
             name = "os"
             path = "~/Iso/nixos.efi.raw"

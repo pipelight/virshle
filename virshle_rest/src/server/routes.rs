@@ -1,9 +1,7 @@
-use crate::commons::{CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs};
 use crate::commons::{
-    NodeDefaultMethods, RestDefaultMethods, TemplateDefaultMethods, VmDefaultMethods,
+    CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
 };
 use crate::server::Server;
-
 use axum::{
     extract::{Extension, Path, Query},
     http::Request,
@@ -18,10 +16,10 @@ use tower_http::trace::TraceLayer;
 use virshle_core::{
     config::{UserData, VmTemplate, VmTemplateTable},
     hypervisor::{
-        vm::{Vm, VmInfo},
+        vm::{Vm, VmInfo, VmTable},
         vmm::types::{VmInfoResponse, VmState},
     },
-    node::{HostInfo, NodeInfo, Peer},
+    peer::{HostInfo, NodeInfo, Peer},
 };
 // Error handling
 use miette::Result;
@@ -45,9 +43,7 @@ impl Server {
                 "/node/info",
                 get(async || {
                     let methods = Server::methods()?;
-                    Result::<Json<NodeInfo>, VirshleError>::Ok(Json(
-                        methods.node().get_info().await?,
-                    ))
+                    Result::<Json<NodeInfo>, VirshleError>::Ok(Json(methods.node().info().await?))
                 }),
             )
             // Template
@@ -55,7 +51,7 @@ impl Server {
                 "/template/all",
                 get(async || {
                     let methods = Server::methods()?;
-                    Result::<Json<HashMap<Peer, Vec<VmTemplate>>>, VirshleError>::Ok(Json(
+                    Result::<Json<Vec<VmTemplate>>, VirshleError>::Ok(Json(
                         methods.template().get_many().await?,
                     ))
                 }),
@@ -63,7 +59,7 @@ impl Server {
             .route(
                 "/template/reclaim",
                 get(async move |Json(params): Json<CreateVmArgs>| {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<bool>, VirshleError>::Ok(Json(
                         methods.template().reclaim(params).await?,
                     ))
@@ -71,59 +67,94 @@ impl Server {
             )
             // Vm
             .route(
-                "/vm/many",
-                post(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods();
-                    Result::<Json<HashMap<Peer, Vec<Vm>>>, VirshleError>::Ok(Json(
-                        methods.vm().get_many(params).await?,
-                    ))
-                }),
-            )
-            .route(
                 "/vm/create",
-                put(async move |Json(params): Json<CreateVmParams>| {
-                    let methods = Server::methods();
-                    Result::<Json<Vm>, VirshleError>::Ok(Json(
-                        methods.vm().create(params.args, params.user_data).await?,
+                put(async move |Json(params): Json<CreateVmArgs>| {
+                    let methods = Server::methods()?;
+                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .create()
+                            .one()
+                            .maybe_template(params.template_name)
+                            .maybe_user_data(params.user_data)
+                            .exec()
+                            .await?,
                     ))
                 }),
             )
             .route(
                 "/vm/start",
-                put(async move |Json(params): Json<StartVmParams>| {
-                    let methods = Server::methods();
-                    let args = params.args;
-                    let user_data = params.user_data;
-                    Result::<Json<Vm>, VirshleError>::Ok(Json(
-                        methods.vm().start(args, user_data).await?,
+                put(async move |Json(params): Json<StartVmArgs>| {
+                    let methods = Server::methods()?;
+                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .start()
+                            .one()
+                            .maybe_id(params.id)
+                            .maybe_name(params.name)
+                            .maybe_uuid(params.uuid)
+                            .maybe_user_data(params.user_data)
+                            .exec()
+                            .await?,
                     ))
                 }),
             )
             .route(
                 "/vm/shutdown",
                 put(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
-                    Result::<Json<Vm>, VirshleError>::Ok(Json(methods.vm().shutdown(params).await?))
+                    let methods = Server::methods()?;
+                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .shutdown()
+                            .one()
+                            .maybe_id(params.id)
+                            .maybe_name(params.name)
+                            .maybe_uuid(params.uuid)
+                            .exec()
+                            .await?,
+                    ))
                 }),
             )
             .route(
                 "/vm/delete",
                 put(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
-                    Result::<Json<Vm>, VirshleError>::Ok(Json(methods.vm().delete(params).await?))
+                    let methods = Server::methods()?;
+                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .delete()
+                            .one()
+                            .maybe_id(params.id)
+                            .maybe_name(params.name)
+                            .maybe_uuid(params.uuid)
+                            .exec()
+                            .await?,
+                    ))
                 }),
             )
             .route(
                 "/vm/info",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
-                    Result::<Json<Vm>, VirshleError>::Ok(Json(methods.vm().get(params).await?))
+                    let methods = Server::methods()?;
+                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .get()
+                            .one()
+                            .maybe_id(params.id)
+                            .maybe_name(params.name)
+                            .maybe_uuid(params.uuid)
+                            .exec()
+                            .await?,
+                    ))
                 }),
             )
             .route(
                 "/vm/get_vsock_path",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<String>, VirshleError>::Ok(Json(
                         methods.vm().get_vsock_path(params).await?,
                     ))
@@ -136,59 +167,107 @@ impl Server {
             .route(
                 "/template/info.many",
                 get(async || {
-                    let methods = Server::methods();
-                    Result::<Json<HashMap<Node, Vec<VmTemplateTable>>>, VirshleError>::Ok(Json(
+                    let methods = Server::methods()?;
+                    Result::<Json<Vec<VmTemplateTable>>, VirshleError>::Ok(Json(
                         methods.template().get_info_many().await?,
                     ))
                 }),
             )
             // Vm
             .route(
+                "/vm/get.many",
+                post(async move |Json(params): Json<GetManyVmArgs>| {
+                    let methods = Server::methods()?;
+                    Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .get()
+                            .many()
+                            .maybe_state(params.vm_state)
+                            .maybe_account(params.account_uuid)
+                            .exec()
+                            .await?,
+                    ))
+                }),
+            )
+            .route(
                 "/vm/create.many",
-                put(async move |Json(params): Json<CreateManyVmParams>| {
-                    let methods = Server::methods();
-                    let args = params.args;
-                    let user_data = params.user_data;
-                    Result::<Json<HashMap<Status, Vec<Vm>>>, VirshleError>::Ok(Json(
-                        methods.vm().create_many(args, user_data).await?,
+                put(async move |Json(params): Json<CreateManyVmArgs>| {
+                    let methods = Server::methods()?;
+                    Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .create()
+                            .many()
+                            .maybe_template(params.template_name)
+                            .maybe_user_data(params.user_data)
+                            .maybe_n(params.ntimes)
+                            .exec()
+                            .await?,
                     ))
                 }),
             )
             .route(
                 "/vm/start.many",
-                put(async move |Json(params): Json<StartManyVmParams>| {
-                    let methods = Server::methods();
-                    let args = params.args;
-                    let user_data = params.user_data;
-                    Result::<Json<HashMap<Status, Vec<Vm>>>, VirshleError>::Ok(Json(
-                        methods.vm().start_many(args, user_data).await?,
+                put(async move |Json(params): Json<StartManyVmArgs>| {
+                    let methods = Server::methods()?;
+                    Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .start()
+                            .many()
+                            .maybe_state(params.vm_state)
+                            .maybe_account(params.account_uuid)
+                            .exec()
+                            .await?,
                     ))
                 }),
             )
             .route(
                 "/vm/shutdown.many",
                 put(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods();
-                    Result::<Json<HashMap<Status, Vec<Vm>>>, VirshleError>::Ok(Json(
-                        methods.vm().shutdown_many(params).await?,
+                    let methods = Server::methods()?;
+                    Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .shutdown()
+                            .many()
+                            .maybe_state(params.vm_state)
+                            .maybe_account(params.account_uuid)
+                            .exec()
+                            .await?,
                     ))
                 }),
             )
             .route(
                 "/vm/delete.many",
                 put(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods();
-                    Result::<Json<HashMap<Status, Vec<Vm>>>, VirshleError>::Ok(Json(
-                        methods.vm().delete_many(params).await?,
+                    let methods = Server::methods()?;
+                    Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                        methods
+                            .vm()
+                            .delete()
+                            .many()
+                            .maybe_state(params.vm_state)
+                            .maybe_account(params.account_uuid)
+                            .exec()
+                            .await?,
                     ))
                 }),
             )
             .route(
                 "/vm/info.many",
                 post(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        methods.vm().get_info_many(params).await?,
+                        methods
+                            .vm()
+                            .get()
+                            .many()
+                            .maybe_state(params.vm_state)
+                            .maybe_account(params.account_uuid)
+                            .exec()
+                            .await?,
                     ))
                 }),
             );
@@ -199,7 +278,7 @@ impl Server {
             .route(
                 "/vm.info",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<VmInfoResponse>, VirshleError>::Ok(Json(
                         methods.vm().get_ch_info(params).await?,
                     ))
@@ -208,7 +287,7 @@ impl Server {
             .route(
                 "/vm.info.raw",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<String>, VirshleError>::Ok(Json(
                         methods.vm().get_raw_ch_info(params).await?,
                     ))
@@ -217,7 +296,7 @@ impl Server {
             .route(
                 "/vmm.ping",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods();
+                    let methods = Server::methods()?;
                     Result::<Json<()>, VirshleError>::Ok(Json(methods.vm().ping_ch(params).await?))
                 }),
             );
@@ -249,7 +328,7 @@ impl Server {
         tokio_scoped::scope(|s| {
             s.spawn(async {
                 let listener = Server::make_socket(&socket_path).await.unwrap();
-                axum::serve(listener, app.clone()).await;
+                let _ = axum::serve(listener, app.clone()).await;
             });
         });
         Ok(())

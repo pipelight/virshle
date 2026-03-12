@@ -1,10 +1,11 @@
+use owo_colors::OwoColorize;
 use virshle_core::{
     config::{VmTemplate, VmTemplateTable},
     hypervisor::{
         vm::{UserData, Vm, VmInfo, VmTable},
         vmm::types::{VmInfoResponse, VmState},
     },
-    node::{NodeInfo, Peer},
+    peer::{NodeInfo, Peer},
 };
 use virshle_network::connection::{Connection, ConnectionHandle, ConnectionState};
 use virshle_network::http::{Rest, RestClient};
@@ -17,30 +18,9 @@ use uuid::Uuid;
 
 // Error handling
 use miette::Result;
-use tracing::warn;
+use tokio::task::JoinError;
+use tracing::{info, warn};
 use virshle_error::VirshleError;
-
-pub trait RestDefaultMethods {
-    fn node(&self) -> impl NodeDefaultMethods;
-    fn template(&self) -> impl TemplateDefaultMethods;
-    fn vm(&self) -> impl VmDefaultMethods;
-}
-
-pub trait NodeDefaultMethods {
-    async fn ping(&self) -> Result<(), VirshleError>;
-    // async fn get_info(&self, alias: Option<String>) -> Result<NodeInfo, VirshleError>;
-    // async fn get_info_many(&self) -> Result<HashMap<Node, NodeInfo>, VirshleError>;
-}
-pub trait NodeManyDefaultMethods {
-    async fn ping(&self) -> Result<(), VirshleError>;
-    async fn get_info(&self) -> Result<NodeInfo, VirshleError>;
-    // async fn get_info_many(&self) -> Result<HashMap<Node, NodeInfo>, VirshleError>;
-}
-pub trait TemplateDefaultMethods {
-    async fn get_many(&self) -> Result<HashMap<Peer, Vec<VmTemplate>>, VirshleError>;
-    async fn get_info_many(&self) -> Result<HashMap<Peer, Vec<VmTemplateTable>>, VirshleError>;
-    async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError>;
-}
 
 /// A strutc to query a VM from a node.
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -151,7 +131,7 @@ pub async fn alerte_connection_state(
     Ok(())
 }
 
-// /// Log response
+/// Log response
 // pub fn log_response(
 //     tag: &str,
 //     node: &str,
@@ -177,3 +157,69 @@ pub async fn alerte_connection_state(
 //     }
 //     Ok(())
 // }
+
+/// Convert bulk operations result like start.many
+/// into HashMap of successful and failed operations.
+#[tracing::instrument]
+pub async fn vm_bulk_results_to_hashmap(
+    vms: Vec<Vm>,
+    results: Vec<Result<Result<Vm, VirshleError>, JoinError>>,
+) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
+    let mut response: HashMap<Status, Vec<VmTable>> =
+        HashMap::from([(Status::Succeeded, vec![]), (Status::Failed, vec![])]);
+    for res in results {
+        match res? {
+            Err(_) => {}
+            Ok(vm) => {
+                let vm = VmTable::from(&vm).await?;
+                response.get_mut(&Status::Succeeded).unwrap().push(vm);
+            }
+        }
+    }
+    // Vm not contained in Result::Ok() are by deduction in Err().
+    // Can't do a comparison on Vm to Vm because some actions mutates
+    // the vm so it will always return a false so we must use the Vm uuid.
+    let succeeded_uuid: Vec<Uuid> = response
+        .get(&Status::Succeeded)
+        .unwrap()
+        .iter()
+        .map(|e| e.uuid)
+        .collect();
+    let mut failed: Vec<VmTable> = vec![];
+    for vm in vms {
+        if !succeeded_uuid.contains(&vm.uuid) {
+            let vm = VmTable::from(&vm).await?;
+            failed.push(vm)
+        }
+    }
+    response.get_mut(&Status::Failed).unwrap().extend(failed);
+    Ok(response)
+}
+
+/// Log response
+#[tracing::instrument(skip(response), name = "bulk op")]
+pub fn log_response_op(tag: &str, response: &HashMap<Status, Vec<Vm>>) -> Result<(), VirshleError> {
+    let tag = format!("[bulk-op][{tag}]");
+    for (k, v) in response.iter() {
+        match k {
+            Status::Failed => {
+                let tag = tag.red();
+                if !v.is_empty() {
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("{tag} failed for vms [{}]", vms_name);
+                }
+            }
+            Status::Succeeded => {
+                let tag = tag.green();
+                if !v.is_empty() {
+                    let vms_name: Vec<String> = v.iter().map(|e| e.name.to_owned()).collect();
+                    let vms_name = vms_name.join(" ");
+                    info!("{tag} succeeded for vms [{}]", vms_name);
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}

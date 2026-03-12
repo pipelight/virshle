@@ -2,7 +2,7 @@ pub mod response;
 
 use crate::connection::Stream;
 use crate::connection::{Connection, ConnectionHandle};
-use response::Response;
+pub use response::Response;
 
 // Http
 use http_body_util::Full;
@@ -68,21 +68,19 @@ pub struct StreamHandle {
 }
 
 pub trait Rest {
-    /*
-     * Open connection to:
-     * - a unix socket,
-     * - a unix socket through ssh on a remote
-     *
-     * Do the http1 or http2 handshake.
-     *
-     * And return a gRpc or REST or cli.
-     */
+    ///
+    /// Open connection to:
+    /// - a unix socket,
+    /// - a unix socket through ssh on a remote
+    ///
+    /// Do the http1 or http2 handshake.
+    ///
+    /// And return a gRpc or REST or cli.
+    ///
     fn open(&mut self) -> impl Future<Output = Result<&mut Self, VirshleError>> + Send;
 
-    /*
-     * Send the http request.
-     * Internally used by get(), post() and put() methods.
-     */
+    /// Send the http request.
+    /// Internally used by get(), post() and put() methods.
     fn send(
         &mut self,
         endpoint: &str,
@@ -97,11 +95,9 @@ pub trait Rest {
     fn get(&mut self, enpoint: &str)
         -> impl Future<Output = Result<Response, VirshleError>> + Send;
 
-    /*
-     * Send an http POST request to socket.
-     * Arguments:
-     * - path: the url enpoint (ex:"/vm/info")
-     */
+    /// Send an http POST request to socket.
+    /// # Arguments:
+    /// - path: the url enpoint (ex:"/vm/info")
     fn post<T>(
         &mut self,
         enpoint: &str,
@@ -138,7 +134,7 @@ impl Rest for RestClient {
         Ok(self)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     async fn send(
         &mut self,
         endpoint: &str,
@@ -182,6 +178,9 @@ impl Rest for RestClient {
 
     /// Test http enpoint responsiveness after connection is open.
     async fn ping(&mut self) -> Result<(), VirshleError> {
+        // Ensure connection is open and has a stream handle.
+        self.open().await?;
+
         // A running cloud-hypervisor process can be clunky
         // and wait forever after a handshake so we test http response
         // duration.

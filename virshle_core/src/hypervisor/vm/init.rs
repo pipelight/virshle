@@ -184,6 +184,7 @@ impl Vm {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config::{SshParams, User};
 
     #[test]
     fn test_pipelight_config_render() -> Result<()> {

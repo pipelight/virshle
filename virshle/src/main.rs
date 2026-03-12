@@ -1,5 +1,5 @@
 use std::{process::ExitCode, u8};
-use virshle_core::cli::Cli;
+use virshle_cli::Cli;
 
 // Error Handling
 use miette::{IntoDiagnostic, MietteHandlerOpts, Result, RgbColors};

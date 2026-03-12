@@ -162,7 +162,7 @@ impl VmTable {
 mod test {
     use super::*;
 
-    // #[tokio::test]
+    #[tokio::test]
     async fn fetch_info() -> Result<()> {
         Vm::database()
             .await?
@@ -175,7 +175,7 @@ mod test {
         Ok(())
     }
 
-    // #[tokio::test]
+    #[tokio::test]
     async fn fetch_vms() -> Result<()> {
         let items = Vm::database().await?.many().get().await?;
         println!("{:#?}", items);
