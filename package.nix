@@ -10,9 +10,15 @@ pkgs.rustPlatform.buildRustPackage rec {
   src = ./.;
   cargoLock = {
     lockFile = ./Cargo.lock;
-    # outputHashes = {
-    #   "tappers-0.4.2" = "sha256-kx/gLngL7+fH5JmJTVTGawyNdRde59dbFdrzermy/CE=";
-    # };
+    outputHashes = {
+      # "dummy-0.14.0" = lib.fakeHash;
+
+      # Create network devices
+      # "tappers-0.4.2" = "sha256-kx/gLngL7+fH5JmJTVTGawyNdRde59dbFdrzermy/CE=";
+
+      # Readable ID based on pulbic_key
+      "radicle-crypto-0.15.0" = "sha256-SZhqRjF+duta6gJpaYjj5JgAGsxLAJXpwntrYpFr8bA=";
+    };
   };
 
   # disable tests

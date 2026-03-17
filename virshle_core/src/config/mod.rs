@@ -157,7 +157,7 @@ impl Config {
     pub fn peers(&self) -> Result<Vec<Peer>, VirshleError> {
         let peers: Vec<Peer> = match &self.peer {
             Some(peer) => peer.to_owned(),
-            None => vec![Peer::default()],
+            None => vec![],
         };
         Ok(peers)
     }

@@ -8,6 +8,12 @@ alias = "deku-dev-1"
 private_key = "./keys/default"
 public_key = "./keys/default.pub"
 
+# Mandatory
+# Set your node to "passive=true" when:
+# - you don't want to create local vms,
+# - you want to connect to other nodes only.
+passive = false
+
 # Network
 ## Kea dhcp
 [network.dhcp.kea]
@@ -20,26 +26,22 @@ suffix = "vm"
 # range = ["2a02:842b:6361:ad01::1ff", "2a02:842b:6361:ad01::ffff"]
 
 #########################
-# Nodes
-# The cli can communicate with remote nodes.
-# If none is whitelisted you will by default commande the local node.
+# Peers
+# The cli can communicate with remote nodes (peers).
+# If none is whitelisted you will by default send commands to the local node (Self).
 
-# Instance (This host credentials)
 [[peers]]
-url = "unix:///var/lib/virshle/virshle.sock"
+url = "ssh://anon@home-v0:22/var/lib/virshle/virshle.sock"
 weight = 20
 # Whitelist the node by adding its pubkey.
 # public_key = "/var/lib/virshle/node/peers/id_ed25519.pub"
 
-# file = ""
-
-
-# [[node]]
+# [[peers]]
 # alias = "local-ssh"
 # url = "ssh://anon@deku:22/var/lib/virshle/virshle.sock"
 # weight = 0
 #
-# [[node]]
+# [[peers]]
 # alias = "rpi4b"
 # url = "ssh://anon@rpi4b:22/var/lib/virshle/virshle.sock"
 # weight = 10

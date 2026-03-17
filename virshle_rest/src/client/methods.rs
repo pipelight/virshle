@@ -41,7 +41,7 @@ impl Client {
             client.base_url("/api/v1");
             client.ping_url("/api/v1/node/ping");
 
-            trace!("Connecting to peer {:#?}", peer.alias());
+            trace!("Connecting to peer {:#?}", peer.alias()?);
             let _ = client.open().await.is_ok();
             let _ = client.ping().await.is_ok();
             // Use node only if connection can be established
@@ -59,7 +59,7 @@ impl Client {
         client.base_url("/api/v1");
         client.ping_url("/api/v1/node/ping");
 
-        trace!("Connecting to local node {:#?}", node.alias());
+        trace!("Connecting to local node {:#?}", node.alias()?);
         let _ = client.open().await.is_ok();
         let _ = client.ping().await.is_ok();
 
@@ -576,7 +576,9 @@ impl VmGetterMethods<'_> {
         let mut res: HashMap<Peer, Vec<VmTable>> = HashMap::new();
         match alias {
             None => {
-                for (peer, rest) in self.api.peers.values_mut() {
+                let mut peers: Vec<&mut (Peer, RestClient)> = vec![&mut self.api.node];
+                peers.extend(self.api.peers.values_mut());
+                for (peer, rest) in  peers {
                     let vms = Self::_many(
                         peer,
                         rest,

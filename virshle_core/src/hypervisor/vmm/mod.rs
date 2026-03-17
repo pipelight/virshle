@@ -5,7 +5,9 @@ use std::path::Path;
 
 // Process management
 use pipelight_exec::{Finder, Process, Status};
+use std::fs;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
 
 use crate::config::VmTemplate;
 use crate::hypervisor::Vm;
