@@ -18,9 +18,19 @@ use virshle_error::{LibError, VirshleError};
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct NodeConfig {
     pub alias: Option<String>,
-    pub private_key: String,
-    pub public_key: String,
+    pub private_key: Option<String>,
+    pub public_key: Option<String>,
     pub passive: Option<bool>,
+}
+impl Default for NodeConfig {
+    fn default() -> NodeConfig {
+        NodeConfig {
+            alias: Some("Self".to_owned()),
+            private_key: None,
+            public_key: None,
+            passive: Some(false),
+        }
+    }
 }
 impl TryInto<Node> for NodeConfig {
     type Error = VirshleError;
@@ -32,23 +42,36 @@ impl TryInto<Node> for &NodeConfig {
     type Error = VirshleError;
     #[tracing::instrument]
     fn try_into(self) -> Result<Node, Self::Error> {
-        #[cfg(not(debug_assertions))]
-        let mut path = PathBuf::from("");
-        #[cfg(debug_assertions)]
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push(&self.private_key);
-        path = path.as_path().canonicalize()?;
-        trace!("Reading Self private_key at: {:#?}.", path);
-        let private_key = fs::read_to_string(path)?;
+        let private_key: Option<String> = match &self.private_key {
+            None => None,
+            Some(key_path) => {
+                #[cfg(not(debug_assertions))]
+                let mut path = PathBuf::from("");
+                #[cfg(debug_assertions)]
+                let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                path.push(&key_path);
+                path = path.as_path().canonicalize()?;
+                trace!("Reading Self private_key at: {:#?}.", path);
+                let pem = fs::read_to_string(path)?;
+                Some(pem)
+            }
+        };
 
-        #[cfg(not(debug_assertions))]
-        let mut path = PathBuf::from("");
-        #[cfg(debug_assertions)]
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push(&self.public_key);
-        path = path.as_path().canonicalize()?;
-        trace!("Reading Self public_key at: {:#?}.", path);
-        let public_key = fs::read_to_string(path)?;
+        let public_key: Option<String> = match &self.public_key {
+            None => None,
+            Some(key_path) => {
+                #[cfg(not(debug_assertions))]
+                let mut path = PathBuf::from("");
+                #[cfg(debug_assertions)]
+                let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+                path.push(&key_path);
+                path = path.as_path().canonicalize()?;
+                trace!("Reading Self public_key at: {:#?}.", path);
+                let pem = fs::read_to_string(path)?;
+                Some(pem)
+            }
+        };
+
         Ok(Node {
             alias: Some("Self".to_owned()),
             private_key,
@@ -60,18 +83,30 @@ impl TryInto<Node> for &NodeConfig {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Node {
     pub alias: Option<String>,
-    pub private_key: String,
-    pub public_key: String,
+    pub private_key: Option<String>,
+    pub public_key: Option<String>,
     pub passive: bool,
 }
 impl Default for Node {
     fn default() -> Self {
+        Node {
+            alias: Some("Self".to_owned()),
+            private_key: None,
+            public_key: None,
+            passive: false,
+        }
+    }
+}
+impl Node {
+    fn default_with_keys() -> Self {
         let key_pair = PrivateKey::random(&mut OsRng, Algorithm::Ed25519).unwrap();
-        let public_key = key_pair.public_key().to_openssh().unwrap();
-        let private_key = key_pair
-            .to_openssh(russh::keys::ssh_key::LineEnding::LF)
-            .unwrap()
-            .to_string();
+        let public_key = Some(key_pair.public_key().to_openssh().unwrap());
+        let private_key = Some(
+            key_pair
+                .to_openssh(russh::keys::ssh_key::LineEnding::LF)
+                .unwrap()
+                .to_string(),
+        );
         Node {
             alias: Some("Self".to_owned()),
             private_key,
@@ -93,18 +128,24 @@ impl Into<Peer> for &Node {
             alias: self.alias.clone(),
             url,
             weight: None,
-            public_key: Some(self.public_key.clone()),
+            public_key: self.public_key.clone(),
         }
     }
 }
 
 impl Node {
+    /// Return a human readable peer ID based on peer public key.
     pub fn did(&self) -> Result<String, VirshleError> {
-        let pem = &self.public_key;
-        let russh_key = russh::keys::PublicKey::from_str(pem).unwrap();
-        let bytes: &[u8; 32] = russh_key.key_data().ed25519().unwrap().as_ref();
-        let rad_key = radicle_crypto::PublicKey::from(*bytes);
-        let did = rad_key.to_human();
+        let did = match &self.public_key {
+            Some(pem) => {
+                let russh_key = russh::keys::PublicKey::from_str(pem).unwrap();
+                let bytes: &[u8; 32] = russh_key.key_data().ed25519().unwrap().as_ref();
+                let rad_key = radicle_crypto::PublicKey::from(*bytes);
+                let id = rad_key.to_human();
+                id
+            }
+            None => "null".to_string(),
+        };
         Ok(did)
     }
 }
@@ -161,8 +202,8 @@ mod tests {
 
         let config = NodeConfig {
             alias: None,
-            private_key,
-            public_key,
+            private_key: Some(private_key),
+            public_key: Some(public_key),
             passive: None,
         };
         let node: Node = config.try_into()?;

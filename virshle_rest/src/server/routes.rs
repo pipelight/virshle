@@ -1,7 +1,7 @@
 use crate::commons::{
     CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
 };
-use crate::server::Server;
+use crate::server::{RestServer, Server};
 use axum::{
     extract::{Extension, Path, Query},
     http::Request,
@@ -10,11 +10,14 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
+// Global vars
+use std::sync::{Arc, RwLock};
+
 use pipelight_exec::Status;
 use std::collections::HashMap;
 use tower_http::trace::TraceLayer;
 use virshle_core::{
-    config::{UserData, VmTemplate, VmTemplateTable},
+    config::{Config, UserData, VmTemplate, VmTemplateTable},
     hypervisor::{
         vm::{Vm, VmInfo, VmTable},
         vmm::types::{VmInfoResponse, VmState},
@@ -26,42 +29,62 @@ use miette::Result;
 use tracing::info;
 use virshle_error::{LibError, VirshleError, WrapError};
 
-impl Server {
-    pub async fn make_router(&self) -> Result<Router, VirshleError> {
+impl RestServer {
+    pub async fn build() -> Result<RestServer, VirshleError> {
+        let res = RestServer {
+            router: Self::make_api_v1().await?,
+        };
+        Ok(res)
+    }
+
+    /// Set server identity in response header.
+    async fn set_header<B>(mut response: Response<B>) -> Response<B> {
+        response
+            .headers_mut()
+            .insert("server", "Virshle API".parse().unwrap());
+        response
+    }
+    /// Create Rest API routes.
+    pub async fn make_api_v1() -> Result<Router, VirshleError> {
         // Virshle API
-        let api_v1 = Router::new()
+        // let server = Arc::new(RwLock::new(Server::new().build()?));
+        // let server = Server::new().build()?;
+
+        let api_v1_one: Router = Router::new()
             // Node
             // Check for the REST API availability
             .route(
                 "/node/ping",
                 get(async || {
-                    let methods = Server::methods()?;
-                    Result::<Json<()>, VirshleError>::Ok(Json(methods.clone().node().ping().await?))
+                    let server = Server::new().build()?;
+                    Result::<Json<()>, VirshleError>::Ok(Json(server.api()?.node().ping().await?))
                 }),
             )
             .route(
                 "/node/info",
                 get(async || {
-                    let methods = Server::methods()?;
-                    Result::<Json<NodeInfo>, VirshleError>::Ok(Json(methods.node().info().await?))
+                    let server = Server::new().build()?;
+                    Result::<Json<NodeInfo>, VirshleError>::Ok(Json(
+                        server.api()?.node().info().await?,
+                    ))
                 }),
             )
             // Template
             .route(
                 "/template/all",
                 get(async || {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<Vec<VmTemplate>>, VirshleError>::Ok(Json(
-                        methods.template().get_many().await?,
+                        server.api()?.template().get_many().await?,
                     ))
                 }),
             )
             .route(
                 "/template/reclaim",
                 get(async move |Json(params): Json<CreateVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<bool>, VirshleError>::Ok(Json(
-                        methods.template().reclaim(params).await?,
+                        server.clone().api()?.template().reclaim(params).await?,
                     ))
                 }),
             )
@@ -69,9 +92,10 @@ impl Server {
             .route(
                 "/vm/create",
                 put(async move |Json(params): Json<CreateVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .create()
                             .one()
@@ -85,9 +109,10 @@ impl Server {
             .route(
                 "/vm/start",
                 put(async move |Json(params): Json<StartVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .start()
                             .one()
@@ -103,9 +128,10 @@ impl Server {
             .route(
                 "/vm/shutdown",
                 put(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .shutdown()
                             .one()
@@ -120,9 +146,10 @@ impl Server {
             .route(
                 "/vm/delete",
                 put(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .delete()
                             .one()
@@ -137,9 +164,10 @@ impl Server {
             .route(
                 "/vm/info",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .get()
                             .one()
@@ -154,22 +182,21 @@ impl Server {
             .route(
                 "/vm/get_vsock_path",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<String>, VirshleError>::Ok(Json(
-                        methods.vm().get_vsock_path(params).await?,
+                        server.api()?.vm().get_vsock_path(params).await?,
                     ))
                 }),
             );
-
-        // Virshle Bulk API
-        let api_v1_bulk = Router::new()
+        // Virshle Bulk operation API
+        let api_v1_many = Router::new()
             // Template
             .route(
                 "/template/info.many",
                 get(async || {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<Vec<VmTemplateTable>>, VirshleError>::Ok(Json(
-                        methods.template().get_info_many().await?,
+                        server.api()?.template().get_info_many().await?,
                     ))
                 }),
             )
@@ -177,9 +204,10 @@ impl Server {
             .route(
                 "/vm/get.many",
                 post(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .get()
                             .many()
@@ -193,9 +221,10 @@ impl Server {
             .route(
                 "/vm/create.many",
                 put(async move |Json(params): Json<CreateManyVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .create()
                             .many()
@@ -210,9 +239,10 @@ impl Server {
             .route(
                 "/vm/start.many",
                 put(async move |Json(params): Json<StartManyVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .start()
                             .many()
@@ -226,9 +256,10 @@ impl Server {
             .route(
                 "/vm/shutdown.many",
                 put(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .shutdown()
                             .many()
@@ -242,9 +273,10 @@ impl Server {
             .route(
                 "/vm/delete.many",
                 put(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .delete()
                             .many()
@@ -258,9 +290,10 @@ impl Server {
             .route(
                 "/vm/info.many",
                 post(async move |Json(params): Json<GetManyVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        methods
+                        server
+                            .api()?
                             .vm()
                             .get()
                             .many()
@@ -271,77 +304,45 @@ impl Server {
                     ))
                 }),
             );
-
         // Cloud-hypervisor direct calls.
         let api_v1_ch = Router::new()
             // Vm
             .route(
                 "/vm.info",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<VmInfoResponse>, VirshleError>::Ok(Json(
-                        methods.vm().get_ch_info(params).await?,
+                        server.api()?.vm().get_ch_info(params).await?,
                     ))
                 }),
             )
             .route(
                 "/vm.info.raw",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
+                    let server = Server::new().build()?;
                     Result::<Json<String>, VirshleError>::Ok(Json(
-                        methods.vm().get_raw_ch_info(params).await?,
+                        server.api()?.vm().get_raw_ch_info(params).await?,
                     ))
                 }),
             )
             .route(
                 "/vmm.ping",
                 post(async move |Json(params): Json<GetVmArgs>| {
-                    let methods = Server::methods()?;
-                    Result::<Json<()>, VirshleError>::Ok(Json(methods.vm().ping_ch(params).await?))
+                    let server = Server::new().build()?;
+                    Result::<Json<()>, VirshleError>::Ok(Json(
+                        server.api()?.vm().ping_ch(params).await?,
+                    ))
                 }),
             );
 
-        let app = Router::new()
-            .nest("/api/v1", api_v1)
-            .nest("/api/v1", api_v1_bulk)
+        // Global routes
+        let router = Router::new()
+            .nest("/api/v1", api_v1_one)
+            .nest("/api/v1", api_v1_many)
             .nest("/api/v1/ch", api_v1_ch)
             .layer(map_response(Self::set_header))
             .layer(TraceLayer::new_for_http());
 
-        Ok(app)
-    }
-
-    async fn set_header<B>(mut response: Response<B>) -> Response<B> {
-        response
-            .headers_mut()
-            .insert("server", "Virshle API".parse().unwrap());
-        response
-    }
-
-    /// Run REST api.
-    pub async fn run() -> Result<(), VirshleError> {
-        let server = Server::default();
-        let app = server.make_router().await?;
-        let socket_path = Server::get_socket()?;
-
-        info!("Server listening on socket {}", &socket_path);
-        tokio_scoped::scope(|s| {
-            s.spawn(async {
-                let listener = Server::make_socket(&socket_path).await.unwrap();
-                let _ = axum::serve(listener, app.clone()).await;
-            });
-        });
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_api_run() -> Result<()> {
-        Server::run().await?;
-        Ok(())
+        Ok(router)
     }
 }

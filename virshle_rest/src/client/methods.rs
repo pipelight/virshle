@@ -19,6 +19,7 @@ use pipelight_exec::Status;
 use rand::seq::IndexedRandom;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use indexmap::IndexMap;
 use uuid::Uuid;
 
 // Error handling
@@ -34,7 +35,8 @@ impl Client {
 
         // Generate peer list 
         // and open connection to remote peers.
-        let mut peers: HashMap<String, (Peer, RestClient)> = HashMap::new();
+        let mut peers: IndexMap<String, (Peer, RestClient)> = IndexMap::new();
+
         for peer in config.peers()? {
             let conn: Connection = peer.clone().try_into()?;
             let mut client: RestClient = conn.into();
@@ -71,7 +73,7 @@ impl Client {
 }
 pub struct Methods {
     /// List of node aliases and their associated rest client.
-    peers: HashMap<String, (Peer, RestClient)>,
+    peers: IndexMap<String, (Peer, RestClient)>,
     node: (Peer, RestClient),
 }
 impl Methods {
@@ -576,9 +578,7 @@ impl VmGetterMethods<'_> {
         let mut res: HashMap<Peer, Vec<VmTable>> = HashMap::new();
         match alias {
             None => {
-                let mut peers: Vec<&mut (Peer, RestClient)> = vec![&mut self.api.node];
-                peers.extend(self.api.peers.values_mut());
-                for (peer, rest) in  peers {
+                for (_,(peer, rest)) in &mut self.api.peers {
                     let vms = Self::_many(
                         peer,
                         rest,
@@ -614,9 +614,14 @@ impl VmGetterMethods<'_> {
         rest: &mut RestClient,
         args: Option<GetManyVmArgs>,
     ) -> Result<Vec<VmTable>, VirshleError> {
-        rest.open().await?;
-        rest.ping().await?;
-        let vms: Vec<VmTable> = rest.post("/vm/get.many", args.clone()).await?.to_value().await?;
+        let mut vms: Vec<VmTable> = vec![];
+        if rest.ping().await.is_ok() {
+            let res = rest.post("/vm/get.many", args.clone()).await?.to_value().await;
+            match res {
+                Ok(v) => {vms = v},
+                Err(_) => {}
+            };
+        }
         Ok(vms)
     }
 }

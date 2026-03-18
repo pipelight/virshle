@@ -22,20 +22,13 @@ pub fn tracer(
     let subscriber = builder.finish();
     tracing::subscriber::set_global_default(subscriber).ok();
 
-    // Set logger
-    // Mainly used in tests for pretty printing tables.
-    // A lower debug level means reasonable data amount to print out.
-    std::env::set_var("VIRSHLE_LOG", tracing::Level::ERROR.to_string());
-    env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Error)
-        .init();
     Ok(())
 }
 /// Always print logs inside test.
+// Mainly used in tests for pretty printing tables.
+// A lower debug level means reasonable data amount to print out.
 #[builder(finish_fn = set)]
 pub fn logger(verbosity: tracing::Level) -> Result<(), VirshleError> {
-    // Mainly used in tests for pretty printing tables.
-    // A lower debug level means reasonable data amount to print out.
     std::env::set_var("VIRSHLE_LOG", tracing::Level::ERROR.to_string());
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Error)

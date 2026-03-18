@@ -18,7 +18,7 @@ use owo_colors::OwoColorize;
 use spinoff::{spinners, Color, Spinner};
 
 // Rest API client
-use virshle_rest::{Client, Server};
+use virshle_rest::{Client, RestServer, Server};
 
 use pipelight_exec::Status;
 
@@ -87,7 +87,7 @@ impl Cli {
                  * Serve the node rest API and wait for http requests.
                  */
                 NodeArgs::Serve => {
-                    Server::run().await?;
+                    RestServer::build().await?.serve().await?;
                 }
                 /*
                  * Create the required virshle working directories.
@@ -184,7 +184,7 @@ impl Cli {
                         Some(path) => Some(UserData::from_file(&path)?),
                         None => None,
                     };
-                    let methods = Server::methods()?;
+                    let methods = Server::new().build()?.api()?;
 
                     match args.attach {
                         true => {

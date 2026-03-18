@@ -32,9 +32,13 @@ use tracing::{error, info, warn};
 use virshle_error::{LibError, VirshleError};
 
 impl Server {
-    pub fn methods() -> Result<Methods, VirshleError> {
-        if let Some(node) = Config::get()?.node().ok() {
-            return Ok(Methods { node });
+    pub fn api(&self) -> Result<Methods, VirshleError> {
+        // let config = self.config.read().unwrap().clone();
+        //
+        if let Some(node) = self.config.node().ok() {
+            return Ok(Methods {
+                config: self.config.clone(),
+            });
         } else {
             let err = LibError::builder()
                 .msg("No node running.")
@@ -45,37 +49,42 @@ impl Server {
     }
 }
 impl Methods {
-    pub fn node(&self) -> NodeMethods {
-        NodeMethods
+    pub fn node(&self) -> NodeMethods<'_> {
+        NodeMethods { api: self }
     }
-    pub fn peer(&self) -> PeerMethods {
-        PeerMethods
+    pub fn peer(&self) -> PeerMethods<'_> {
+        PeerMethods { api: self }
     }
-    pub fn template(&self) -> TemplateMethods {
-        TemplateMethods
+    pub fn template(&self) -> TemplateMethods<'_> {
+        TemplateMethods { api: self }
     }
-    pub fn vm(&self) -> VmMethods {
+    pub fn vm(&self) -> VmMethods<'_> {
         VmMethods { api: self }
     }
 }
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Methods {
-    /// This node alias.
-    node: Node,
+    config: Config,
 }
 
-#[derive(Default, Clone)]
-pub struct NodeMethods;
-#[derive(Default, Clone)]
-pub struct PeerMethods;
-#[derive(Default, Clone)]
-pub struct TemplateMethods;
+#[derive(Clone)]
+pub struct NodeMethods<'a> {
+    api: &'a Methods,
+}
+#[derive(Clone)]
+pub struct PeerMethods<'a> {
+    api: &'a Methods,
+}
+#[derive(Clone)]
+pub struct TemplateMethods<'a> {
+    api: &'a Methods,
+}
 #[derive(Clone)]
 pub struct VmMethods<'a> {
     api: &'a Methods,
 }
 
-impl NodeMethods {
+impl NodeMethods<'_> {
     pub async fn ping(&self) -> Result<(), VirshleError> {
         Ok(())
     }
@@ -86,7 +95,7 @@ impl NodeMethods {
         Ok(res)
     }
 }
-impl PeerMethods {
+impl PeerMethods<'_> {
     pub async fn ping(&self) -> Result<(), VirshleError> {
         Ok(())
     }
@@ -98,7 +107,7 @@ impl PeerMethods {
     }
 }
 
-impl TemplateMethods {
+impl TemplateMethods<'_> {
     pub async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError> {
         if let Some(name) = &args.template_name {
             let vm_template = VmTemplate::get_by_name(name)?;
@@ -111,8 +120,7 @@ impl TemplateMethods {
         }
     }
     pub async fn get_many(&self) -> Result<Vec<VmTemplate>, VirshleError> {
-        let config = Config::get()?;
-        if let Some(template) = config.template {
+        if let Some(template) = self.api.config.template.clone() {
             if let Some(vm_templates) = template.vm {
                 return Ok(vm_templates);
             }
@@ -138,7 +146,7 @@ pub struct VmGetterMethods<'a> {
     api: &'a Methods,
 }
 impl VmMethods<'_> {
-    pub fn get(&self) -> VmGetterMethods {
+    pub fn get(&self) -> VmGetterMethods<'_> {
         VmGetterMethods { api: self.api }
     }
 }
@@ -313,7 +321,7 @@ pub struct VmStartMethods<'a> {
     api: &'a Methods,
 }
 impl VmMethods<'_> {
-    pub fn start(&self) -> VmStartMethods {
+    pub fn start(&self) -> VmStartMethods<'_> {
         VmStartMethods { api: self.api }
     }
 }
@@ -387,7 +395,7 @@ pub struct VmDeleteMethods<'a> {
     api: &'a Methods,
 }
 impl VmMethods<'_> {
-    pub fn delete(&self) -> VmDeleteMethods {
+    pub fn delete(&self) -> VmDeleteMethods<'_> {
         VmDeleteMethods { api: self.api }
     }
 }
@@ -451,7 +459,7 @@ pub struct VmShutdownMethods<'a> {
     api: &'a Methods,
 }
 impl VmMethods<'_> {
-    pub fn shutdown(&self) -> VmShutdownMethods {
+    pub fn shutdown(&self) -> VmShutdownMethods<'_> {
         VmShutdownMethods { api: self.api }
     }
 }

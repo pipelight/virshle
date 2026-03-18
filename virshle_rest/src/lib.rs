@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use tokio::net::UnixListener;
 
 pub use client::Client;
-pub use server::Server;
+pub use server::{RestServer, Server};
 
 // Error handling
 use miette::Result;

@@ -67,6 +67,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 tracing-log.workspace = true
 tracing-test.workspace = true
+indexmap = { version = "2.13.0", features = ["serde"] }
 # derivative = "2.2.0"
 
 [dev-dependencies]

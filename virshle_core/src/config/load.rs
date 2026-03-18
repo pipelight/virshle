@@ -5,7 +5,7 @@ use super::Config;
 
 // Global vars
 use once_cell::sync::Lazy;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 // Config
 use std::fs;
@@ -17,7 +17,7 @@ use miette::{Error, Result};
 use tracing::{error, trace};
 use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 
-pub const CONFIG: Lazy<Arc<Mutex<Config>>> = Lazy::new(|| Arc::new(Mutex::new(Config::default())));
+pub const CONFIG: Lazy<Arc<RwLock<Option<Config>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
 
 impl Config {
     /// Get config from crate directory
@@ -38,22 +38,26 @@ impl Config {
         trace!("Reading config file at {:#?}", path);
         Ok(path)
     }
+
     /// Return configuration from default file path.
     #[tracing::instrument]
     pub fn get() -> Result<Self, VirshleError> {
-        // let config = CONFIG.lock().unwrap().clone();
-        // Ok(config)
+        // Early return config if already stored in memory
+        let config = CONFIG.read().unwrap().clone();
+        match config {
+            Some(v) => return Ok(v),
+            None => {}
+        };
 
         #[cfg(debug_assertions)]
         let path = Self::debug_path()?;
-
         #[cfg(not(debug_assertions))]
         let path = Self::release_path()?;
-
         let path = path.display().to_string();
         match Self::from_file(&path) {
             Ok(v) => {
                 trace!("Loaded config file.");
+                *CONFIG.write().unwrap() = Some(v.clone());
                 Ok(v)
             }
             Err(e) => {
@@ -127,11 +131,12 @@ mod tests {
     use super::*;
     use tracing_test::traced_test;
 
-    #[traced_test]
     #[test]
     fn get_config_from_file() -> Result<()> {
         let res = Config::get()?;
-        println!("{:#?}", res);
+        // Test loading from memory
+        Config::get()?;
+        // println!("{:#?}", res);
         Ok(())
     }
 
@@ -144,6 +149,11 @@ mod tests {
             url = "anon@localhost:22"
             private_key = "/var/lib/virshle/keys/private_key"
             public_key = "/var/lib/virshle/keys/public_key"
+
+            [[peer]]
+            url = "ssh://anon@remote:22/var/lib/virshle/virshle.sock"
+            weight = 20
+
 
             [template]
             # Vms

@@ -6666,6 +6666,7 @@ dependencies = [
  "human_bytes",
  "hyper",
  "hyper-util",
+ "indexmap 2.13.0",
  "ipnet",
  "jiff",
  "log",

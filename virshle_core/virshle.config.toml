@@ -30,8 +30,8 @@ suffix = "vm"
 # The cli can communicate with remote nodes (peers).
 # If none is whitelisted you will by default send commands to the local node (Self).
 
-[[peers]]
-url = "ssh://anon@home-v0:22/var/lib/virshle/virshle.sock"
+[[peer]]
+url = "ssh://anon@home-v0:2214/var/lib/virshle/virshle.sock"
 weight = 20
 # Whitelist the node by adding its pubkey.
 # public_key = "/var/lib/virshle/node/peers/id_ed25519.pub"

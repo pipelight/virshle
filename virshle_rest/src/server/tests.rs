@@ -1,4 +1,4 @@
-use crate::Server;
+use crate::server::{RestServer, Server};
 
 use virshle_core::{
     config::Config,
@@ -25,7 +25,8 @@ async fn get_node_info() -> Result<()> {
         .set()?;
 
     // Get Self info.
-    let res: NodeInfo = Server::methods()?.node().info().await?;
+    let server = Server::new().build()?;
+    let res: NodeInfo = server.api()?.node().info().await?;
     info!("{:#?}", res);
 
     // Print peer info as a table.
@@ -44,15 +45,22 @@ async fn get_vms() -> Result<()> {
         .db(true)
         .set()?;
 
-    let res: Vec<VmTable> = Server::methods()?.vm().get().many().exec().await?;
+    let server = Server::new().build()?;
+    let res: Vec<VmTable> = server.api()?.vm().get().many().exec().await?;
     info!("{:#?}", res);
 
     // Print vms info as a table.
-    let peer: Peer = Config::get()?.node()?.into();
+    let peer: Peer = server.config.node()?.into();
     let printable = HashMap::from([(peer, res)]);
 
     testing::logger().verbosity(tracing::Level::WARN).set()?;
     VmTable::display_by_peer(&printable).await?;
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_http_rest_server() -> Result<()> {
+    RestServer::build().await?.serve().await?;
     Ok(())
 }

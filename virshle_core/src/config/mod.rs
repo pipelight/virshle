@@ -24,10 +24,6 @@ use serde::{Deserialize, Serialize};
 use std::convert::Into;
 use std::fs;
 use std::path::Path;
-// Ssh
-use rand_core::OsRng;
-// use rand::rngs::OsRng;
-use russh::keys::{ssh_key::Algorithm, PrivateKey, PublicKey};
 
 // Error Handling
 use log::{debug, info};
@@ -60,9 +56,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            peer: Some(vec![Peer::default()]),
-
-            node: None,
+            node: Some(NodeConfig::default()),
+            peer: None,
             template: None,
             dhcp: None,
         }
@@ -155,9 +150,14 @@ impl Config {
         Ok(res)
     }
     pub fn peers(&self) -> Result<Vec<Peer>, VirshleError> {
-        let peers: Vec<Peer> = match &self.peer {
-            Some(peer) => peer.to_owned(),
-            None => vec![],
+        let mut peers: Vec<Peer> = vec![];
+        if !self.node()?.passive {
+            let peer = self.node()?.into();
+            peers.push(peer);
+        }
+        match &self.peer {
+            Some(peer) => peers.extend(peer.to_owned()),
+            None => {}
         };
         Ok(peers)
     }

@@ -21,7 +21,9 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 pub fn tracing_per_crate(verbosity: tracing::Level) -> Result<String, VirshleError> {
     let res = match verbosity {
-        tracing::Level::TRACE => "",
+        tracing::Level::TRACE => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=warn,users=warn"
+        }
         tracing::Level::DEBUG => {
             "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
         }
@@ -40,7 +42,9 @@ pub fn tracing_per_crate(verbosity: tracing::Level) -> Result<String, VirshleErr
 }
 pub fn logging_per_crate(verbosity: log::LevelFilter) -> Result<String, VirshleError> {
     let res = match verbosity {
-        log::LevelFilter::Trace => "",
+        log::LevelFilter::Trace => {
+            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=warn,users=warn"
+        }
         log::LevelFilter::Debug => {
             "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
         }
