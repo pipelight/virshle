@@ -26,6 +26,7 @@ tabled.workspace = true
 convert_case = "0.10.0"
 owo-colors.workspace = true
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
+indexmap.workspace = true
 
 toml = { version = "0.9.5", features = ["parse", "preserve_order"] }
 human_bytes.workspace = true

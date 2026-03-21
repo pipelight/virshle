@@ -18,7 +18,6 @@ use bon::bon;
 use pipelight_exec::Status;
 use rand::seq::IndexedRandom;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use indexmap::IndexMap;
 use uuid::Uuid;
 
@@ -30,13 +29,12 @@ use virshle_error::{LibError, VirshleError, WrapError};
 impl Client {
     /// Retrieves working nodes from configuration
     /// and return a rest api convenience helper.
-    pub async fn api() -> Result<Methods, VirshleError> {
-        let config = Config::get()?;
+    pub async fn api(&self) -> Result<Methods, VirshleError> {
         // Generate peer list 
         // and open connection to remote peers.
         let mut peers: IndexMap<String, (Peer, RestClient)> = IndexMap::new();
 
-        for (alias, peer) in config.peers()? {
+        for (alias, peer) in self.config.peers()? {
             let conn: Connection = peer.clone().try_into()?;
             let mut client: RestClient = conn.into();
             client.base_url("/api/v1");
@@ -136,7 +134,7 @@ impl NodeMethods<'_> {
     }
     #[builder(finish_fn = exec)]
     pub async fn ping(&mut self, alias: Option<String>) -> Result<bool, VirshleError> {
-        let mut res: HashMap<Peer, bool> = HashMap::new();
+        let mut res: IndexMap<Peer, bool> = IndexMap::new();
         let (ref peer, ref mut rest) = self.api.peers.get_mut("Self").unwrap();
         Self::_ping(peer, rest).await
     }
@@ -173,8 +171,8 @@ impl PeerMethods<'_> {
     pub async fn did(
         &mut self,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, String>, VirshleError> {
-        let mut res = HashMap::new();
+    ) -> Result<IndexMap<Peer, String>, VirshleError> {
+        let mut res = IndexMap::new();
         match alias {
             None => {
                 for (peer, rest) in self.api.peers.values_mut() {
@@ -213,8 +211,8 @@ impl PeerMethods<'_> {
     pub async fn get_info(
         &mut self,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
-        let mut res: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> = HashMap::new();
+    ) -> Result<IndexMap<Peer, (ConnectionState, Option<NodeInfo>)>, VirshleError> {
+        let mut res: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)> = IndexMap::new();
         match alias {
             None => {
                 for (node, rest) in self.api.peers.values_mut() {
@@ -260,8 +258,8 @@ impl PeerMethods<'_> {
     pub async fn ping(
         &mut self,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, bool>, VirshleError> {
-        let mut res: HashMap<Peer, bool> = HashMap::new();
+    ) -> Result<IndexMap<Peer, bool>, VirshleError> {
+        let mut res: IndexMap<Peer, bool> = IndexMap::new();
         match alias {
             None => {
                 for (peer, rest) in self.api.peers.values_mut() {
@@ -342,7 +340,7 @@ impl PeerGetterMethods<'_> {
     }
     // Get random non-saturated node.
     pub async fn random(&mut self) -> Result<Peer, VirshleError> {
-        let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+        let peers: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)> =
             self.api.peer().get_info().exec().await?;
 
         let mut ref_vec: Vec<&Peer> = vec![];
@@ -366,7 +364,7 @@ impl PeerGetterMethods<'_> {
 
     /// Get random non-saturated node with weight.
     pub async fn load_balance(&mut self) -> Result<Peer, VirshleError> {
-        let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+        let peers: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)> =
             self.api.peer().get_info().exec().await?;
 
         let mut ref_vec: Vec<&Peer> = vec![];
@@ -397,7 +395,7 @@ impl PeerGetterMethods<'_> {
 
     /// Get random non-saturated node by round-robin.
     pub async fn lowest_saturation_index(&mut self) -> Result<Peer, VirshleError> {
-        let peers: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+        let peers: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)> =
             self.api.peer().get_info().exec().await?;
 
         let mut ref_vec: Vec<(f64, &Peer)> = vec![];
@@ -431,8 +429,8 @@ impl TemplateMethods<'_> {
     pub async fn get(
         &mut self,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, Vec<VmTemplate>>, VirshleError> {
-        let mut res: HashMap<Peer, Vec<VmTemplate>> = HashMap::new();
+    ) -> Result<IndexMap<Peer, Vec<VmTemplate>>, VirshleError> {
+        let mut res: IndexMap<Peer, Vec<VmTemplate>> = IndexMap::new();
         match alias {
             None => {
                 for (peer, rest) in self.api.peers.values_mut() {
@@ -461,8 +459,8 @@ impl TemplateMethods<'_> {
         template_name: Option<String>,
         user_data: Option<UserData>,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, bool>, VirshleError> {
-        let mut res: HashMap<Peer, bool> = HashMap::new();
+    ) -> Result<IndexMap<Peer, bool>, VirshleError> {
+        let mut res: IndexMap<Peer, bool> = IndexMap::new();
         match alias {
             None => {
                 for (peer, rest) in self.api.peers.values_mut() {
@@ -617,8 +615,8 @@ impl VmGetterMethods<'_> {
         account: Option<Uuid>,
         /// Specific peer name.
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, Vec<VmTable>>, VirshleError> {
-        let mut res: HashMap<Peer, Vec<VmTable>> = HashMap::new();
+    ) -> Result<IndexMap<Peer, Vec<VmTable>>, VirshleError> {
+        let mut res: IndexMap<Peer, Vec<VmTable>> = IndexMap::new();
         match alias {
             None => {
                 for (_,(peer, rest)) in &mut self.api.peers {
@@ -851,8 +849,8 @@ impl VmDeleteMethods<'_> {
         state: Option<VmState>,
         account: Option<Uuid>,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, HashMap<Status, Vec<VmTable>>>, VirshleError> {
-        let mut res: HashMap<Peer, HashMap<Status,Vec<VmTable>>> = HashMap::new();
+    ) -> Result<IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>, VirshleError> {
+        let mut res: IndexMap<Peer, IndexMap<Status,Vec<VmTable>>> = IndexMap::new();
         let mut method = self.api.peer();
         let mut getter = method.get();
         let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
@@ -872,9 +870,9 @@ impl VmDeleteMethods<'_> {
         peer: &Peer,
         rest: &mut RestClient,
         args: Option<GetManyVmArgs>,
-    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
+    ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
 
-        let vms: HashMap<Status,Vec<VmTable>>= rest
+        let vms: IndexMap<Status,Vec<VmTable>>= rest
             .post("/vm/delete.many", args.clone())
             .await?
             .to_value()
@@ -955,9 +953,9 @@ impl VmStartMethods<'_> {
         account: Option<Uuid>,
         user_data: Option<UserData>,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, HashMap<Status, Vec<VmTable>>>,VirshleError> {
-        let mut res: HashMap<Peer, HashMap<Status, Vec<VmTable>>>
-        = HashMap::new();
+    ) -> Result<IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>,VirshleError> {
+        let mut res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>
+        = IndexMap::new();
         let mut method = self.api.peer();
         let mut getter = method.get();
         let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
@@ -979,10 +977,10 @@ impl VmStartMethods<'_> {
         peer: &Peer,
         rest: &mut RestClient,
         args: Option<StartManyVmArgs>,
-    ) -> Result<HashMap<Status, Vec<VmTable>>,VirshleError> {
+    ) -> Result<IndexMap<Status, Vec<VmTable>>,VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-        let vms: HashMap<Status,Vec<VmTable>> = rest
+        let vms: IndexMap<Status,Vec<VmTable>> = rest
             .post("/vm/start.many", args.clone())
             .await?
             .to_value()
@@ -1051,8 +1049,8 @@ impl VmShutdownMethods<'_> {
         state: Option<VmState>,
         account: Option<Uuid>,
         alias: Option<String>,
-    ) -> Result<HashMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
-        let mut res: HashMap<Peer, Vec<Result<VmTable, VirshleError>>> = HashMap::new();
+    ) -> Result<IndexMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
+        let mut res: IndexMap<Peer, Vec<Result<VmTable, VirshleError>>> = IndexMap::new();
         let mut method = self.api.peer();
         let mut getter = method.get();
         let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;

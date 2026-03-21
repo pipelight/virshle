@@ -1,5 +1,5 @@
 use super::VmmMethods;
-use crate::init::MANAGED_DIR;
+use crate::config::init::MANAGED_DIR;
 use crate::hypervisor::{
     vmm::{VmConfig, VmInfoResponse, VmRemoveDeviceData, VmState},
     Vm,

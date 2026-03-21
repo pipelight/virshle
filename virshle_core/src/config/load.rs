@@ -48,7 +48,7 @@ impl TryInto<Config> for PreConfig {
 }
 impl TryInto<Config> for &PreConfig {
     type Error = VirshleError;
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn try_into(self) -> Result<Config, Self::Error> {
         let mut config = Config {
             dhcp: self.dhcp.clone(),
@@ -79,7 +79,7 @@ impl TryInto<Config> for &PreConfig {
 
 impl PreConfig {
     /// Get config from crate directory
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn debug_path() -> Result<PathBuf, io::Error> {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("./virshle.config.toml");
@@ -88,7 +88,7 @@ impl PreConfig {
         Ok(path)
     }
     /// Get config from FHS path.
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn release_path() -> Result<PathBuf, io::Error> {
         let mut path = PathBuf::new();
         path.push("/etc/virshle/config.toml");

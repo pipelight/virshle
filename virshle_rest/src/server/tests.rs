@@ -1,4 +1,4 @@
-use crate::server::{RestServer, Server};
+use crate::server::Server;
 
 use virshle_core::{
     config::Config,
@@ -7,8 +7,8 @@ use virshle_core::{
 };
 use virshle_network::connection::ConnectionState;
 
+use indexmap::IndexMap;
 use pipelight_exec::Status;
-use std::collections::HashMap;
 
 // Error Handling
 use miette::{Error, Result};
@@ -16,18 +16,10 @@ use tracing::{error, info, trace};
 use virshle_core::utils::testing;
 use virshle_error::{LibError, VirshleError, WrapError};
 
-// Server initilisation
-#[tokio::test]
-async fn server() -> Result<()> {
-    testing::tracer()
-        .verbosity(tracing::Level::TRACE)
-        .db(false)
-        .set()?;
-
-    let server = Server::new().build()?;
-    server.api()?;
-
-    Ok(())
+fn server() -> Result<Server, VirshleError> {
+    let config = Config::get()?;
+    let server = Server::new().config(&config).build()?;
+    Ok(server)
 }
 
 // Node methods
@@ -37,8 +29,7 @@ async fn node_methods() -> Result<()> {
         .verbosity(tracing::Level::TRACE)
         .db(false)
         .set()?;
-
-    let server = Server::new().build()?;
+    let server = server()?;
 
     // Ping
     server.api()?.node().ping().await?;
@@ -51,9 +42,11 @@ async fn node_methods() -> Result<()> {
     // Get info for node "Self".
     let res: NodeInfo = server.api()?.node().info().await?;
     info!("\n{:#?}", res);
-    // Print peer info as a table.
-    let peer: Peer = Config::get()?.node()?.into();
-    let printable = (peer, (ConnectionState::DaemonUp, Some(res)));
+
+    // Print node info as a table.
+    let node: Peer = server.config.node.into();
+    let printable: (Peer, (ConnectionState, Option<NodeInfo>)) =
+        (node, (ConnectionState::DaemonUp, Some(res)));
     testing::logger().verbosity(tracing::Level::INFO).set()?;
     Peer::display(&printable).await?;
 
@@ -66,14 +59,14 @@ async fn get_vms() -> Result<()> {
         .verbosity(tracing::Level::TRACE)
         .db(true)
         .set()?;
+    let server = server()?;
 
-    let server = Server::new().build()?;
     let res: Vec<VmTable> = server.api()?.vm().get().many().exec().await?;
     info!("{:#?}", res);
 
     // Print vms info as a table.
-    let peer: Peer = server.config.node()?.into();
-    let printable = HashMap::from([(peer, res)]);
+    let peer: Peer = server.config.node.into();
+    let printable: IndexMap<Peer, Vec<VmTable>> = IndexMap::from([(peer, res)]);
 
     testing::logger().verbosity(tracing::Level::WARN).set()?;
     VmTable::display_by_peer(&printable).await?;
@@ -84,6 +77,6 @@ async fn get_vms() -> Result<()> {
 // #[tokio::test]
 /// Will fail because of nested tokio.
 async fn test_http_rest_server() -> Result<()> {
-    RestServer::build().await?.serve().await?;
+    let server = server()?;
     Ok(())
 }

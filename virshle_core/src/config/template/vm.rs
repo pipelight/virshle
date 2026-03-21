@@ -2,9 +2,9 @@ use crate::config::DiskTemplate;
 use crate::hypervisor::{Disk, DiskInfo, Vm, VmConfigPlus};
 use crate::peer::Peer;
 
+use indexmap::IndexMap;
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -14,7 +14,7 @@ use uuid::Uuid;
 use virshle_network::Uri;
 
 // Globals
-use crate::init::MANAGED_DIR;
+use crate::config::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;
@@ -52,9 +52,9 @@ impl VmTemplate {
     }
 }
 impl VmTemplate {
-    pub async fn display_by_peers(items: HashMap<Peer, Vec<Self>>) -> Result<(), VirshleError> {
+    pub async fn display_by_peers(items: IndexMap<Peer, Vec<Self>>) -> Result<(), VirshleError> {
         // Convert vm to pretty printable type
-        let mut tables: HashMap<Peer, Vec<VmTemplateTable>> = HashMap::new();
+        let mut tables: IndexMap<Peer, Vec<VmTemplateTable>> = IndexMap::new();
         for (peer, vms) in items {
             let mut vms_table: Vec<VmTemplateTable> = vec![];
             for vm in vms {

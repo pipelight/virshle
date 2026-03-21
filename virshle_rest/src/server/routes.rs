@@ -1,7 +1,7 @@
 use crate::commons::{
     CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
 };
-use crate::server::{RestServer, Server};
+use crate::server::Server;
 use axum::{
     extract::{Extension, Path, Query, State},
     http::Request,
@@ -10,6 +10,7 @@ use axum::{
     routing::{get, post, put},
     Json, Router,
 };
+
 // Global vars
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -31,14 +32,7 @@ use miette::Result;
 use tracing::info;
 use virshle_error::{LibError, VirshleError, WrapError};
 
-impl RestServer {
-    pub async fn build() -> Result<RestServer, VirshleError> {
-        let res = RestServer {
-            router: Self::make_api_v1().await?,
-        };
-        Ok(res)
-    }
-
+impl Server {
     /// Set server identity in response header.
     async fn set_header<B>(mut response: Response<B>) -> Response<B> {
         response
@@ -47,11 +41,8 @@ impl RestServer {
         response
     }
     /// Create Rest API routes.
-    pub async fn make_api_v1() -> Result<Router, VirshleError> {
+    pub async fn make_router(&mut self) -> Result<(), VirshleError> {
         // Virshle API
-        // let server = Arc::new(RwLock::new(Server::new().build()?));
-        let server = Server::new().build()?;
-
         let api_v1_one: Router = Router::new()
             // Node
             // Check for the REST API availability
@@ -202,7 +193,7 @@ impl RestServer {
                     },
                 ),
             )
-            .with_state(server.clone());
+            .with_state(self.clone());
         // Virshle Bulk operation API
         let api_v1_many = Router::new()
             // Template
@@ -326,7 +317,7 @@ impl RestServer {
                     },
                 ),
             )
-            .with_state(server.clone());
+            .with_state(self.clone());
         // Cloud-hypervisor direct calls.
         let api_v1_ch = Router::new()
             // Vm
@@ -360,7 +351,7 @@ impl RestServer {
                     },
                 ),
             )
-            .with_state(server.clone());
+            .with_state(self.clone());
 
         // Global routes
         let router = Router::new()
@@ -370,6 +361,8 @@ impl RestServer {
             .layer(map_response(Self::set_header))
             .layer(TraceLayer::new_for_http());
 
-        Ok(router)
+        self.router = router;
+
+        Ok(())
     }
 }

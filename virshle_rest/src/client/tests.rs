@@ -1,11 +1,12 @@
 use crate::Client;
 use virshle_core::{
-    config::UserData,
+    config::{Config, UserData},
     hypervisor::{Vm, VmTable},
     peer::{NodeInfo, Peer},
 };
 use virshle_network::connection::ConnectionState;
 
+use indexmap::IndexMap;
 use pipelight_exec::Status;
 use std::collections::HashMap;
 
@@ -15,16 +16,28 @@ use tracing::{debug, error, info, trace};
 use virshle_core::utils::testing;
 use virshle_error::{LibError, VirshleError, WrapError};
 
+fn client() -> Result<Client, VirshleError> {
+    let config = Config::get()?;
+    let client = Client::new().config(&config).build()?;
+    Ok(client)
+}
+
+// Node methods
+#[tokio::test]
+async fn node_methods() -> Result<()> {
+    Ok(())
+}
+// Peers methods
 #[tokio::test]
 async fn get_peers() -> Result<()> {
     testing::tracer()
         .verbosity(tracing::Level::TRACE)
         .db(true)
         .set()?;
+    let client = client()?;
 
-    let mut client = Client::api().await?;
-    let res: HashMap<Peer, (ConnectionState, Option<NodeInfo>)> =
-        client.peer().get_info().exec().await?;
+    let res: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)> =
+        client.api().await?.peer().get_info().exec().await?;
     debug!("{:#?}", res);
 
     testing::logger().verbosity(tracing::Level::WARN).set()?;
@@ -38,8 +51,8 @@ async fn get_peers_did() -> Result<()> {
         .db(true)
         .set()?;
 
-    let mut client = Client::api().await?;
-    let res: HashMap<Peer, String> = client.peer().did().exec().await?;
+    let client = client()?;
+    let res: IndexMap<Peer, String> = client.api().await?.peer().did().exec().await?;
     debug!("{:#?}", res);
     Ok(())
 }
@@ -51,8 +64,8 @@ async fn get_vms() -> Result<()> {
         .db(true)
         .set()?;
 
-    let mut client = Client::api().await?;
-    let res: HashMap<Peer, Vec<VmTable>> = client.vm().get().many().exec().await?;
+    let client = client()?;
+    let res: IndexMap<Peer, Vec<VmTable>> = client.api().await?.vm().get().many().exec().await?;
 
     testing::logger().verbosity(tracing::Level::WARN).set()?;
     VmTable::display_by_peer(&res).await?;
@@ -67,10 +80,12 @@ async fn crud_vm() -> Result<()> {
         .db(true)
         .set()?;
 
-    let mut client = Client::api().await?;
+    let client = client()?;
     // Create one
     let user_data = UserData::default();
     let vm: VmTable = client
+        .api()
+        .await?
         .vm()
         .create()
         .one()
@@ -81,6 +96,8 @@ async fn crud_vm() -> Result<()> {
         .await?;
     // Start one
     let _: VmTable = client
+        .api()
+        .await?
         .vm()
         .start()
         .one()
@@ -90,6 +107,8 @@ async fn crud_vm() -> Result<()> {
         .await?;
     // Shutdown one
     let _: VmTable = client
+        .api()
+        .await?
         .vm()
         .shutdown()
         .one()
@@ -99,6 +118,8 @@ async fn crud_vm() -> Result<()> {
         .await?;
     // Delete one
     let _: VmTable = client
+        .api()
+        .await?
         .vm()
         .delete()
         .one()

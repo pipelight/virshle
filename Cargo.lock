@@ -6485,6 +6485,7 @@ dependencies = [
  "env_logger",
  "futures",
  "human_bytes",
+ "indexmap 2.13.0",
  "ipnet",
  "jiff",
  "kdl",

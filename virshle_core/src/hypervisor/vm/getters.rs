@@ -21,7 +21,7 @@ use crate::database::entity::prelude;
 use sea_orm::{prelude::*, query::*};
 
 // Global configuration
-use crate::init::MANAGED_DIR;
+use crate::config::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;

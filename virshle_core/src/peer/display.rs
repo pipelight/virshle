@@ -7,8 +7,8 @@ use virshle_network::{connection::ConnectionState, Uri};
 use owo_colors::OwoColorize;
 
 use human_bytes::human_bytes;
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 // Globals
 use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
@@ -42,7 +42,7 @@ pub struct CpuTable {
 }
 impl HostCpu {
     pub async fn display_many(
-        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
+        items: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let header = "cpu".blue();
         println!("{}", header);
@@ -163,7 +163,7 @@ pub struct RamTable {
 }
 impl HostRam {
     pub async fn display_many(
-        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
+        items: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let header = "ram".blue();
         println!("{}", header);
@@ -377,7 +377,7 @@ pub struct HostDiskTable {
 }
 impl HostDisk {
     pub async fn display_many(
-        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
+        items: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let header = "disk".blue();
         println!("{}", header);
@@ -533,7 +533,7 @@ pub struct NodeTable {
 }
 impl Peer {
     pub async fn display_many(
-        items: HashMap<Peer, (ConnectionState, Option<NodeInfo>)>,
+        items: IndexMap<Peer, (ConnectionState, Option<NodeInfo>)>,
     ) -> Result<(), VirshleError> {
         let mut table: Vec<NodeTable> = vec![];
         for item in items {

@@ -37,8 +37,6 @@ impl InitMethods<'_> {
             .network()
             .await?;
 
-        self._clean_directories().await?;
-        self._clean_leases().await?;
         Ok(())
     }
     /// Ensure virshle working directories exists.
@@ -54,9 +52,10 @@ impl InitMethods<'_> {
             let path = Path::new(&directory);
             if !path.exists() {
                 fs::create_dir_all(&directory)?;
+                info!("{} created virshle filetree.", "[init]".yellow(),);
             }
         }
-        info!("{} created virshle filetree.", "[init]".yellow(),);
+        self._clean_directories().await?;
         Ok(self)
     }
     /// Clean orphan vm files if vm not in database.
@@ -71,35 +70,38 @@ impl InitMethods<'_> {
                 if entry.path().is_dir() {
                     if !uuids.contains(&entry.file_name().to_str().unwrap().to_owned()) {
                         fs::remove_dir_all(entry.path())?;
+                        debug!("cleaned virshle filetree.");
                     }
                 }
             }
         }
-        debug!("Cleaned virshle filetree.");
         Ok(())
     }
+
     pub async fn network(&self) -> Result<&Self, VirshleError> {
         ovs::ensure_switches().await?;
         info!(
             "{} created virshle ovs network configuration.",
             "[init]".yellow(),
         );
-        Ok(self)
-    }
-    pub async fn database(&self) -> Result<&Self, VirshleError> {
-        database::connect_or_fresh_db().await?;
-        info!("{} ensured virshle database.", "[init]".yellow(),);
+        self._clean_leases().await?;
         Ok(self)
     }
     /// Clean dhcp leases
     pub async fn _clean_leases(&self) -> Result<&Self, VirshleError> {
-        match Config::get()?.dhcp {
+        match self.config.dhcp.clone() {
             Some(DhcpType::Kea(kea_dhcp)) => {
                 kea_dhcp.clean_leases().await?;
+                info!("{} delete unused leases", "[kea-dhcp]".yellow(),);
             }
             _ => {}
         };
-        info!("{} delete unused leases", "[kea-dhcp]".yellow(),);
+        Ok(self)
+    }
+
+    pub async fn database(&self) -> Result<&Self, VirshleError> {
+        database::connect_or_fresh_db().await?;
+        info!("{} ensured virshle database.", "[init]".yellow(),);
         Ok(self)
     }
 }

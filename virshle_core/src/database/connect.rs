@@ -2,7 +2,7 @@
 // use indexmap::IndexMap;
 use super::entity::{prelude::*, *};
 
-use crate::init::MANAGED_DIR;
+use crate::config::init::MANAGED_DIR;
 use sea_orm::{
     error::{ConnAcquireErr, DbErr},
     Database, DatabaseConnection,

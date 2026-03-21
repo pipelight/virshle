@@ -4,8 +4,8 @@ use crate::utils::display;
 
 // Time
 use chrono::{NaiveDateTime, TimeDelta, Utc};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::net::IpAddr;
 use tabled::{
     settings::{disable::Remove, location::ByColumnName, Style},
@@ -94,7 +94,7 @@ impl VmTable {
 }
 
 impl VmTable {
-    pub async fn display_by_peer(items: &HashMap<Peer, Vec<VmTable>>) -> Result<(), VirshleError> {
+    pub async fn display_by_peer(items: &IndexMap<Peer, Vec<VmTable>>) -> Result<(), VirshleError> {
         // Display vm by nodes with table header
         for (node, table) in items {
             let header = node.header()?;

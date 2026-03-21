@@ -215,20 +215,19 @@ impl VmCreateMethods<'_> {
         template: Option<String>,
         user_data: Option<UserData>,
     ) -> Result<VmTable, VirshleError> {
-        let vm = Self::_one(CreateVmArgs {
-            template_name: template,
-            user_data,
-        })
-        .await?;
+        let vm = self
+            ._one(CreateVmArgs {
+                template_name: template,
+                user_data,
+            })
+            .await?;
         let res = VmTable::from(&vm).await?;
         Ok(res)
     }
-    async fn _one(args: CreateVmArgs) -> Result<Vm, VirshleError> {
-        let config = Config::get()?;
-
+    async fn _one(&self, args: CreateVmArgs) -> Result<Vm, VirshleError> {
         match args.template_name {
             Some(name) => {
-                let template = config.template(&name)?;
+                let template = self.api.config.template(&name)?;
                 let mut vm: Vm = template.try_into()?;
 
                 // Safeguard before creating.
@@ -270,12 +269,13 @@ impl VmCreateMethods<'_> {
         template: Option<String>,
         user_data: Option<UserData>,
     ) -> Result<Vec<VmTable>, VirshleError> {
-        let vms = Self::_many(CreateManyVmArgs {
-            template_name: template,
-            user_data,
-            ntimes: n,
-        })
-        .await?;
+        let vms = self
+            ._many(CreateManyVmArgs {
+                template_name: template,
+                user_data,
+                ntimes: n,
+            })
+            .await?;
         let mut res: Vec<VmTable> = vec![];
         for vm in vms {
             let vm = VmTable::from(&vm).await?;
@@ -283,10 +283,9 @@ impl VmCreateMethods<'_> {
         }
         Ok(res)
     }
-    async fn _many(args: CreateManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
-        let config = Config::get()?;
+    async fn _many(&self, args: CreateManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
         if args.template_name.is_some() && args.ntimes.is_some() {
-            let template = config.template(&args.template_name.unwrap())?;
+            let template = self.api.config.template(&args.template_name.unwrap())?;
 
             let mut tasks = vec![];
             for i in 0..args.ntimes.unwrap() {

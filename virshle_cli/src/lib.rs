@@ -9,7 +9,7 @@ use virshle_core::{
 };
 
 use clap::Parser;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::fs;
 use std::path::Path;
 
@@ -18,7 +18,7 @@ use owo_colors::OwoColorize;
 use spinoff::{spinners, Color, Spinner};
 
 // Rest API client
-use virshle_rest::{Client, RestServer, Server};
+use virshle_rest::{Client, Server};
 
 use pipelight_exec::Status;
 
@@ -36,7 +36,9 @@ impl Cli {
         utils::set_tracer(&cli)?;
         utils::set_logger(&cli)?;
 
-        let mut client = Client::api().await?;
+        let config = Config::get()?;
+        let mut client = Client::new().config(&config).build()?.api().await?;
+
         match cli.commands {
             /*
              * Operations on local node.
@@ -87,7 +89,7 @@ impl Cli {
                  * Serve the node rest API and wait for http requests.
                  */
                 NodeArgs::Serve => {
-                    RestServer::build().await?.serve().await?;
+                    Server::new().config(&config).build()?.serve().await?;
                 }
                 /*
                  * Create the required virshle working directories.
@@ -96,16 +98,16 @@ impl Cli {
                  */
                 NodeArgs::Init(args) => {
                     if args.all == Some(true) {
-                        Init::ensure_all().await?;
+                        config.init().ensure_all().await?;
                     } else {
                         if args.db == Some(true) {
-                            Init::ensure_database().await?;
-                        }
-                        if args.net == Some(true) {
-                            Init::ensure_network().await?;
+                            config.init().database().await?;
                         }
                         if args.dir == Some(true) {
-                            Init::ensure_directories().await?;
+                            config.init().directories().await?;
+                        }
+                        if args.net == Some(true) {
+                            config.init().network().await?;
                         }
                     }
                 }
@@ -128,7 +130,7 @@ impl Cli {
                     // Set working node
                     let config = Config::get()?;
                     let cw_node = args.current_workgin_node.node;
-                    let node: Peer = config.peer().alias(cw_node).get()?;
+                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let mut user_data = None;
                     if let Some(user_data_filepath) = args.user_data {
@@ -177,15 +179,17 @@ impl Cli {
                 }
                 Crud::Start(args) => {
                     let tag = "start";
+
                     // Set working node
+                    let config = Config::get()?;
                     let cw_node = args.vm_args.current_workgin_node.node.clone();
-                    let node: Peer = config.peer().alias(cw_node).get()?;
+                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let user_data: Option<UserData> = match args.user_data {
                         Some(path) => Some(UserData::from_file(&path)?),
                         None => None,
                     };
-                    let methods = Server::new().build()?.api()?;
+                    let methods = Server::new().config(&config).build()?.api()?;
 
                     match args.attach {
                         true => {
@@ -228,7 +232,7 @@ impl Cli {
                                 // Spinner
                                 let mut sp =
                                     Spinner::new(spinners::Toggle5, "Starting vms...", None);
-                                let res: HashMap<Peer, HashMap<Status, Vec<VmTable>>> = client
+                                let res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = client
                                     .vm()
                                     .start()
                                     .many()
@@ -245,9 +249,11 @@ impl Cli {
                 }
                 Crud::Stop(args) => {
                     let tag = "shutdown";
+
                     // Set working node
+                    let config = Config::get()?;
                     let cw_node = args.current_workgin_node.node;
-                    let node: Peer = config.peer().alias(cw_node).get()?;
+                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
@@ -282,9 +288,11 @@ impl Cli {
                 }
                 Crud::Delete(args) => {
                     let tag = "delete";
+
                     // Set working node
+                    let config = Config::get()?;
                     let cw_node = args.current_workgin_node.node;
-                    let node: Peer = config.peer().alias(cw_node).get()?;
+                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner

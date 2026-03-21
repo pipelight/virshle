@@ -20,7 +20,7 @@ use uuid::Uuid;
 use virshle_network::connection::{Connection, SshConnection, TcpConnection, UnixConnection, Uri};
 
 // Global configuration
-use crate::init::MANAGED_DIR;
+use crate::config::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;

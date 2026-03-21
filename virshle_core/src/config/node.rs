@@ -38,7 +38,7 @@ impl TryInto<Node> for NodeConfig {
 }
 impl TryInto<Node> for &NodeConfig {
     type Error = VirshleError;
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     fn try_into(self) -> Result<Node, Self::Error> {
         let private_key: Option<String> = match &self.private_key {
             None => None,
@@ -84,6 +84,7 @@ pub struct Node {
     pub private_key: Option<String>,
     pub public_key: Option<String>,
     pub passive: bool,
+    // pub socket: Option<String>,
 }
 impl Default for Node {
     fn default() -> Self {
@@ -92,6 +93,7 @@ impl Default for Node {
             private_key: None,
             public_key: None,
             passive: false,
+            // socket: Some("/var/lib/virshle/virshle.sock".to_owned()),
         }
     }
 }

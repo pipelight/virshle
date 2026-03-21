@@ -3,7 +3,7 @@ use sysinfo::{Disks, System};
 
 use crate::config::VmTemplate;
 use crate::config::{MAX_CPU_RESERVATION, MAX_DISK_RESERVATION, MAX_RAM_RESERVATION};
-use crate::init::MANAGED_DIR;
+use crate::config::init::MANAGED_DIR;
 
 use crate::hypervisor::disk::utils;
 
