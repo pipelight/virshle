@@ -44,7 +44,7 @@ impl Cli {
             Commands::Node(args) => match args {
                 NodeArgs::Ls(args) => {
                     let node = args.current_workgin_node.node;
-                    let node_info = client.node().get_info().exec().await?;
+                    let node_info = client.node()?.get_info().exec().await?;
 
                     let peer = Peer::default();
                     let mut res = (peer, node_info);
@@ -96,16 +96,16 @@ impl Cli {
                  */
                 NodeArgs::Init(args) => {
                     if args.all == Some(true) {
-                        Config::ensure_all().await?;
+                        Init::ensure_all().await?;
                     } else {
                         if args.db == Some(true) {
-                            Config::ensure_database().await?;
+                            Init::ensure_database().await?;
                         }
                         if args.net == Some(true) {
-                            Config::ensure_network().await?;
+                            Init::ensure_network().await?;
                         }
                         if args.dir == Some(true) {
-                            Config::ensure_directories().await?;
+                            Init::ensure_directories().await?;
                         }
                     }
                 }
@@ -126,8 +126,9 @@ impl Cli {
                 Crud::Create(args) => {
                     let tag = "create";
                     // Set working node
+                    let config = Config::get()?;
                     let cw_node = args.current_workgin_node.node;
-                    let node = Peer::unwrap_or_default(cw_node.clone()).await?;
+                    let node: Peer = config.peer().alias(cw_node).get()?;
 
                     let mut user_data = None;
                     if let Some(user_data_filepath) = args.user_data {
@@ -178,7 +179,7 @@ impl Cli {
                     let tag = "start";
                     // Set working node
                     let cw_node = args.vm_args.current_workgin_node.node.clone();
-                    let node = Peer::unwrap_or_default(cw_node.clone()).await?;
+                    let node: Peer = config.peer().alias(cw_node).get()?;
 
                     let user_data: Option<UserData> = match args.user_data {
                         Some(path) => Some(UserData::from_file(&path)?),
@@ -246,7 +247,7 @@ impl Cli {
                     let tag = "shutdown";
                     // Set working node
                     let cw_node = args.current_workgin_node.node;
-                    let node = Peer::unwrap_or_default(cw_node.clone()).await?;
+                    let node: Peer = config.peer().alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
@@ -283,7 +284,7 @@ impl Cli {
                     let tag = "delete";
                     // Set working node
                     let cw_node = args.current_workgin_node.node;
-                    let node = Peer::unwrap_or_default(cw_node.clone()).await?;
+                    let node: Peer = config.peer().alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner

@@ -1,5 +1,6 @@
-use crate::config::UserData;
+use crate::config::{DhcpType, NodeConfig, Peer, TemplateConfig, UserData};
 use crate::hypervisor::VmConfigPlus;
+use crate::VmTemplate;
 
 use super::Config;
 
@@ -8,6 +9,9 @@ use once_cell::sync::Lazy;
 use std::sync::{Arc, RwLock};
 
 // Config
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -19,7 +23,61 @@ use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 
 pub const CONFIG: Lazy<Arc<RwLock<Option<Config>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
 
-impl Config {
+/// Virshle configuration file structure.
+/// This struct is used for deserialization only.
+/// It then needs to be converted into a Config struct for in code usage.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PreConfig {
+    // Server
+    /// The optional local node configuration
+    node: Option<NodeConfig>,
+    /// Vm templates
+    pub template: Option<TemplateConfig>,
+    /// Network configuration
+    pub dhcp: Option<DhcpType>,
+    // Client
+    /// List of remote node
+    peer: Option<Vec<Peer>>,
+}
+
+impl TryInto<Config> for PreConfig {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Config, Self::Error> {
+        (&self).try_into()
+    }
+}
+impl TryInto<Config> for &PreConfig {
+    type Error = VirshleError;
+    #[tracing::instrument]
+    fn try_into(self) -> Result<Config, Self::Error> {
+        let mut config = Config {
+            dhcp: self.dhcp.clone(),
+            ..Config::default()
+        };
+        // Node conversion
+        if let Some(node) = &self.node {
+            config.node = node.try_into()?;
+        }
+        // Template conversion
+        if let Some(templates) = &self.template {
+            if let Some(vm_templates) = &templates.vm {
+                for e in vm_templates {
+                    config.templates.insert(e.name.clone(), e.clone());
+                }
+            }
+        }
+        // Peer conversion
+        if let Some(peer) = &self.peer {
+            for e in peer {
+                config.peers.insert(e.alias.clone(), e.clone());
+            }
+        }
+
+        Ok(config)
+    }
+}
+
+impl PreConfig {
     /// Get config from crate directory
     #[tracing::instrument]
     fn debug_path() -> Result<PathBuf, io::Error> {
@@ -43,11 +101,11 @@ impl Config {
     #[tracing::instrument]
     pub fn get() -> Result<Self, VirshleError> {
         // Early return config if already stored in memory
-        let config = CONFIG.read().unwrap().clone();
-        match config {
-            Some(v) => return Ok(v),
-            None => {}
-        };
+        // let config = CONFIG.read().unwrap().clone();
+        // match config {
+        //     Some(v) => return Ok(v),
+        //     None => {}
+        // };
 
         #[cfg(debug_assertions)]
         let path = Self::debug_path()?;
@@ -57,7 +115,7 @@ impl Config {
         match Self::from_file(&path) {
             Ok(v) => {
                 trace!("Loaded config file.");
-                *CONFIG.write().unwrap() = Some(v.clone());
+                // *CONFIG.write().unwrap() = Some(v.clone());
                 Ok(v)
             }
             Err(e) => {
@@ -133,9 +191,9 @@ mod tests {
 
     #[test]
     fn get_config_from_file() -> Result<()> {
-        let res = Config::get()?;
+        // let res = Config::get()?;
         // Test loading from memory
-        Config::get()?;
+        // Config::get()?;
         // println!("{:#?}", res);
         Ok(())
     }
@@ -206,7 +264,7 @@ mod tests {
 
         "#;
 
-        let res = Config::from_toml(&toml)?;
+        let res = PreConfig::from_toml(&toml)?;
         println!("{:#?}", res);
         Ok(())
     }

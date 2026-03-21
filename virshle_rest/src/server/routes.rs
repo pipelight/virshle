@@ -3,7 +3,7 @@ use crate::commons::{
 };
 use crate::server::{RestServer, Server};
 use axum::{
-    extract::{Extension, Path, Query},
+    extract::{Extension, Path, Query, State},
     http::Request,
     middleware::map_response,
     response::{IntoResponse, Response},
@@ -11,8 +11,10 @@ use axum::{
     Json, Router,
 };
 // Global vars
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
+use indexmap::IndexMap;
 use pipelight_exec::Status;
 use std::collections::HashMap;
 use tower_http::trace::TraceLayer;
@@ -48,154 +50,166 @@ impl RestServer {
     pub async fn make_api_v1() -> Result<Router, VirshleError> {
         // Virshle API
         // let server = Arc::new(RwLock::new(Server::new().build()?));
-        // let server = Server::new().build()?;
+        let server = Server::new().build()?;
 
         let api_v1_one: Router = Router::new()
             // Node
             // Check for the REST API availability
             .route(
                 "/node/ping",
-                get(async || {
-                    let server = Server::new().build()?;
+                get(async |State(server): State<Server>| {
                     Result::<Json<()>, VirshleError>::Ok(Json(server.api()?.node().ping().await?))
                 }),
             )
             .route(
                 "/node/info",
-                get(async || {
-                    let server = Server::new().build()?;
+                get(async |State(server): State<Server>| {
                     Result::<Json<NodeInfo>, VirshleError>::Ok(Json(
                         server.api()?.node().info().await?,
+                    ))
+                }),
+            )
+            .route(
+                "/node/id",
+                get(async |State(server): State<Server>| {
+                    Result::<Json<String>, VirshleError>::Ok(Json(
+                        server.api()?.node().did().await?,
                     ))
                 }),
             )
             // Template
             .route(
                 "/template/all",
-                get(async || {
-                    let server = Server::new().build()?;
-                    Result::<Json<Vec<VmTemplate>>, VirshleError>::Ok(Json(
+                get(async |State(server): State<Server>| {
+                    Result::<Json<IndexMap<String, VmTemplate>>, VirshleError>::Ok(Json(
                         server.api()?.template().get_many().await?,
                     ))
                 }),
             )
             .route(
                 "/template/reclaim",
-                get(async move |Json(params): Json<CreateVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<bool>, VirshleError>::Ok(Json(
-                        server.clone().api()?.template().reclaim(params).await?,
-                    ))
-                }),
+                get(
+                    async move |State(server): State<Server>, Json(params): Json<CreateVmArgs>| {
+                        Result::<Json<bool>, VirshleError>::Ok(Json(
+                            server.clone().api()?.template().reclaim(params).await?,
+                        ))
+                    },
+                ),
             )
             // Vm
             .route(
                 "/vm/create",
-                put(async move |Json(params): Json<CreateVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .create()
-                            .one()
-                            .maybe_template(params.template_name)
-                            .maybe_user_data(params.user_data)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<CreateVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .create()
+                                .one()
+                                .maybe_template(params.template_name)
+                                .maybe_user_data(params.user_data)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/start",
-                put(async move |Json(params): Json<StartVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .start()
-                            .one()
-                            .maybe_id(params.id)
-                            .maybe_name(params.name)
-                            .maybe_uuid(params.uuid)
-                            .maybe_user_data(params.user_data)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .start()
+                                .one()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
+                                .maybe_user_data(params.user_data)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/shutdown",
-                put(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .shutdown()
-                            .one()
-                            .maybe_id(params.id)
-                            .maybe_name(params.name)
-                            .maybe_uuid(params.uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .shutdown()
+                                .one()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/delete",
-                put(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .delete()
-                            .one()
-                            .maybe_id(params.id)
-                            .maybe_name(params.name)
-                            .maybe_uuid(params.uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .delete()
+                                .one()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/info",
-                post(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .get()
-                            .one()
-                            .maybe_id(params.id)
-                            .maybe_name(params.name)
-                            .maybe_uuid(params.uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .get()
+                                .one()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/get_vsock_path",
-                post(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<String>, VirshleError>::Ok(Json(
-                        server.api()?.vm().get_vsock_path(params).await?,
-                    ))
-                }),
-            );
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<String>, VirshleError>::Ok(Json(
+                            server.api()?.vm().get_vsock_path(params).await?,
+                        ))
+                    },
+                ),
+            )
+            .with_state(server.clone());
         // Virshle Bulk operation API
         let api_v1_many = Router::new()
             // Template
             .route(
                 "/template/info.many",
-                get(async || {
-                    let server = Server::new().build()?;
-                    Result::<Json<Vec<VmTemplateTable>>, VirshleError>::Ok(Json(
+                get(async |State(server): State<Server>| {
+                    Result::<Json<IndexMap<String, VmTemplateTable>>, VirshleError>::Ok(Json(
                         server.api()?.template().get_info_many().await?,
                     ))
                 }),
@@ -203,137 +217,150 @@ impl RestServer {
             // Vm
             .route(
                 "/vm/get.many",
-                post(async move |Json(params): Json<GetManyVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .get()
-                            .many()
-                            .maybe_state(params.vm_state)
-                            .maybe_account(params.account_uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetManyVmArgs>| {
+                        Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .get()
+                                .many()
+                                .maybe_state(params.vm_state)
+                                .maybe_account(params.account_uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/create.many",
-                put(async move |Json(params): Json<CreateManyVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .create()
-                            .many()
-                            .maybe_template(params.template_name)
-                            .maybe_user_data(params.user_data)
-                            .maybe_n(params.ntimes)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>,
+                                Json(params): Json<CreateManyVmArgs>| {
+                        Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .create()
+                                .many()
+                                .maybe_template(params.template_name)
+                                .maybe_user_data(params.user_data)
+                                .maybe_n(params.ntimes)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/start.many",
-                put(async move |Json(params): Json<StartManyVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .start()
-                            .many()
-                            .maybe_state(params.vm_state)
-                            .maybe_account(params.account_uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>,
+                                Json(params): Json<StartManyVmArgs>| {
+                        Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .start()
+                                .many()
+                                .maybe_state(params.vm_state)
+                                .maybe_account(params.account_uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/shutdown.many",
-                put(async move |Json(params): Json<GetManyVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .shutdown()
-                            .many()
-                            .maybe_state(params.vm_state)
-                            .maybe_account(params.account_uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<GetManyVmArgs>| {
+                        Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .shutdown()
+                                .many()
+                                .maybe_state(params.vm_state)
+                                .maybe_account(params.account_uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/delete.many",
-                put(async move |Json(params): Json<GetManyVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .delete()
-                            .many()
-                            .maybe_state(params.vm_state)
-                            .maybe_account(params.account_uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<GetManyVmArgs>| {
+                        Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .delete()
+                                .many()
+                                .maybe_state(params.vm_state)
+                                .maybe_account(params.account_uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm/info.many",
-                post(async move |Json(params): Json<GetManyVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
-                        server
-                            .api()?
-                            .vm()
-                            .get()
-                            .many()
-                            .maybe_state(params.vm_state)
-                            .maybe_account(params.account_uuid)
-                            .exec()
-                            .await?,
-                    ))
-                }),
-            );
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetManyVmArgs>| {
+                        Result::<Json<Vec<VmTable>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .get()
+                                .many()
+                                .maybe_state(params.vm_state)
+                                .maybe_account(params.account_uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
+            )
+            .with_state(server.clone());
         // Cloud-hypervisor direct calls.
         let api_v1_ch = Router::new()
             // Vm
             .route(
                 "/vm.info",
-                post(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<VmInfoResponse>, VirshleError>::Ok(Json(
-                        server.api()?.vm().get_ch_info(params).await?,
-                    ))
-                }),
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<VmInfoResponse>, VirshleError>::Ok(Json(
+                            server.api()?.vm().get_ch_info(params).await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vm.info.raw",
-                post(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<String>, VirshleError>::Ok(Json(
-                        server.api()?.vm().get_raw_ch_info(params).await?,
-                    ))
-                }),
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<String>, VirshleError>::Ok(Json(
+                            server.api()?.vm().get_raw_ch_info(params).await?,
+                        ))
+                    },
+                ),
             )
             .route(
                 "/vmm.ping",
-                post(async move |Json(params): Json<GetVmArgs>| {
-                    let server = Server::new().build()?;
-                    Result::<Json<()>, VirshleError>::Ok(Json(
-                        server.api()?.vm().ping_ch(params).await?,
-                    ))
-                }),
-            );
+                post(
+                    async move |State(server): State<Server>, Json(params): Json<GetVmArgs>| {
+                        Result::<Json<()>, VirshleError>::Ok(Json(
+                            server.api()?.vm().ping_ch(params).await?,
+                        ))
+                    },
+                ),
+            )
+            .with_state(server.clone());
 
         // Global routes
         let router = Router::new()

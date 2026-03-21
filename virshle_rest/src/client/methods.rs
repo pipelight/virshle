@@ -32,18 +32,17 @@ impl Client {
     /// and return a rest api convenience helper.
     pub async fn api() -> Result<Methods, VirshleError> {
         let config = Config::get()?;
-
         // Generate peer list 
         // and open connection to remote peers.
         let mut peers: IndexMap<String, (Peer, RestClient)> = IndexMap::new();
 
-        for peer in config.peers()? {
+        for (alias, peer) in config.peers()? {
             let conn: Connection = peer.clone().try_into()?;
             let mut client: RestClient = conn.into();
             client.base_url("/api/v1");
             client.ping_url("/api/v1/node/ping");
 
-            trace!("Connecting to peer {:#?}", peer.alias()?);
+            trace!("Connecting to peer {:#?}", peer.alias);
             let _ = client.open().await.is_ok();
             let _ = client.ping().await.is_ok();
             // Use node only if connection can be established
@@ -51,34 +50,33 @@ impl Client {
             // if client.open().await.is_ok() && client.ping().await.is_ok() {
             //     res.insert(node.alias()?, client);
             // }
-            peers.insert(peer.alias()?, (peer, client));
+            peers.insert(alias, (peer, client));
         }
-
-        // Open connection to local node.
-        let node: Peer = config.node()?.into();
-        let conn: Connection = node.clone().try_into()?;
-        let mut client: RestClient = conn.into();
-        client.base_url("/api/v1");
-        client.ping_url("/api/v1/node/ping");
-
-        trace!("Connecting to local node {:#?}", node.alias()?);
-        let _ = client.open().await.is_ok();
-        let _ = client.ping().await.is_ok();
 
         Ok(Methods {
             peers,
-            node: (node, client),
         })
     }
 }
 pub struct Methods {
     /// List of node aliases and their associated rest client.
     peers: IndexMap<String, (Peer, RestClient)>,
-    node: (Peer, RestClient),
 }
 impl Methods {
-    pub fn node(&mut self) -> NodeMethods<'_> {
-        NodeMethods { api: self }
+    pub fn node(&mut self) -> Result<NodeMethods<'_>, VirshleError> {
+        if let Some((peer, client)) = self.peers.get("Self") {
+            Ok(NodeMethods { 
+                api: self,
+            })
+        }
+        else {
+            let err = LibError::builder()
+                .msg("You can't make operations on local node.")
+                .help("The local node \"Self\" is set to passive.")
+                .build();
+            return Err(err.into());
+        }
+
     }
     pub fn peer(&mut self) -> PeerMethods<'_> {
         PeerMethods { api: self }
@@ -105,13 +103,14 @@ pub struct VmMethods<'a> {
 
 #[bon]
 impl NodeMethods<'_> {
+
     #[builder(finish_fn = exec)]
     pub async fn get_info(&mut self) -> Result<(ConnectionState, Option<NodeInfo>), VirshleError> {
-        let (ref peer, ref mut rest) = self.api.node;
+        let (ref peer, ref mut rest) = self.api.peers.get_mut("Self").unwrap();
         Self::_get_info(peer, rest).await
     }
     async fn _get_info(
-        node: &Peer,
+        peer: &Peer,
         rest: &mut RestClient,
     ) -> Result<(ConnectionState, Option<NodeInfo>), VirshleError> {
         let mut info: Option<NodeInfo> = None;
@@ -124,7 +123,7 @@ impl NodeMethods<'_> {
             }
             _ => {
                 let help = format!("ConnectionState: {}", state.display());
-                let message = format!("Node {:#?} is unreachable.", node.alias());
+                let message = format!("Node {:#?} is unreachable.", peer.alias);
                 let err: VirshleError = LibError::builder()
                     .msg("Node {:#?} is unreachable.")
                     .help(&help)
@@ -138,13 +137,13 @@ impl NodeMethods<'_> {
     #[builder(finish_fn = exec)]
     pub async fn ping(&mut self, alias: Option<String>) -> Result<bool, VirshleError> {
         let mut res: HashMap<Peer, bool> = HashMap::new();
-        let (ref peer, ref mut rest) = self.api.node;
+        let (ref peer, ref mut rest) = self.api.peers.get_mut("Self").unwrap();
         Self::_ping(peer, rest).await
     }
     async fn _ping(peer: &Peer, rest: &mut RestClient) -> Result<bool, VirshleError> {
         let res = match rest.ping().await {
             Ok(v) => {
-                info!("Node {:#?} is pingable.", peer.alias());
+                info!("Node {:#?} is pingable.", peer.alias);
                 Ok(v)
             }
             Err(e) => {
@@ -166,6 +165,50 @@ impl NodeMethods<'_> {
 
 #[bon]
 impl PeerMethods<'_> {
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub async fn did(
+        &mut self,
+        alias: Option<String>,
+    ) -> Result<HashMap<Peer, String>, VirshleError> {
+        let mut res = HashMap::new();
+        match alias {
+            None => {
+                for (peer, rest) in self.api.peers.values_mut() {
+                    let did = Self::_did(peer, rest).await?;
+                    res.insert(peer.clone(), did);
+                }
+            }
+            Some(alias) => {
+                if let Some((peer, rest)) = self.api.peers.get_mut(&alias) {
+                    let did = Self::_did(peer, rest).await?;
+                    res.insert(peer.clone(), did);
+                }
+            }
+        }
+        Ok(res)
+    }
+    async fn _did(
+        peer: &Peer,
+        rest: &mut RestClient,
+    ) -> Result<String, VirshleError> {
+        rest.ping().await?;
+        let res = rest.get("/node/id").await?.to_value().await;
+        let mut did = "".to_owned();
+        match res {
+            Ok(v) => did = v,
+            Err(_) => {
+                error!("Operation not supported on peer {:#?}", peer.alias)
+            }
+
+        };
+        Ok(did)
+    }
+
+
     #[builder(finish_fn = exec)]
     pub async fn get_info(
         &mut self,
@@ -189,7 +232,7 @@ impl PeerMethods<'_> {
         Ok(res)
     }
     async fn _get_info(
-        node: &Peer,
+        peer: &Peer,
         rest: &mut RestClient,
     ) -> Result<(ConnectionState, Option<NodeInfo>), VirshleError> {
         let mut info: Option<NodeInfo> = None;
@@ -202,7 +245,7 @@ impl PeerMethods<'_> {
             }
             _ => {
                 let help = format!("ConnectionState: {}", state.display());
-                let message = format!("Peer {:#?} is unreachable.", node.alias());
+                let message = format!("Peer {:#?} is unreachable.", peer.alias);
                 let err: VirshleError = LibError::builder()
                     .msg("Peer {:#?} is unreachable.")
                     .help(&help)
@@ -238,7 +281,7 @@ impl PeerMethods<'_> {
     async fn _ping(peer: &Peer, rest: &mut RestClient) -> Result<bool, VirshleError> {
         let res = match rest.ping().await {
             Ok(v) => {
-                info!("Peer {:#?} is pingable.", peer.alias());
+                info!("Peer {:#?} is pingable.", peer.alias);
                 Ok(v)
             }
             Err(e) => {
@@ -269,7 +312,7 @@ impl PeerMethods<'_> {
 #[bon]
 impl PeerGetterMethods<'_> {
     pub fn default(&mut self) -> Result<(&Peer, &mut RestClient), VirshleError> {
-        let (ref peer, ref mut rest) = self.api.node;
+        let (ref peer, ref mut rest) = self.api.peers.get_mut("Self").unwrap();
         Ok((peer, rest))
     }
     pub fn alias(&mut self, alias: &str) -> Result<(&Peer, &mut RestClient), VirshleError> {
@@ -453,7 +496,7 @@ impl TemplateMethods<'_> {
         Ok(res)
     }
     async fn _reclaim(
-        node: &Peer,
+        peer: &Peer,
         rest: &mut RestClient,
         args: CreateVmArgs,
     ) -> Result<bool, VirshleError> {
@@ -461,7 +504,7 @@ impl TemplateMethods<'_> {
             info!(
                 "[start] reclaiming resources to create a vm from template {:#?} on node {:#?}",
                 template_name,
-                node.alias()
+                peer.alias
             );
             let can_create_vm: bool = rest
                 .put("/template/reclaim", Some(args))
@@ -472,7 +515,7 @@ impl TemplateMethods<'_> {
             info!(
                 "[end] reclaiming resources to create a vm from template {:#?} on node {:#?}",
                 template_name,
-                node.alias()
+                peer.alias
             );
             Ok(can_create_vm)
         } else {
@@ -755,7 +798,11 @@ impl VmMethods<'_> {
 }
 #[bon]
 impl VmDeleteMethods<'_> {
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn one(
         &mut self,
         id: Option<u64>,
@@ -953,7 +1000,11 @@ impl VmMethods<'_> {
 }
 #[bon]
 impl VmShutdownMethods<'_> {
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn one(
         &mut self,
         id: Option<u64>,

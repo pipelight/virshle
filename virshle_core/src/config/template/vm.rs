@@ -14,7 +14,7 @@ use uuid::Uuid;
 use virshle_network::Uri;
 
 // Globals
-use crate::config::MANAGED_DIR;
+use crate::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;
@@ -66,7 +66,7 @@ impl VmTemplate {
 
         // Display vm by nodes with table header
         for (peer, table) in tables {
-            let name = peer.alias()?.bright_purple().bold().to_string();
+            let name = peer.alias.bright_purple().bold().to_string();
             let header: String = match Uri::new(&peer.url)? {
                 Uri::SshUri(e) => format!(
                     "{name} on {}@{}",

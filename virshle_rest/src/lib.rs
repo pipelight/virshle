@@ -3,7 +3,7 @@ mod client;
 mod commons;
 mod server;
 
-use virshle_core::config::MANAGED_DIR;
+use virshle_core::init::MANAGED_DIR;
 
 // Socket
 use std::fs;

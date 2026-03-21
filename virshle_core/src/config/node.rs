@@ -17,7 +17,6 @@ use virshle_error::{LibError, VirshleError};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct NodeConfig {
-    pub alias: Option<String>,
     pub private_key: Option<String>,
     pub public_key: Option<String>,
     pub passive: Option<bool>,
@@ -25,7 +24,6 @@ pub struct NodeConfig {
 impl Default for NodeConfig {
     fn default() -> NodeConfig {
         NodeConfig {
-            alias: Some("Self".to_owned()),
             private_key: None,
             public_key: None,
             passive: Some(false),
@@ -73,7 +71,7 @@ impl TryInto<Node> for &NodeConfig {
         };
 
         Ok(Node {
-            alias: Some("Self".to_owned()),
+            alias: "Self".to_owned(),
             private_key,
             public_key,
             passive: false,
@@ -82,7 +80,7 @@ impl TryInto<Node> for &NodeConfig {
 }
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Node {
-    pub alias: Option<String>,
+    pub alias: String,
     pub private_key: Option<String>,
     pub public_key: Option<String>,
     pub passive: bool,
@@ -90,7 +88,7 @@ pub struct Node {
 impl Default for Node {
     fn default() -> Self {
         Node {
-            alias: Some("Self".to_owned()),
+            alias: "Self".to_owned(),
             private_key: None,
             public_key: None,
             passive: false,
@@ -108,7 +106,7 @@ impl Node {
                 .to_string(),
         );
         Node {
-            alias: Some("Self".to_owned()),
+            alias: "Self".to_owned(),
             private_key,
             public_key,
             passive: false,
@@ -201,7 +199,6 @@ mod tests {
         let public_key = public_key.to_str().unwrap().to_owned();
 
         let config = NodeConfig {
-            alias: None,
             private_key: Some(private_key),
             public_key: Some(public_key),
             passive: None,
@@ -219,7 +216,7 @@ mod tests {
             .db(true)
             .set()?;
 
-        let node = Config::get()?.node()?;
+        let node = Config::get()?.node;
         trace!("{:#?}", node);
         Ok(())
     }

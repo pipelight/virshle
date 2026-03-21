@@ -21,30 +21,11 @@ use crate::database::entity::prelude;
 use sea_orm::{prelude::*, query::*};
 
 // Global configuration
-use crate::config::MANAGED_DIR;
+use crate::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;
 use virshle_error::{LibError, VirshleError};
-
-impl VmTemplate {
-    pub fn get_all() -> Result<Vec<VmTemplate>, VirshleError> {
-        let config = Config::get()?;
-        config.get_templates()
-    }
-    pub fn get_by_name(name: &str) -> Result<Self, VirshleError> {
-        let templates = Self::get_all()?;
-        let res: Vec<VmTemplate> = templates.into_iter().filter(|e| e.name == name).collect();
-        match res.first() {
-            Some(v) => Ok(v.to_owned()),
-            None => {
-                let message = format!("Couldn't find a vm_template with the name: {}", name);
-                let help = "Are you sure this vm template exist?";
-                return Err(LibError::builder().msg(&message).help(help).build().into());
-            }
-        }
-    }
-}
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct VmInfo {

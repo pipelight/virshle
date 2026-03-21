@@ -1,11 +1,11 @@
-use bon::{bon, builder};
-use tracing_subscriber::FmtSubscriber;
+use bon::builder;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use std::fmt::Debug;
 use std::fmt::Display;
 
 // Error Handling
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 use tracing::{debug, error, info, trace};
 use virshle_error::{LibError, VirshleError};
 
@@ -16,7 +16,17 @@ pub fn tracer(
     /// Wether sqlite database logs should be enabled
     db: Option<bool>,
 ) -> Result<(), VirshleError> {
-    let builder = FmtSubscriber::builder().with_max_level(verbosity);
+    let level = verbosity.to_string().to_lowercase().to_owned();
+    let mut filter: String = level.clone();
+    match db {
+        Some(true) => filter += &format!(",sea_orm={level},sqlx={level}"),
+        Some(false) | None => filter += ",sea_orm=warn,sqlx=warn",
+    };
+
+    let builder = FmtSubscriber::builder()
+        .with_max_level(verbosity)
+        .with_env_filter(EnvFilter::try_new(filter).unwrap());
+
     let builder = builder.pretty();
     // let builder = builder.compact();
     let subscriber = builder.finish();

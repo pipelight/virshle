@@ -22,19 +22,12 @@ use virshle_error::{LibError, VirshleError, WrapError};
 /// to be queried by the cli.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct Peer {
-    pub alias: Option<String>,
+    pub alias: String,
     pub url: String,
     pub weight: Option<i32>,
     pub public_key: Option<String>,
 }
 impl Peer {
-    pub fn alias(&self) -> Result<String, VirshleError> {
-        let res = match self.alias.clone() {
-            Some(v) => v,
-            None => self.did()?,
-        };
-        Ok(res)
-    }
     /// Convert peer public key into relatively human readable string.
     /// See radicle/heartwood crates for indepth functionning.
     pub fn did(&self) -> Result<String, VirshleError> {
@@ -54,7 +47,7 @@ impl Default for Peer {
         // let url = "unix://".to_owned() + &NodeServer::get_socket().unwrap();
         let url = "unix:///var/lib/virshle/virshle.sock".to_owned();
         Self {
-            alias: Some("default".to_owned()),
+            alias: "default".to_owned(),
             url,
             weight: None,
             public_key: None,
@@ -64,7 +57,7 @@ impl Default for Peer {
 impl Peer {
     pub fn new(alias: &str, url: &str) -> Result<Self, VirshleError> {
         let e = Peer {
-            alias: Some(alias.to_owned()),
+            alias: alias.to_owned(),
             url: url.to_owned(),
             weight: None,
             public_key: None,
@@ -95,17 +88,6 @@ impl TryInto<Connection> for &Peer {
 }
 
 impl Peer {
-    pub async fn unwrap_or_default(node_alias: Option<String>) -> Result<Peer, VirshleError> {
-        let node = match node_alias {
-            Some(node_alias) => match Peer::get_by_alias(&node_alias) {
-                Ok(node) => node,
-                Err(_) => Peer::default(),
-            },
-            None => Peer::default(),
-        };
-        Ok(node)
-    }
-
     /*
      * Open connection to node and return handler.
      */
@@ -128,39 +110,5 @@ impl Peer {
                 return Err(err.into());
             }
         };
-    }
-}
-impl Peer {
-    /// Returns nodes defined in configuration,
-    /// plus the default local node.
-    pub fn get_all() -> Result<Vec<Peer>, VirshleError> {
-        let config = Config::get()?;
-        let nodes = config.peers()?;
-        Ok(nodes)
-    }
-    /// Returns node with alias.
-    pub fn get_by_alias(alias: &str) -> Result<Peer, VirshleError> {
-        let nodes: Vec<Peer> = Peer::get_all()?;
-        let filtered_nodes: Vec<Peer> = nodes
-            .iter()
-            .filter(|e| e.alias().unwrap() == alias)
-            .map(|e| e.to_owned())
-            .collect();
-
-        let node = filtered_nodes.first();
-        match node {
-            Some(node) => Ok(node.to_owned()),
-            None => {
-                let node_aliases: Vec<String> = nodes
-                    .iter()
-                    .map(|e| e.alias().unwrap().to_owned())
-                    .collect();
-                let node_aliases: String = node_aliases.join(",");
-                let message = format!("Couldn't find node with alias: {:#?}", alias);
-                let help = format!("Available nodes are:\n[{node_aliases}]");
-                let err = LibError::builder().msg(&message).help(&help).build();
-                return Err(err.into());
-            }
-        }
     }
 }

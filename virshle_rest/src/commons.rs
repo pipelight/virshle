@@ -104,7 +104,7 @@ pub async fn alerte_connection_state(
 ) -> Result<(), VirshleError> {
     // Logging
     let state = rest.connection.get_state().await?;
-    let alias = peer.alias()?;
+    let alias = &peer.alias;
     match state {
         ConnectionState::SshAuthError => {
             let message = format!("peer {:#?} ssh authenticaton rejected", alias);

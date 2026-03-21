@@ -1,15 +1,15 @@
-use http_body_util::BodyExt;
-use std::vec::Vec;
-
-use pipelight_exec::{Finder, Status};
-use std::collections::HashMap;
-use uuid::Uuid;
-
 use crate::commons::vm_bulk_results_to_hashmap;
 use crate::commons::{
     CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
 };
 use crate::server::Server;
+
+use http_body_util::BodyExt;
+use indexmap::IndexMap;
+
+use pipelight_exec::{Finder, Status};
+use std::collections::HashMap;
+use uuid::Uuid;
 
 // Hypervisor
 use virshle_core::{
@@ -35,7 +35,7 @@ impl Server {
     pub fn api(&self) -> Result<Methods, VirshleError> {
         // let config = self.config.read().unwrap().clone();
         //
-        if let Some(node) = self.config.node().ok() {
+        if !self.config.node.passive {
             return Ok(Methods {
                 config: self.config.clone(),
             });
@@ -85,14 +85,21 @@ pub struct VmMethods<'a> {
 }
 
 impl NodeMethods<'_> {
+    /// Test if locally running node "Self" is responding to external requests
     pub async fn ping(&self) -> Result<(), VirshleError> {
         Ok(())
     }
+    /// Get info for locally running node "Self".
     pub async fn info(&self) -> Result<NodeInfo, VirshleError> {
         let res = NodeInfo::get().await?;
+        Ok(res)
+    }
+    /// Get decentralized ID for locally running node "Self".
+    pub async fn did(&self) -> Result<String, VirshleError> {
+        let did = self.api.config.node.did()?;
         // let mut list = HashMap::new();
         // list.insert(self.node, v);
-        Ok(res)
+        Ok(did)
     }
 }
 impl PeerMethods<'_> {
@@ -110,7 +117,8 @@ impl PeerMethods<'_> {
 impl TemplateMethods<'_> {
     pub async fn reclaim(&self, args: CreateVmArgs) -> Result<bool, VirshleError> {
         if let Some(name) = &args.template_name {
-            let vm_template = VmTemplate::get_by_name(name)?;
+            let vm_template = self.api.config.template(name)?;
+            // let vm_template = VmTemplate::get_by_name(name)?;
             let node = NodeInfo::get().await?;
             let can = node.can_create_vm(&vm_template).await.is_ok();
 
@@ -119,24 +127,15 @@ impl TemplateMethods<'_> {
             Ok(false)
         }
     }
-    pub async fn get_many(&self) -> Result<Vec<VmTemplate>, VirshleError> {
-        if let Some(template) = self.api.config.template.clone() {
-            if let Some(vm_templates) = template.vm {
-                return Ok(vm_templates);
-            }
-        }
-        Err(LibError::builder()
-            .msg("No template on node.")
-            .help("")
-            .build()
-            .into())
+    pub async fn get_many(&self) -> Result<IndexMap<String, VmTemplate>, VirshleError> {
+        Ok(self.api.config.templates.clone())
     }
-    pub async fn get_info_many(&self) -> Result<Vec<VmTemplateTable>, VirshleError> {
-        let vm_templates = VmTemplate::get_all()?;
-        let mut info = vec![];
-        for e in vm_templates {
+    pub async fn get_info_many(&self) -> Result<IndexMap<String, VmTemplateTable>, VirshleError> {
+        let vm_templates = self.api.config.templates.clone();
+        let mut info: IndexMap<String, VmTemplateTable> = IndexMap::new();
+        for (name, e) in vm_templates {
             let table = VmTemplateTable::from(&e)?;
-            info.push(table)
+            info.insert(name, table);
         }
         Ok(info)
     }
@@ -229,7 +228,7 @@ impl VmCreateMethods<'_> {
 
         match args.template_name {
             Some(name) => {
-                let template = config.get_template_by_name(&name)?;
+                let template = config.template(&name)?;
                 let mut vm: Vm = template.try_into()?;
 
                 // Safeguard before creating.
@@ -239,11 +238,15 @@ impl VmCreateMethods<'_> {
                         let vm = vm.create(args.user_data).await?;
                         Ok(vm)
                     }
-                    None => Err(LibError::builder()
-                        .msg("Couldn't create Vm.")
-                        .help("No valid template provided")
-                        .build()
-                        .into()),
+                    None => {
+                        let err = LibError::builder()
+                            .msg("Couldn't create Vm.")
+                            .help("No valid template provided")
+                            .build()
+                            .into();
+                        error!("{:#?}", err);
+                        Err(err)
+                    }
                 }
             }
             None => Err(LibError::builder()
@@ -283,7 +286,7 @@ impl VmCreateMethods<'_> {
     async fn _many(args: CreateManyVmArgs) -> Result<Vec<Vm>, VirshleError> {
         let config = Config::get()?;
         if args.template_name.is_some() && args.ntimes.is_some() {
-            let template = config.get_template_by_name(&args.template_name.unwrap())?;
+            let template = config.template(&args.template_name.unwrap())?;
 
             let mut tasks = vec![];
             for i in 0..args.ntimes.unwrap() {

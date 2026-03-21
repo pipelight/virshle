@@ -16,19 +16,41 @@ use tracing::{error, info, trace};
 use virshle_core::utils::testing;
 use virshle_error::{LibError, VirshleError, WrapError};
 
-// #[traced_test]
+// Server initilisation
 #[tokio::test]
-async fn get_node_info() -> Result<()> {
+async fn server() -> Result<()> {
     testing::tracer()
         .verbosity(tracing::Level::TRACE)
-        .db(true)
+        .db(false)
         .set()?;
 
-    // Get Self info.
     let server = Server::new().build()?;
-    let res: NodeInfo = server.api()?.node().info().await?;
-    info!("{:#?}", res);
+    server.api()?;
 
+    Ok(())
+}
+
+// Node methods
+#[tokio::test]
+async fn node_methods() -> Result<()> {
+    testing::tracer()
+        .verbosity(tracing::Level::TRACE)
+        .db(false)
+        .set()?;
+
+    let server = Server::new().build()?;
+
+    // Ping
+    server.api()?.node().ping().await?;
+
+    // Did
+    let res: String = server.api()?.node().did().await?;
+    info!("\n{:#?}", res);
+
+    // Info
+    // Get info for node "Self".
+    let res: NodeInfo = server.api()?.node().info().await?;
+    info!("\n{:#?}", res);
     // Print peer info as a table.
     let peer: Peer = Config::get()?.node()?.into();
     let printable = (peer, (ConnectionState::DaemonUp, Some(res)));
@@ -59,7 +81,8 @@ async fn get_vms() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
+// #[tokio::test]
+/// Will fail because of nested tokio.
 async fn test_http_rest_server() -> Result<()> {
     RestServer::build().await?.serve().await?;
     Ok(())

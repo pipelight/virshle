@@ -25,6 +25,7 @@ members = [
 thiserror = "2.0.12"
 miette = "7.2.0"
 
+# Globals
 once_cell = "1.19.0"
 
 # Log/Tracing
@@ -36,8 +37,12 @@ tracing-log = "0.2.0"
 tracing-test = "0.2.6"
 derivative = "2.2.0"
 
+# Tests
+pretty_assertions = "1.4.1"
+
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
 chrono = { version = "0.4.41", features = ["now", "serde"] }
+indexmap = { version = "2.13.0", features = ["serde"] }
 
 pipelight_error = "0.2.14"
 pipelight_exec = "0.4.11"

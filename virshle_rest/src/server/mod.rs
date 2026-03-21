@@ -1,5 +1,7 @@
 mod methods;
 mod routes;
+
+#[cfg(test)]
 mod tests;
 
 // Global vars

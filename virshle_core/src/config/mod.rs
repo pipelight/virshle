@@ -3,9 +3,12 @@ mod load;
 mod node;
 mod template;
 mod user_data;
+/// Initialize system directories, network, database...
+pub mod init;
 
 // Reexport
 pub use definition::Definition;
+use load::PreConfig;
 pub use node::{Node, NodeConfig};
 pub use template::{
     disk::DiskTemplate,
@@ -14,11 +17,11 @@ pub use template::{
 };
 pub use user_data::{Account, SshParams, User, UserData};
 
-use crate::database;
-use crate::hypervisor::Vm;
 use crate::network::{dhcp::DhcpType, ovs};
 use crate::peer::Peer;
 
+use bon::bon;
+use indexmap::IndexMap;
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};
 use std::convert::Into;
@@ -30,9 +33,6 @@ use log::{debug, info};
 use miette::Result;
 use virshle_error::{LibError, VirshleError};
 
-pub const MANAGED_DIR: &'static str = "/var/lib/virshle";
-pub const CONFIG_DIR: &'static str = "/etc/virshle";
-
 // Nodes maximum staturation values in %.
 pub const MAX_RAM_RESERVATION: f64 = 250_f64;
 pub const MAX_CPU_RESERVATION: f64 = 300_f64;
@@ -43,142 +43,80 @@ pub const MAX_DISK_RESERVATION: f64 = 95_f64;
 pub struct Config {
     // Server
     /// The local node configuration
-    node: Option<NodeConfig>,
+    pub node: Node,
     /// Vm templates
-    pub template: Option<TemplateConfig>,
+    pub templates: IndexMap<String, VmTemplate>,
     /// Network configuration
     pub dhcp: Option<DhcpType>,
 
     // Client
     /// List of remote node
-    peer: Option<Vec<Peer>>,
+    peers: IndexMap<String, Peer>,
 }
 impl Default for Config {
     fn default() -> Self {
         Self {
-            node: Some(NodeConfig::default()),
-            peer: None,
-            template: None,
+            node: Node::default(),
+            peers: IndexMap::new(),
+            templates: IndexMap::new(),
             dhcp: None,
         }
     }
 }
+// Getters
+#[bon]
 impl Config {
-    /// Ensure virshle resources:
-    ///   - a clean working directory and database.
-    ///   - an initial configuration.
-    ///   - a dedicated network virtual switch.
-    pub async fn ensure_all() -> Result<(), VirshleError> {
-        Self::ensure_directories().await?;
-        Self::ensure_database().await?;
-        Self::ensure_network().await?;
-
-        Self::_clean_directories().await?;
-        Self::_clean_leases().await?;
-        Ok(())
+    pub fn get() -> Result<Config, VirshleError> {
+        let res: Config = PreConfig::get()?.try_into()?;
+        Ok(res)
     }
-    /// Ensure virshle working directories exists.
-    pub async fn ensure_directories() -> Result<(), VirshleError> {
-        // Create storage/config directories
-        let directories = [
-            MANAGED_DIR.to_owned(),
-            MANAGED_DIR.to_owned() + "/vm",
-            MANAGED_DIR.to_owned() + "/cache",
-            CONFIG_DIR.to_owned(),
-        ];
-        for directory in directories {
-            let path = Path::new(&directory);
-            if !path.exists() {
-                fs::create_dir_all(&directory)?;
-            }
+    // Return self node AND remote nodes.
+    pub fn peers(&self) -> Result<IndexMap<String, Peer>, VirshleError> {
+        let mut node_and_peers: IndexMap<String, Peer> = IndexMap::new();
+        if !self.node.passive {
+            let node: Peer = (&self.node).into();
+            node_and_peers.insert(node.alias.clone(), node.clone());
         }
-        info!("{} created virshle filetree.", "[init]".yellow(),);
-        Ok(())
+        node_and_peers.extend(self.peers.to_owned());
+        Ok(node_and_peers)
     }
-    /// Clean orphan vm files if vm not in database.
-    pub async fn _clean_directories() -> Result<(), VirshleError> {
-        let vms = Vm::database().await?.many().get().await?;
-        let uuids: Vec<String> = vms.iter().map(|e| e.uuid.to_string()).collect();
+    /// Returns node with alias.
+    #[builder(
+        finish_fn = get, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub fn peer(&self, alias: Option<String>) -> Result<Peer, VirshleError> {
+        let peers = self.peers()?;
+        match alias {
+            Some(alias) => {
+                match peers.get(&alias) {
+                    Some(v) => Ok(v.to_owned()),
+                    None => {
+                        let aliases: Vec<String> = peers.into_keys().collect();
+                        let aliases: String = aliases.join(",");
 
-        let path = format!("{MANAGED_DIR}/vm");
-        let path = Path::new(&path);
-        for entry in path.read_dir()? {
-            if let Ok(entry) = entry {
-                if entry.path().is_dir() {
-                    if !uuids.contains(&entry.file_name().to_str().unwrap().to_owned()) {
-                        fs::remove_dir_all(entry.path())?;
+                        let message = format!("Couldn't find node with alias: {:#?}", alias);
+                        let help = format!("Available nodes are:\n[{aliases}]");
+                        let err = LibError::builder().msg(&message).help(&help).build();
+                        return Err(err.into());
                     }
                 }
             }
+            None => Ok(self.node.clone().into()),
         }
-        debug!("Cleaned virshle filetree.");
-        Ok(())
     }
-    pub async fn ensure_network() -> Result<(), VirshleError> {
-        ovs::ensure_switches().await?;
-        info!(
-            "{} created virshle ovs network configuration.",
-            "[init]".yellow(),
-        );
-        Ok(())
-    }
-    pub async fn ensure_database() -> Result<(), VirshleError> {
-        database::connect_or_fresh_db().await?;
-        info!("{} ensured virshle database.", "[init]".yellow(),);
-        Ok(())
-    }
-    /// Clean dhcp leases
-    pub async fn _clean_leases() -> Result<(), VirshleError> {
-        match Config::get()?.dhcp {
-            Some(DhcpType::Kea(kea_dhcp)) => {
-                kea_dhcp.clean_leases().await?;
-            }
-            _ => {}
-        };
-        info!("{} delete unused leases", "[kea-dhcp]".yellow(),);
-        Ok(())
-    }
-}
-
-// Getters
-impl Config {
-    pub fn node(&self) -> Result<Node, VirshleError> {
-        let res = match &self.node {
-            Some(v) => v.try_into()?,
-            None => Node::default(),
-        };
-        Ok(res)
-    }
-    pub fn peers(&self) -> Result<Vec<Peer>, VirshleError> {
-        let mut peers: Vec<Peer> = vec![];
-        if !self.node()?.passive {
-            let peer = self.node()?.into();
-            peers.push(peer);
-        }
-        match &self.peer {
-            Some(peer) => peers.extend(peer.to_owned()),
-            None => {}
-        };
-        Ok(peers)
-    }
-    pub fn get_templates(&self) -> Result<Vec<VmTemplate>, VirshleError> {
-        if let Some(template) = &self.template {
-            if let Some(vm) = &template.vm {
-                return Ok(vm.to_owned());
-            }
-        }
-        Ok(vec![])
-    }
-    pub fn get_template_by_name(&self, name: &str) -> Result<VmTemplate, VirshleError> {
-        let templates = self.get_templates()?;
-        let res = templates.iter().find(|e| e.name == name);
+    /// Get template by name.
+    pub fn template(&self, name: &str) -> Result<VmTemplate, VirshleError> {
+        let res = self.templates.get(name);
         match res {
             Some(res) => Ok(res.to_owned()),
             None => {
                 let message = format!("Couldn't find template {:#?}", name);
-                let templates_name = templates
+                let templates_name = self
+                    .templates
                     .iter()
-                    .map(|e| e.name.to_owned())
+                    .map(|(name, _)| name.to_owned())
                     .collect::<Vec<String>>()
                     .join(",");
                 let help = format!("Available templates are:\n[{templates_name}]");

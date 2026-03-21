@@ -31,6 +31,7 @@ suffix = "vm"
 # If none is whitelisted you will by default send commands to the local node (Self).
 
 [[peer]]
+alias = "v0"
 url = "ssh://anon@home-v0:2214/var/lib/virshle/virshle.sock"
 weight = 20
 # Whitelist the node by adding its pubkey.

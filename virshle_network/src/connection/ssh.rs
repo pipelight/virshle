@@ -122,10 +122,8 @@ impl SshConnection {
         Err(ConnectionError::SshAuthError)
     }
 
-    /*
-     * After ssh connection is open.
-     * Connect to socket at path: self.uri.path.
-     */
+    /// After ssh connection is open.
+    /// Connect to socket at path: self.uri.path.
     pub async fn connect_to_socket(&self) -> Result<ChannelStream<Msg>, VirshleError> {
         if let Some(ssh_handle) = &self.ssh_handle {
             let socket = &self.uri.path;

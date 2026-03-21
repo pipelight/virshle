@@ -78,7 +78,7 @@ impl CpuTable {
         if let Some(node_info) = node_info {
             let e = node_info.host_info.cpu.clone();
             table = CpuTable {
-                alias: node.alias().unwrap_or(node.did()?),
+                alias: node.alias.clone(),
                 number: Some(e.number),
                 usage: Some(e.usage),
                 reserved: Some(e.reserved),
@@ -86,7 +86,7 @@ impl CpuTable {
             };
         } else {
             table = CpuTable {
-                alias: node.alias()?.clone(),
+                alias: node.alias.clone(),
                 number: None,
                 usage: None,
                 reserved: None,
@@ -256,7 +256,7 @@ impl RamTable {
         if let Some(node_info) = node_info {
             let e = node_info.host_info.ram.clone();
             table = RamTable {
-                alias: node.alias()?,
+                alias: node.alias.clone(),
                 total: Some(e.total),
                 used: Some(e.used),
                 available: Some(e.available),
@@ -266,7 +266,7 @@ impl RamTable {
             };
         } else {
             table = RamTable {
-                alias: node.alias()?,
+                alias: node.alias.clone(),
                 total: None,
                 used: None,
                 available: None,
@@ -414,7 +414,7 @@ impl HostDiskTable {
         if let Some(node_info) = node_info {
             let e = node_info.host_info.disk.clone();
             table = HostDiskTable {
-                alias: node.alias()?.to_owned(),
+                alias: node.alias.clone(),
                 size: Some(e.size),
                 used: Some(e.used),
                 available: Some(e.available),
@@ -425,7 +425,7 @@ impl HostDiskTable {
             };
         } else {
             table = HostDiskTable {
-                alias: node.alias()?.to_owned(),
+                alias: node.alias.clone(),
                 size: None,
                 used: None,
                 available: None,
@@ -554,7 +554,7 @@ impl Peer {
         Ok(())
     }
     pub fn header(&self) -> Result<String, VirshleError> {
-        let alias = self.alias()?.bright_purple().bold().to_string();
+        let alias = self.alias.bright_purple().bold().to_string();
         let header: String = match Uri::new(&self.url)? {
             Uri::SshUri(e) => format!(
                 "{alias} on {}@{}",
@@ -578,7 +578,7 @@ impl NodeTable {
         let table;
         if let Some(node_info) = node_info {
             table = NodeTable {
-                alias: node.alias()?.to_owned(),
+                alias: node.alias.to_owned(),
                 cpu: Some(node_info.host_info.cpu.number),
                 ram: Some(node_info.host_info.ram.total),
                 disk: Some(node_info.host_info.disk.size),
@@ -587,7 +587,7 @@ impl NodeTable {
             };
         } else {
             table = NodeTable {
-                alias: node.alias()?.to_owned(),
+                alias: node.alias.to_owned(),
                 cpu: None,
                 ram: None,
                 disk: None,
