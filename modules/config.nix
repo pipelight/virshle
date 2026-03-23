@@ -72,7 +72,7 @@ in
       ## DO NOT WORK: Add mounting capabilities.
       ## But can't work unless rust native mounting lib. (sys_mount crate is only FFI bindings)
       # capabilities = "cap_net_admin,cap_sys_admin+eip";
-      capabilities = "cap_net_admin";
+      capabilities = "cap_net_admin+eip";
       permissions = "u+rx,g+rx,o+rx";
     };
 
