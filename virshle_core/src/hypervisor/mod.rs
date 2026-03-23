@@ -12,5 +12,5 @@ pub use disk::{Disk, DiskInfo, InitDisk};
 pub mod vmm;
 
 pub use vm::{InitData, UserData};
-pub use vm::{Vm, VmConfigPlus, VmData, VmInfo, VmTable};
+pub use vm::{Vm, VmExtra, VmData, VmInfo, VmTable};
 pub use vmm::{VmInfoResponse, VmState};

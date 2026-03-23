@@ -18,7 +18,7 @@ fn testing_vm() -> Result<Vm, VirshleError> {
             readonly: None,
         }]),
         net: None,
-        config: None,
+        extra: None,
     };
     let vm: Vm = template.try_into()?;
     Ok(vm)

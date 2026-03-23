@@ -78,32 +78,23 @@ mod test {
     use std::path::PathBuf;
 
     #[tokio::test]
-    async fn set_vm_from_file() -> Result<()> {
-        // Get file
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        path.push("../templates/ch/vm/xs.toml");
-        let path = path.display().to_string();
-
-        let mut def = Definition::from_file(&path)?;
-        def.create_all().await?;
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn set_vm_from_toml() -> Result<()> {
         let toml = r#"
             [[vm]]
             name = "default_xs"
+            uuid = "402e13a9-9d29-7676-9c6e-101048f809a8"
             vcpu = 1
             vram = "2GiB"
 
             [[vm.net]]
-            [vm.net.tap]
             name = "default_tap"
-
-            [[net]]
-            name = "default_tap"
+            [vm.net.type.tap]
             ip = "192.168.200.1/24"
+            mac = "22:60:ec:b7:7d:ed"
+
+            [[vm.disk]]
+            name = "os"
+            path = "~/Iso/nixos.xxs.efi.img"
         "#;
 
         let mut def = Definition::from_toml(&toml)?;

@@ -1,5 +1,5 @@
 use crate::config::DiskTemplate;
-use crate::hypervisor::{Disk, DiskInfo, Vm, VmConfigPlus};
+use crate::hypervisor::{Disk, DiskInfo, Vm, VmExtra};
 use crate::peer::Peer;
 
 use indexmap::IndexMap;
@@ -31,7 +31,7 @@ pub struct VmTemplate {
     pub uuid: Option<Uuid>,
     pub disk: Option<Vec<DiskTemplate>>,
     pub net: Option<Vec<VmNet>>,
-    pub config: Option<VmConfigPlus>,
+    pub extra: Option<VmExtra>,
 }
 
 impl VmTemplate {

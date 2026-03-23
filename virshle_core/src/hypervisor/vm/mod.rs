@@ -42,27 +42,29 @@ use pipelight_exec::Process;
 use miette::Result;
 use virshle_error::VirshleError;
 
+/// Mainly used for Crocuda_VPS.
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-pub struct VmConfigPlus {
-    /// The account the vm is linked to.
+pub struct VmExtra {
+    /// A field with Json data,
+    /// containing the decentralized account the VM is linked to.
     pub inner: Option<String>,
     // Unused
     pub autostart: bool,
 }
 
-impl VmConfigPlus {
+impl VmExtra {
     pub fn new<T>(inner: &T) -> Result<Self, VirshleError>
     where
         T: Serialize + DeserializeOwned + std::fmt::Debug,
     {
-        let res = VmConfigPlus {
+        let res = VmExtra {
             inner: Some(serde_json::to_string(inner)?),
             ..Default::default()
         };
         Ok(res)
     }
 }
-impl Default for VmConfigPlus {
+impl Default for VmExtra {
     fn default() -> Self {
         Self {
             inner: Default::default(),
@@ -90,7 +92,7 @@ pub struct Vm {
 
     // Very optional vm parameters.
     /// Room for additional parameters (unused for now).
-    pub config: Option<VmConfigPlus>,
+    pub config: Option<VmExtra>,
 }
 
 impl Default for Vm {

@@ -1,5 +1,5 @@
 use crate::config::{DhcpType, NodeConfig, Peer, TemplateConfig, UserData};
-use crate::hypervisor::VmConfigPlus;
+use crate::hypervisor::vm::VmExtra;
 use crate::VmTemplate;
 
 use super::Config;
@@ -166,7 +166,7 @@ impl UserData {
         Ok(item)
     }
 }
-impl VmConfigPlus {
+impl VmExtra {
     pub fn from_file(path: &str) -> Result<Self, VirshleError> {
         let string = fs::read_to_string(path)?;
         Self::from_toml(&string)
@@ -191,10 +191,8 @@ mod tests {
 
     #[test]
     fn get_config_from_file() -> Result<()> {
-        // let res = Config::get()?;
-        // Test loading from memory
-        // Config::get()?;
-        // println!("{:#?}", res);
+        let pre = PreConfig::get()?;
+        let config: Config = pre.try_into()?;
         Ok(())
     }
 
