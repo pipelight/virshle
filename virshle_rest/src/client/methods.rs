@@ -657,7 +657,7 @@ impl VmGetterMethods<'_> {
     ) -> Result<Vec<VmTable>, VirshleError> {
         let mut vms: Vec<VmTable> = vec![];
         if rest.ping().await.is_ok() {
-            let res = rest.post("/vm/get.many", args.clone()).await?.to_value().await;
+            let res = rest.post("/vm/info.many", args.clone()).await?.to_value().await;
             match res {
                 Ok(v) => {vms = v},
                 Err(_) => {}
@@ -727,12 +727,12 @@ impl VmCreateMethods<'_> {
     ) -> Result<VmTable, VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-        let vm: Result<VmTable, VirshleError> = rest
-            .post("/vm/create", args.clone())
+        let vm: VmTable = rest
+            .put("/vm/create", args.clone())
             .await?
             .to_value()
             .await?;
-        vm
+        Ok(vm)
     }
     /// Create multiple virtual machines on a given node.
     ///
@@ -777,7 +777,7 @@ impl VmCreateMethods<'_> {
         rest.open().await?;
         rest.ping().await?;
         let vms: Vec<Result<VmTable, VirshleError>> = rest
-            .post("/vm/create.many", args.clone())
+            .put("/vm/create.many", args.clone())
             .await?
             .to_value()
             .await?;
@@ -830,12 +830,12 @@ impl VmDeleteMethods<'_> {
         rest: &mut RestClient,
         args: Option<GetVmArgs>,
     ) -> Result<VmTable, VirshleError> {
-        let vm: Result<VmTable, VirshleError> = rest
-            .post("/vm/delete", args.clone())
+        let vm: VmTable = rest
+            .put("/vm/delete", args.clone())
             .await?
             .to_value()
             .await?;
-        vm
+        Ok(vm)
     }
     /// Bulk operation
     /// Delete many virtual machine on a node.
@@ -873,7 +873,7 @@ impl VmDeleteMethods<'_> {
     ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
 
         let vms: IndexMap<Status,Vec<VmTable>>= rest
-            .post("/vm/delete.many", args.clone())
+            .put("/vm/delete.many", args.clone())
             .await?
             .to_value()
             .await?;
@@ -903,6 +903,7 @@ impl VmStartMethods<'_> {
         uuid: Option<Uuid>,
         name: Option<String>,
         user_data: Option<UserData>,
+        attach: Option<bool>,
         alias: Option<String>,
     ) -> Result<VmTable, VirshleError> {
         let mut method = self.api.peer();
@@ -916,6 +917,7 @@ impl VmStartMethods<'_> {
                 uuid,
                 name: name.clone(),
                 user_data,
+                attach,
             }),
         )
         .await;
@@ -937,12 +939,12 @@ impl VmStartMethods<'_> {
     ) -> Result<VmTable, VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-        let vm: Result<VmTable, VirshleError> = rest
-            .post("/vm/start", args.clone())
+        let vm: VmTable = rest
+            .put("/vm/start", args.clone())
             .await?
             .to_value()
             .await?;
-        vm
+        Ok(vm)
     }
     /// Bulk operation
     /// Start many virtual machine on a node.
@@ -981,7 +983,7 @@ impl VmStartMethods<'_> {
         rest.open().await?;
         rest.ping().await?;
         let vms: IndexMap<Status,Vec<VmTable>> = rest
-            .post("/vm/start.many", args.clone())
+            .put("/vm/start.many", args.clone())
             .await?
             .to_value()
             .await?;
@@ -1034,12 +1036,12 @@ impl VmShutdownMethods<'_> {
     ) -> Result<VmTable, VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-        let vm: Result<VmTable, VirshleError> = rest
-            .post("/vm/shutdown", args.clone())
+        let vm: VmTable = rest
+            .put("/vm/shutdown", args.clone())
             .await?
             .to_value()
             .await?;
-        vm
+        Ok(vm)
     }
     /// Bulk operation
     /// Delete many virtual machine on a node.
@@ -1074,7 +1076,7 @@ impl VmShutdownMethods<'_> {
         rest.open().await?;
         rest.ping().await?;
         let vms: Vec<Result<VmTable, VirshleError>> = rest
-            .post("/vm/shutdown.many", args.clone())
+            .put("/vm/shutdown.many", args.clone())
             .await?
             .to_value()
             .await?;

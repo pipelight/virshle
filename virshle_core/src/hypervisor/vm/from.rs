@@ -24,18 +24,40 @@ use crate::config::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;
-use tracing::trace;
+use tracing::{error, trace};
 use virshle_error::{CastError, TomlError, VirshleError, WrapError};
 
+impl TryInto<Vm> for vm::Model {
+    type Error = VirshleError;
+    fn try_into(self) -> Result<Vm, Self::Error> {
+        (&self).try_into()
+    }
+}
 impl TryInto<Vm> for &vm::Model {
     type Error = VirshleError;
     fn try_into(self) -> Result<Vm, Self::Error> {
-        let definition: Vm = serde_json::from_value(self.definition.clone())?;
-        let vm = Vm {
-            uuid: Uuid::parse_str(&self.uuid)?,
-            name: self.name.clone(),
-            ..definition
+        let res: Result<Vm, serde_json::Error> = serde_json::from_value(self.definition.clone());
+
+        let vm: Vm = match res {
+            Ok(mut v) => {
+                // Populate struct with database id.
+                v.id = Some(self.id as u64);
+                v.created_at = self.created_at;
+                v.updated_at = self.updated_at;
+                v
+            }
+            Err(e) => {
+                let message = "Couldn't convert database record to valid resources";
+                let err = WrapError::builder()
+                    .msg(message)
+                    .help("")
+                    .origin(VirshleError::from(e).into())
+                    .build();
+                error!("{}", message);
+                return Err(err.into());
+            }
         };
+
         Ok(vm)
     }
 }
@@ -119,7 +141,7 @@ mod test {
     fn display_vm_to_toml() -> Result<()> {
         let vm = Vm::default();
         let string = vm.print_to_toml()?;
-        println!("");
+        println!("\n");
         PrettyPrinter::new()
             .input_from_bytes(string.as_bytes())
             .language("toml")

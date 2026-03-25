@@ -1,17 +1,18 @@
 use super::{Disk, Vm};
-
-// Filesystem
-use std::fs;
-use std::path::Path;
-
 // Init disk
 use super::UserData;
+
+// Filesystem
+use bon::bon;
+use std::fs;
+use std::path::Path;
 
 // Error Handling
 use miette::Result;
 use tracing::{error, info, trace};
 use virshle_error::VirshleError;
 
+#[bon]
 impl Vm {
     /// Add vm config to database.
     /// Resources are not created there but rather on vm start.
@@ -23,18 +24,21 @@ impl Vm {
         info!("created vm {:#?}", self.name);
         Ok(self.to_owned())
     }
-    /// Start Vm
-    #[tracing::instrument(skip_all)]
-    pub async fn start(
-        &mut self,
-        user_data: Option<UserData>,
-        attach: Option<bool>,
-    ) -> Result<Vm, VirshleError> {
-        // Create ressources
-        self.add_init_disk(user_data)?;
-        self.networks().create_all()?;
 
-        self.vmm().start(attach).await?;
+    /// Start Vm
+    #[builder(finish_fn = exec)]
+    #[tracing::instrument(skip_all)]
+    pub async fn start(&mut self, user_data: Option<UserData>) -> Result<Vm, VirshleError> {
+        // Create initial resources
+        self.create_init_resources()
+            .maybe_user_data(user_data)
+            .exec()?;
+
+        // Start the ch process
+        self.vmm().start().exec().await?;
+
+        // Call to the ch process.
+        // Provision the process with VM configuration.
         self.vmm().api()?.create().await?;
         self.vmm().api()?.boot().await?;
 
@@ -78,6 +82,31 @@ impl Vm {
         Ok(self.to_owned())
     }
 
+    /// Create init disk and network before vm is booted.
+    #[builder(finish_fn = exec)]
+    #[tracing::instrument(skip_all)]
+    pub fn create_init_resources(
+        &mut self,
+        user_data: Option<UserData>,
+    ) -> Result<Vm, VirshleError> {
+        // Create ressources
+        self.add_init_disk(user_data)?;
+        self.networks().create_all()?;
+
+        Ok(self.to_owned())
+    }
+
+    /// Create init disk and network before vm is booted.
+    #[tracing::instrument(skip_all)]
+    pub async fn provision_ch_process(&mut self) -> Result<Vm, VirshleError> {
+        // Call to the ch process.
+        // Provision the process with VM configuration.
+        self.vmm().api()?.create().await?;
+        self.vmm().api()?.boot().await?;
+
+        self.set_vsock_permissions().await?;
+        Ok(self.to_owned())
+    }
     /// Remove vm disks file from filesystem.
     pub fn delete_disks(&self) -> Result<Vec<Disk>, VirshleError> {
         for disk in &self.disk {

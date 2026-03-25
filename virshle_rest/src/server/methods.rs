@@ -343,6 +343,7 @@ impl VmStartMethods<'_> {
             name,
             uuid,
             user_data,
+            attach,
         })
         .await?;
         let res = VmTable::from(&vm).await?;
@@ -357,8 +358,52 @@ impl VmStartMethods<'_> {
             .maybe_uuid(args.uuid)
             .get()
             .await?;
-        vm.start(args.user_data.clone(), None).await?;
+        vm.start()
+            .maybe_user_data(args.user_data.clone())
+            .exec()
+            .await?;
         Ok(vm)
+    }
+    #[builder(finish_fn = exec)]
+    pub async fn provision_ch(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+    ) -> Result<VmTable, VirshleError> {
+        let mut vm = Vm::database()
+            .await?
+            .one()
+            .maybe_id(id)
+            .maybe_name(name)
+            .maybe_uuid(uuid)
+            .get()
+            .await?;
+        vm.provision_ch_process().await?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
+    }
+    #[builder(finish_fn = exec)]
+    pub async fn create_init_resources(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+        user_data: Option<UserData>,
+    ) -> Result<VmTable, VirshleError> {
+        let mut vm = Vm::database()
+            .await?
+            .one()
+            .maybe_id(id)
+            .maybe_name(name)
+            .maybe_uuid(uuid)
+            .get()
+            .await?;
+        vm.create_init_resources()
+            .maybe_user_data(user_data.clone())
+            .exec()?;
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
     }
 
     #[builder(finish_fn = exec)]
@@ -382,7 +427,7 @@ impl VmStartMethods<'_> {
                 let user_data = user_data.clone();
                 async move {
                     let mut vm = vm.clone();
-                    vm.start(user_data, None).await
+                    vm.start().maybe_user_data(user_data).exec().await
                 }
             }));
         }
@@ -538,7 +583,6 @@ impl VmMethods<'_> {
             .maybe_uuid(args.uuid)
             .get()
             .await?;
-        vm.start(user_data.clone(), Some(true)).await?;
         Ok(vm)
     }
 

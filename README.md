@@ -112,3 +112,14 @@ v vm create --template xxs --user-data ~./user-data.toml
 
 Check out the `docs` directory or on the documentation website at
 [virshle.crocuda.com](https://virshle.crocuda.com).
+
+# Developers
+
+## Fancy tests.
+
+Set the `CARGO_TEST_TRACING_LEVEL` environment variable
+to run tests and print pretty logs when needed.
+
+```sh
+CARGO_TEST_TRACING_LEVEL='error' cargo test
+```

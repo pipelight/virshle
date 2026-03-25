@@ -36,17 +36,14 @@ use serde::{Deserialize, Serialize};
 use russh::{client::Msg, ChannelStream};
 use tokio::net::{TcpStream, UnixStream};
 
-use std::convert::Into;
 use std::future::Future;
 
 // Error Handling
 use miette::Result;
 use virshle_error::VirshleError;
 
-/*
-* An unused trait that should have enabled usage of multiple stream types (not working).
-* For now, usage of known types in enumeration is preffered.
-*/
+/// An unused trait that should have enabled usage of multiple stream types (not working).
+/// For now, usage of known types in enumeration is preffered.
 pub trait Streamable:
 // tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sized
 // tokio::io::AsyncRead + tokio::io::AsyncWrite + std::marker::Unpin + Send + Sync

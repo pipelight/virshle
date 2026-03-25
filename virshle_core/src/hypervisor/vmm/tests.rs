@@ -7,7 +7,7 @@ use pretty_assertions::assert_eq;
 /// Create a testing Vm to try Vmm methods.
 fn testing_vm() -> Result<Vm, VirshleError> {
     let template = VmTemplate {
-        name: "test".to_owned(),
+        name: "test_vmm".to_owned(),
         vcpu: 1,
         vram: "1GiB".to_owned(),
         uuid: None,

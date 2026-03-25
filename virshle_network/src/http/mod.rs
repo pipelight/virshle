@@ -151,7 +151,6 @@ impl Rest for RestClient {
             match response {
                 Ok(response) => {
                     let status: StatusCode = response.status();
-                    let endpoint = self.make_endpoint(endpoint);
                     let response: Response = Response::new(&endpoint, response);
                     trace!("{:#?}", response);
 
@@ -203,7 +202,7 @@ impl Rest for RestClient {
                 .map_err(|e| {
                     LibError::builder()
                         .msg(&e.to_string())
-                        .help(&format!("Request timeout {time}ms reached."))
+                        .help(&format!("Request timeout reached ({time}ms)."))
                         .build()
                 })?;
         } else {

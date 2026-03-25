@@ -51,8 +51,8 @@ impl Definition {
     }
     pub async fn delete_vms(&mut self) -> Result<Self, VirshleError> {
         if let Some(ref mut vms) = self.vm {
-            for def in vms {
-                def.delete().await?;
+            for vm in vms {
+                vm.delete().await?;
             }
         }
         Ok(self.to_owned())
@@ -64,8 +64,8 @@ impl Definition {
     }
     pub async fn start_vms(&mut self) -> Result<Self, VirshleError> {
         if let Some(vms) = &mut self.vm {
-            for def in vms {
-                def.start(None, None).await?;
+            for vm in vms {
+                vm.start().exec().await?;
             }
         }
         Ok(self.to_owned())
@@ -98,7 +98,12 @@ mod test {
         "#;
 
         let mut def = Definition::from_toml(&toml)?;
+        // Clean if existing definition.
+        def.delete_all().await.ok();
+
         def.create_all().await?;
+        def.delete_all().await?;
+
         Ok(())
     }
 }

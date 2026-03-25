@@ -1,8 +1,10 @@
-pub mod api;
 #[cfg(test)]
 mod tests;
+
+pub mod api;
 pub mod types;
 
+use bon::bon;
 use std::path::Path;
 
 // Process management
@@ -14,7 +16,7 @@ use std::os::unix::fs::PermissionsExt;
 use crate::config::VmTemplate;
 use crate::hypervisor::Vm;
 
-pub use types::{VmConfig, VmInfoResponse, VmRemoveDeviceData, VmState};
+pub use types::{NetConfig, VmConfig, VmInfoResponse, VmRemoveDeviceData, VmState};
 
 // Error Handling
 use miette::Result;
@@ -30,6 +32,7 @@ pub struct VmmMethods<'a> {
     vm: &'a Vm,
 }
 // Vmm API
+#[bon]
 impl VmmMethods<'_> {
     /// Remove running vm hypervisor process if any
     /// and assiociated socket.
@@ -74,7 +77,8 @@ impl VmmMethods<'_> {
         Ok(())
     }
     /// Start or Restart a VMM.
-    pub async fn start(&self, attach: Option<bool>) -> Result<(), VirshleError> {
+    #[builder(finish_fn = exec)]
+    pub async fn start(&self) -> Result<(), VirshleError> {
         // Safeguard: remove old process and artifacts
         self.kill_process()?;
 
@@ -88,35 +92,29 @@ impl VmmMethods<'_> {
         // So we start a new viable process.
 
         if self.api()?.ping().await.is_err() {
-            match attach {
-                Some(true) => {
-                    cmd = format!(
-                        "kitty \
-                            --title ttyS0@vm-{} \
-                            --hold sh -c \"{} --api-socket {}\"",
-                        &self.vm.name,
-                        cmd,
-                        &self.get_socket()?
-                    );
-                    Process::new()
-                        .stdin(&cmd)
-                        .term()
-                        .background()
-                        .detach()
-                        .run()?;
-                    info!("launching: {:#?}", &cmd);
-                }
-                _ => {
-                    cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
-                    Process::new()
-                        .stdin(&cmd)
-                        .orphan()
-                        .background()
-                        .detach()
-                        .run()?;
-                    info!("launching: {:#?}", &cmd);
-                }
-            };
+            // cmd = format!(
+            //     "kitty \
+            //         --title ttyS0@vm-{} \
+            //         --hold sh -c \"{} --api-socket {}\"",
+            //     &self.vm.name,
+            //     cmd,
+            //     &self.get_socket()?
+            // );
+            // Process::new()
+            //     .stdin(&cmd)
+            //     .term()
+            //     .background()
+            //     .detach()
+            //     .run()?;
+            // info!("launching: {:#?}", &cmd);
+            cmd = format!("{} --api-socket {}", &cmd, &self.get_socket()?);
+            Process::new()
+                .stdin(&cmd)
+                .orphan()
+                .background()
+                .detach()
+                .run()?;
+            info!("launching: {:#?}", &cmd);
 
             // Wait until socket is created
             let socket = &self.get_socket()?;

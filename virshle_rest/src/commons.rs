@@ -51,6 +51,7 @@ pub struct StartVmArgs {
     pub uuid: Option<Uuid>,
     pub name: Option<String>,
     pub user_data: Option<UserData>,
+    pub attach: Option<bool>,
 }
 #[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct StartManyVmArgs {

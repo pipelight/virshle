@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 mod types;
 mod utils;
 pub use types::*;
@@ -6,12 +9,14 @@ use virshle_core::{
     config::{Config, Definition, Node, VmTemplate},
     hypervisor::{UserData, Vm, VmState, VmTable},
     peer::{HostCpu, HostDisk, HostRam, NodeInfo, Peer},
+    utils::testing,
 };
 
 use clap::Parser;
 use indexmap::IndexMap;
 use std::fs;
 use std::path::Path;
+use std::str::FromStr;
 
 // Spinners
 use owo_colors::OwoColorize;
@@ -33,8 +38,9 @@ impl Cli {
         Ok(())
     }
     pub async fn switch(cli: Cli) -> Result<(), VirshleError> {
-        utils::set_tracer(&cli)?;
-        utils::set_logger(&cli)?;
+        let verbosity = tracing::Level::from_str(&cli.verbose.to_string()).unwrap();
+        testing::tracer().verbosity(verbosity).set()?;
+        testing::logger().verbosity(verbosity).set()?;
 
         let config = Config::get()?;
         let mut client = Client::new().config(&config).build()?.api().await?;
@@ -43,8 +49,8 @@ impl Cli {
             /*
              * Operations on local node.
              */
-            Commands::Node(args) => match args {
-                NodeArgs::Ls(args) => {
+            Commands::Peer(args) => match args {
+                PeerArgs::Ls(args) => {
                     let node = args.current_workgin_node.node;
                     let node_info = client.node()?.get_info().exec().await?;
 
@@ -82,12 +88,13 @@ impl Cli {
                         }
                     }
                 }
-                NodeArgs::Ping(args) => {
+                PeerArgs::Ping(args) => {
                     let res = client.peer().ping().exec().await?;
-                }
-                /*
-                 * Serve the node rest API and wait for http requests.
-                 */
+                } /*
+                   * Serve the node rest API and wait for http requests.
+                   */
+            },
+            Commands::Node(args) => match args {
                 NodeArgs::Serve => {
                     Server::new().config(&config).build()?.serve().await?;
                 }
@@ -191,61 +198,61 @@ impl Cli {
                     };
                     let methods = Server::new().config(&config).build()?.api()?;
 
-                    match args.attach {
-                        true => {
-                            let args = args.vm_args;
-                            // Bypass rest API,
-                            // and run on local node direcly.
-                            methods
-                                .vm()
-                                .start()
-                                .one()
-                                .maybe_id(args.id)
-                                .maybe_uuid(args.uuid)
-                                .maybe_name(args.name)
-                                .maybe_user_data(user_data)
-                                .exec()
-                                .await?;
-                        }
-                        _ => {
-                            let args = args.vm_args;
-                            if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
-                                // Spinner
-                                let mut sp =
-                                    Spinner::new(spinners::Toggle5, "Starting vm...", None);
+                    if args.vm_args.name.is_some()
+                        || args.vm_args.uuid.is_some()
+                        || args.vm_args.id.is_some()
+                    {
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Starting vm...", None);
 
-                                // Rest API
-                                let res: VmTable = client
+                        // Rest API
+                        let res: VmTable = client
+                            .vm()
+                            .start()
+                            .one()
+                            .maybe_id(args.vm_args.id)
+                            .maybe_uuid(args.vm_args.uuid)
+                            .maybe_name(args.vm_args.name.clone())
+                            .maybe_user_data(user_data.clone())
+                            .exec()
+                            .await?;
+
+                        match args.attach {
+                            true => {
+                                // Bypass rest API,
+                                // and run on local node direcly.
+                                methods
                                     .vm()
                                     .start()
                                     .one()
-                                    .maybe_id(args.id)
-                                    .maybe_uuid(args.uuid)
-                                    .maybe_name(args.name)
-                                    .maybe_user_data(user_data)
+                                    .maybe_id(args.vm_args.id)
+                                    .maybe_uuid(args.vm_args.uuid)
+                                    .maybe_name(args.vm_args.name.clone())
+                                    .maybe_user_data(user_data.clone())
                                     .exec()
                                     .await?;
-                                // Spinner
-                                // let logs = utils::print_response_op(tag, &node.name, &res)?;
-                                // sp.stop_and_persist(&logs, "");
-                            } else if args.state.is_some() || args.account.is_some() {
-                                // Spinner
-                                let mut sp =
-                                    Spinner::new(spinners::Toggle5, "Starting vms...", None);
-                                let res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = client
-                                    .vm()
-                                    .start()
-                                    .many()
-                                    .maybe_state(args.state)
-                                    .maybe_account(args.account)
-                                    .exec()
-                                    .await?;
-                                // let message =
-                                //     utils::print_response_bulk_op("start", &node.name, &res)?;
-                                // sp.stop_and_persist(&message, "");
                             }
+                            _ => {}
                         }
-                    };
+
+                        // Spinner
+                        // let logs = utils::print_response_op(tag, &node.name, &res)?;
+                        // sp.stop_and_persist(&logs, "");
+                    } else if args.vm_args.state.is_some() || args.vm_args.account.is_some() {
+                        // Spinner
+                        let mut sp = Spinner::new(spinners::Toggle5, "Starting vms...", None);
+                        let res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = client
+                            .vm()
+                            .start()
+                            .many()
+                            .maybe_state(args.vm_args.state)
+                            .maybe_account(args.vm_args.account)
+                            .exec()
+                            .await?;
+                        // let message =
+                        //     utils::print_response_bulk_op("start", &node.name, &res)?;
+                        // sp.stop_and_persist(&message, "");
+                    }
                 }
                 Crud::Stop(args) => {
                     let tag = "shutdown";
@@ -395,33 +402,6 @@ impl Cli {
             // _ => {}
         };
 
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Cli;
-    use clap::Parser;
-    use miette::Result;
-
-    #[tokio::test]
-    async fn parse_command_line() -> Result<()> {
-        println!("");
-        let e = "virshle --help";
-        let os_str: Vec<&str> = e.split(' ').collect();
-        let cli = Cli::parse_from(os_str);
-        Cli::switch(cli).await?;
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn get_vms() -> Result<()> {
-        println!("");
-        let e = "virshle vm ls";
-        let os_str: Vec<&str> = e.split(' ').collect();
-        let cli = Cli::parse_from(os_str);
-        Cli::switch(cli).await?;
         Ok(())
     }
 }

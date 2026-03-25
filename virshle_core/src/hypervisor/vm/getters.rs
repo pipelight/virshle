@@ -25,6 +25,7 @@ use crate::config::init::MANAGED_DIR;
 
 // Error Handling
 use miette::Result;
+use tracing::debug;
 use virshle_error::{LibError, VirshleError};
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -142,24 +143,55 @@ impl VmTable {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[tokio::test]
-    async fn fetch_info() -> Result<()> {
-        Vm::database()
-            .await?
-            .one()
-            .name("vm-default-xs")
-            .get()
-            .await?
-            .get_info()
-            .await?;
+    async fn fetch_many() -> Result<()> {
+        let items = Vm::database().await?.many().get().await?;
+        // debug!("{:#?}", items);
+        Ok(())
+    }
+    #[tokio::test]
+    async fn fetch_one_info() -> Result<()> {
+        let items = Vm::database().await?.many().get().await?;
+        if let Some(vm) = items.first() {
+            Vm::database()
+                .await?
+                .one()
+                .uuid(vm.uuid)
+                .get()
+                .await?
+                .get_info()
+                .await?;
+        }
         Ok(())
     }
 
     #[tokio::test]
-    async fn fetch_vms() -> Result<()> {
+    async fn find_by_id() -> Result<()> {
         let items = Vm::database().await?.many().get().await?;
-        println!("{:#?}", items);
+        if let Some(vm) = items.first() {
+            let re_vm = Vm::database().await?.one().maybe_id(vm.id).get().await?;
+            assert_eq!(vm, &re_vm);
+        }
+        Ok(())
+    }
+    #[tokio::test]
+    async fn find_by_uuid() -> Result<()> {
+        let items = Vm::database().await?.many().get().await?;
+        if let Some(vm) = items.first() {
+            let re_vm = Vm::database().await?.one().uuid(vm.uuid).get().await?;
+            assert_eq!(vm, &re_vm);
+        }
+        Ok(())
+    }
+    #[tokio::test]
+    async fn find_by_name() -> Result<()> {
+        let items = Vm::database().await?.many().get().await?;
+        if let Some(vm) = items.first() {
+            let re_vm = Vm::database().await?.one().name(&vm.name).get().await?;
+            assert_eq!(vm, &re_vm);
+        }
         Ok(())
     }
 }

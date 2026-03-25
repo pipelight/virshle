@@ -35,7 +35,11 @@ pub struct VmDbFunctions {
 }
 #[bon]
 impl VmDbFunctions {
-    #[builder(finish_fn = get, on(String,into))]
+    #[builder(
+        finish_fn = get, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn one(
         &self,
         id: Option<u64>,
@@ -57,7 +61,7 @@ impl VmDbFunctions {
         match name {
             Some(name) => {
                 params = Some(("name".to_owned(), name.clone()));
-                let record = database::prelude::Vm::find()
+                record = database::prelude::Vm::find()
                     .filter(database::entity::vm::Column::Name.eq(name))
                     .one(&self.db)
                     .await?;
@@ -75,13 +79,11 @@ impl VmDbFunctions {
             None => {}
         };
         if let Some(record) = record {
-            let mut vm: Vm = serde_json::from_value(record.definition)?;
-            // Populate struct with database id.
-            vm.id = Some(record.id as u64);
+            let vm: Vm = record.try_into()?;
             return Ok(vm);
         } else {
             let message = match params {
-                Some((k, v)) => &format!("Couldn't find a vm with {k}: {v}."),
+                Some((k, v)) => &format!("Couldn't find a vm with {}: {:#?}.", k, v),
                 None => "Couldn't find a vm.",
             };
             let help = "Are you sure this vm exist?";
@@ -126,28 +128,9 @@ impl VmDbFunctions {
         };
 
         let mut vms: Vec<Vm> = vec![];
-        for e in records {
-            let res: Result<Vm, serde_json::Error> = serde_json::from_value(e.definition);
-            let vm: Vm = match res {
-                Ok(mut v) => {
-                    // Populate struct with database id.
-                    v.id = Some(e.id as u64);
-                    v.created_at = e.created_at;
-                    v.updated_at = e.updated_at;
-                    v
-                }
-                Err(e) => {
-                    let message = "Couldn't convert database record to valid resources";
-                    let err = WrapError::builder()
-                        .msg(message)
-                        .help("")
-                        .origin(VirshleError::from(e).into())
-                        .build();
-                    error!("{}", message);
-                    return Err(err.into());
-                }
-            };
-            vms.push(vm)
+        for record in records {
+            let vm: Vm = record.try_into()?;
+            vms.push(vm);
         }
 
         // Filter by state

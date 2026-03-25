@@ -92,7 +92,11 @@ pub struct Vm {
 
     // Very optional vm parameters.
     /// Room for additional parameters (unused for now).
-    pub config: Option<VmExtra>,
+    pub extra: Option<VmExtra>,
+
+    /// Catch extra undefined fields
+    #[serde(flatten)]
+    pub other: serde_json::Value,
 }
 
 impl Default for Vm {
@@ -113,7 +117,9 @@ impl Default for Vm {
             created_at: now,
             updated_at: now,
 
-            config: Default::default(),
+            extra: None,
+
+            other: serde_json::Value::Null,
         }
     }
 }

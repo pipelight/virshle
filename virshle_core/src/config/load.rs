@@ -207,6 +207,7 @@ mod tests {
             public_key = "/var/lib/virshle/keys/public_key"
 
             [[peer]]
+            alias = "remote"
             url = "ssh://anon@remote:22/var/lib/virshle/virshle.sock"
             weight = 20
 

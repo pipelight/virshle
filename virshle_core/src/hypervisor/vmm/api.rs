@@ -1,12 +1,14 @@
 use super::VmmMethods;
 use crate::config::init::MANAGED_DIR;
 use crate::hypervisor::{
-    vmm::{VmConfig, VmInfoResponse, VmRemoveDeviceData, VmState},
+    vmm::{NetConfig, VmConfig, VmInfoResponse, VmRemoveDeviceData, VmState},
     Vm,
 };
 
+use std::path::Path;
+use std::time;
+use tokio::time::timeout;
 // Http
-use crate::hypervisor::vmm::types::NetConfig;
 use hyper::StatusCode;
 use virshle_network::{
     connection::{Connection, ConnectionHandle, UnixConnection},
@@ -31,6 +33,31 @@ impl VmmMethods<'_> {
         let uri = format!("unix://{socket}");
         Ok(uri)
     }
+    pub async fn wait_until_socket_up(&self) -> Result<(), VirshleError> {
+        let time: u64 = 2000;
+        timeout(
+            time::Duration::from_millis(time),
+            self._wait_until_socket_up(),
+        )
+        .await
+        .map_err(|e| {
+            LibError::builder()
+                .msg(&e.to_string())
+                .help(&format!("Ch process not found before timeout ({time}ms)."))
+                .build()
+        })?;
+        Ok(())
+    }
+    async fn _wait_until_socket_up(&self) -> Result<(), VirshleError> {
+        // Wait until socket is created
+        let socket = &self.get_socket()?;
+        let path = Path::new(socket);
+        while !path.exists() {
+            tokio::time::sleep(tokio::time::Duration::from_millis(25)).await;
+        }
+        Ok(())
+    }
+
     pub async fn refresh_networks(&mut self) -> Result<(), VirshleError> {
         self._remove_networks().await?;
         Ok(())

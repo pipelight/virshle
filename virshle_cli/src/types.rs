@@ -29,14 +29,18 @@ pub struct OutputFormat {
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum Commands {
-    /// Operations on nodes
+    // Local operations
+    /// Operations on local node
     #[command(subcommand)]
     Node(NodeArgs),
 
+    // Remote operations
+    /// Operations on peers
+    #[command(subcommand)]
+    Peer(PeerArgs),
     /// Operations on templates
     #[command(subcommand)]
     Template(TemplateArgs),
-
     /// Operations on virtual machines
     #[command(subcommand)]
     Vm(Crud),
@@ -198,13 +202,16 @@ pub enum TemplateArgs {
 }
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
+pub enum PeerArgs {
+    Ls(NodeLsArgs),
+    Ping(CurrentWorkingNode),
+}
+
+#[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
 pub enum NodeArgs {
     /// Init/Ensure system global configuration (openvswitches, directories, database).
     #[command(arg_required_else_help = true)]
     Init(InitArgs),
-
-    Ls(NodeLsArgs),
-    Ping(CurrentWorkingNode),
     Serve,
 }
 

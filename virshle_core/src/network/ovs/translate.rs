@@ -9,15 +9,13 @@ use std::fmt;
 use uuid::Uuid;
 
 // Error handling
-use log::{error, info};
+use log::{debug, error, info};
 use miette::{IntoDiagnostic, Result};
 use pipelight_exec::Process;
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Bridge for OvsBridge {
-    /*
-     * Get ovs network switches/bridges.
-     */
+    /// Get ovs network switches/bridges.
     fn get_all() -> Result<Vec<OvsBridge>, VirshleError> {
         OvsBridge::_get_all()
     }
@@ -302,22 +300,21 @@ mod test {
     // Brigdges
     // #[test]
     fn test_ovs_get_bridges() -> Result<()> {
-        let res: Vec<OvsBridge> = OvsBridge::get_all()?;
-        println!("{:#?}", res);
+        // let res: Vec<OvsBridge> = OvsBridge::get_all()?;
         Ok(())
     }
     // Ports
     // #[test]
     fn test_ovs_get_ports() -> Result<()> {
         let res = OvsPort::get_all()?;
-        println!("{:#?}", res);
+        // debug!("{:#?}", res);
         Ok(())
     }
     // Interfaces
     #[test]
     fn test_ovs_get_interfaces() -> Result<()> {
         let res = OvsInterface::get_all()?;
-        println!("{:#?}", res);
+        // debug!("{:#?}", res);
         Ok(())
     }
 }

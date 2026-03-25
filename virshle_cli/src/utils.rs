@@ -3,7 +3,6 @@ use owo_colors::OwoColorize;
 
 use std::collections::HashMap;
 
-use crate::Cli;
 use crate::{Node, NodeInfo, Vm, VmState, VmTable, VmTemplate};
 use pipelight_exec::Status;
 
@@ -11,116 +10,6 @@ use pipelight_exec::Status;
 use miette::Result;
 use tracing::{error, info, trace, warn};
 use virshle_error::VirshleError;
-
-// Logger
-use env_logger::Builder;
-
-/// Tracing
-use tracing_subscriber::fmt::format::{Format, PrettyFields};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
-
-pub fn tracing_per_crate(verbosity: tracing::Level) -> Result<String, VirshleError> {
-    let res = match verbosity {
-        tracing::Level::TRACE => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=warn,users=warn"
-        }
-        tracing::Level::DEBUG => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
-        }
-        tracing::Level::INFO => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
-        }
-        tracing::Level::WARN => {
-            "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
-        }
-        tracing::Level::ERROR => {
-            "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
-        }
-        _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
-    };
-    Ok(res.to_owned())
-}
-pub fn logging_per_crate(verbosity: log::LevelFilter) -> Result<String, VirshleError> {
-    let res = match verbosity {
-        log::LevelFilter::Trace => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=warn,users=warn"
-        }
-        log::LevelFilter::Debug => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
-        }
-        log::LevelFilter::Info => {
-            "mio=error,sqlx=error,sea_orm=info,tower_http=info,russh=error,users=warn"
-        }
-        log::LevelFilter::Warn => {
-            "mio=error,sqlx=error,sea_orm=warn,tower_http=warn,russh=error,users=warn"
-        }
-        log::LevelFilter::Error => {
-            "mio=error,sqlx=error,sea_orm=error,tower_http=error,russh=error,users=warn"
-        }
-        _ => "mio=off,sqlx=off,sea_orm=off,tower_http=off,russh=off,users=off",
-    };
-    Ok(res.to_owned())
-}
-/// Build tracing
-pub fn set_test_tracer(verbosity: tracing::Level) -> Result<(), VirshleError> {
-    // Set verbosity
-    let filter = format!(
-        "{},{}",
-        verbosity.to_string().to_lowercase(),
-        tracing_per_crate(verbosity)?
-    );
-    let builder = FmtSubscriber::builder()
-        .with_max_level(verbosity)
-        // .with_file(false)
-        .with_env_filter(EnvFilter::try_new(filter).unwrap());
-
-    #[cfg(debug_assertions)]
-    let builder = builder.pretty();
-    #[cfg(not(debug_assertions))]
-    let builder = builder.compact();
-
-    let subscriber = builder.finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-    Ok(())
-}
-/// Build tracing
-pub fn set_tracer(cli: &Cli) -> Result<(), VirshleError> {
-    // Set verbosity
-    let verbosity: tracing::Level = cli.verbose.tracing_level().unwrap();
-    let filter = format!(
-        "{},{}",
-        verbosity.to_string().to_lowercase(),
-        tracing_per_crate(verbosity)?
-    );
-    let builder = FmtSubscriber::builder()
-        .with_max_level(verbosity)
-        // .with_file(false)
-        .with_env_filter(EnvFilter::try_new(filter).unwrap());
-
-    #[cfg(debug_assertions)]
-    let builder = builder.pretty();
-    #[cfg(not(debug_assertions))]
-    let builder = builder.compact();
-
-    let subscriber = builder.finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
-    Ok(())
-}
-/// Build logger
-pub fn set_logger(cli: &Cli) -> Result<(), VirshleError> {
-    // Set verbosity
-    let verbosity: log::LevelFilter = cli.verbose.log_level_filter();
-    // Disable sql logs
-    let filter = format!(
-        "{},{}",
-        verbosity.to_string().to_lowercase(),
-        logging_per_crate(verbosity)?
-    );
-    std::env::set_var("VIRSHLE_LOG", filter);
-    Builder::from_env("VIRSHLE_LOG").init();
-
-    Ok(())
-}
 
 /// Print the result of an operation on a single vm.
 #[tracing::instrument(skip(res))]

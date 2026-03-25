@@ -395,17 +395,15 @@ mod test {
         let toml = r#"
         name = "xs"
         vcpu = 1
-        vram = 2
+        vram = "2GiB"
 
         [[disk]]
         name = "os"
-        path = "~/Iso/nixos.efi.img"
-        size = "50G"
+        path = "~/Iso/nixos.xxs.efi.img"
 
         [[net]]
         name = "main"
-        [net.type.vhost]
-
+        [net.type.macvtap]
         "#;
 
         let vm_template = VmTemplate::from_toml(&toml)?;
@@ -423,19 +421,19 @@ mod test {
     #[tokio::test]
     async fn make_vm_from_definition_with_ids() -> Result<()> {
         let toml = r#"
-        name = "test_xs"
+        name = "default_xs"
         uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
         vcpu = 1
-        vram = 2
+        vram = "1GiB"
 
         [[disk]]
         name = "os"
-        path = "~/Iso/nixos.efi.img"
+        path = "~/Iso/nixos.xxs.efi.img"
         size = "50G"
 
         [[net]]
         name = "main"
-        [net.type.vhost]
+        [net.type.macvtap]
         "#;
 
         let vm = Vm::from_toml(&toml)?;

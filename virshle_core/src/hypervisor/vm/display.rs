@@ -143,7 +143,9 @@ impl VmTable {
             res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("created_at")));
             res.with(Remove::column(ByColumnName::new("updated_at")));
-        } else if log_enabled!(Level::Error) {
+        } else {
+            // if log_enabled!(Level::Error)
+            // or log not enabled
             res.with(Remove::column(ByColumnName::new("account_uuid")));
             res.with(Remove::column(ByColumnName::new("uuid")));
             res.with(Remove::column(ByColumnName::new("created_at")));
@@ -171,7 +173,7 @@ mod test {
         // Get vms
         let vms = vec![
             VmTable {
-                id: None,
+                id: Some(0),
                 name: "TestOs".to_owned(),
                 vcpu: 2,
                 vram: "4GiB".to_owned(),
@@ -191,7 +193,6 @@ mod test {
                 ..Default::default()
             },
         ];
-
         println!("");
         VmTable::display(&vms)?;
         Ok(())
