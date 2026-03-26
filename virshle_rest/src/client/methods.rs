@@ -23,7 +23,7 @@ use uuid::Uuid;
 
 // Error handling
 use miette::Result;
-use tracing::{error, info, trace, warn};
+use tracing::{error, info, trace, warn, debug};
 use virshle_error::{LibError, VirshleError, WrapError};
 
 impl Client {
@@ -35,14 +35,19 @@ impl Client {
         let mut peers: IndexMap<String, (Peer, RestClient)> = IndexMap::new();
 
         for (alias, peer) in self.config.peers()? {
-            let conn: Connection = peer.clone().try_into()?;
+            let mut conn: Connection = peer.clone().try_into()?;
+
+            let state = conn.get_state().await?;
+            debug!("Peer {:#?} connection state => {:?}", peer.alias, state);
+
             let mut client: RestClient = conn.into();
             client.base_url("/api/v1");
             client.ping_url("/api/v1/node/ping");
 
-            trace!("Connecting to peer {:#?}", peer.alias);
+            debug!("Connecting to virshle http API on peer {:#?}", peer.alias);
             let _ = client.open().await.is_ok();
             let _ = client.ping().await.is_ok();
+            debug!("Connected to peer {:#?}", peer.alias);
             // Use node only if connection can be established
             //
             // if client.open().await.is_ok() && client.ping().await.is_ok() {
@@ -605,10 +610,58 @@ impl VmMethods<'_> {
 }
 #[bon]
 impl VmGetterMethods<'_> {
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub async fn one(
+        &mut self,
+        id: Option<u64>,
+        uuid: Option<Uuid>,
+        name: Option<String>,
+
+        alias: Option<String>,
+    ) -> Result<VmTable, VirshleError> {
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter
+            .alias_or_default()
+            .maybe_alias(alias.clone())
+            .exec()?;
+        let vm: VmTable= Self::_one(
+            peer,
+            rest,
+            Some(GetVmArgs {
+                id,
+                uuid,
+                name,
+            }),
+        )
+        .await?;
+        Ok(vm)
+    }
+    async fn _one(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<GetVmArgs>,
+    ) -> Result<VmTable, VirshleError> {
+        rest.open().await?;
+        rest.ping().await?;
+        let vm: VmTable = rest.post("/vm/info", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        Ok(vm)
+    }
     /// Get a hashmap/dict of all vms per (reachable) node.
     /// - node: the node name set in the virshle config file.
     /// - node: an optional account uuid.
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn many(
         &mut self,
         state: Option<VmState>,
@@ -812,18 +865,17 @@ impl VmDeleteMethods<'_> {
         let mut method = self.api.peer();
         let mut getter = method.get();
         let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
-        let vm: Result<VmTable, VirshleError> = Self::_one(
+        let vm: VmTable = Self::_one(
             peer,
             rest,
             Some(GetVmArgs {
-                //
                 id,
                 uuid,
                 name,
             }),
         )
-        .await;
-        vm
+        .await?;
+        Ok(vm)
     }
     pub async fn _one(
         peer: &Peer,
@@ -1020,7 +1072,6 @@ impl VmShutdownMethods<'_> {
             peer,
             rest,
             Some(GetVmArgs {
-                //
                 id,
                 uuid,
                 name,

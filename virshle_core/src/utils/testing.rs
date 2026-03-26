@@ -29,7 +29,7 @@ pub fn tracer(
     };
     // Set crate filter
     let mut filter: String = level.clone();
-    filter += "users=warn";
+    filter += ",users=warn";
     match db {
         Some(true) => filter += &format!(",sea_orm={level},sqlx={level}"),
         Some(false) | None => filter += ",sea_orm=warn,sqlx=warn",
@@ -75,7 +75,7 @@ pub fn logger(
 
     // Set crate filter
     let mut filter: String = level.clone();
-    filter += "users=warn";
+    filter += ",users=warn";
     match db {
         Some(true) => filter += &format!(",sea_orm={level},sqlx={level}"),
         Some(false) | None => filter += ",sea_orm=warn,sqlx=warn",

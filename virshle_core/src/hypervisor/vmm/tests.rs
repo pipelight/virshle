@@ -34,7 +34,7 @@ async fn test_vmm() -> Result<()> {
     // Create and start a testing Vm
     let mut vm = testing_vm()?;
     vm.create(None).await?;
-    vm.start(None, None).await?;
+    vm.start().exec().await?;
 
     // Ping
     let res: Result<(), VirshleError> = vm.vmm().api()?.ping().await;

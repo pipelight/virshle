@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # minoru-kurosaki
 vm_uuid="0fea3bf6-862c-4c04-b9d5-940c2810305f"
 

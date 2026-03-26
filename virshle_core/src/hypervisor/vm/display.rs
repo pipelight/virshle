@@ -94,10 +94,10 @@ impl VmTable {
 }
 
 impl VmTable {
+    // Display vms by peer with table header.
     pub async fn display_by_peer(items: &IndexMap<Peer, Vec<VmTable>>) -> Result<(), VirshleError> {
-        // Display vm by nodes with table header
-        for (node, table) in items {
-            let header = node.header()?;
+        for (peer, table) in items {
+            let header = peer.header()?;
             VmTable::display_w_header(table, &header);
         }
         Ok(())

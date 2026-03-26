@@ -12,7 +12,7 @@ in
   mkIf cfg.enable {
     systemd.tmpfiles.rules = let
       cloud-hypervisor-fw = pkgs.fetchurl {
-        url = "https://github.com/cloud-hypervisor/rust-hypervisor-firmware/releases/download/0.4.6/hypervisor-fw";
+        url = "https://github.com/cloud-hypervisor/rust-hypervisor-firmware/releases/download/0.50.2/hypervisor-fw";
         sha256 = "0h0j0zc65pjnzrznmc3c3lrsyks6lgxh0k8j30zp41k6ph9ldhaq";
       };
       cloud-hypervisor-ovmf = pkgs.fetchurl {
@@ -27,7 +27,7 @@ in
 
     environment.systemPackages = with pkgs; [
       # VMMs
-      cloud-hypervisor #v0.46.0
+      cloud-hypervisor #v0.50.2
 
       # Efi related?
       # OVMF-cloud-hypervisor

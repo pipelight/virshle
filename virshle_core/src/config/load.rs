@@ -98,7 +98,7 @@ impl PreConfig {
     }
 
     /// Return configuration from default file path.
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all)]
     pub fn get() -> Result<Self, VirshleError> {
         // Early return config if already stored in memory
         // let config = CONFIG.read().unwrap().clone();

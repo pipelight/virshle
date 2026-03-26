@@ -197,14 +197,17 @@ impl Rest for RestClient {
             let time: u64 = 1000;
 
             let response = handle.sender.send_request(request.to_owned());
-            let _response = timeout(time::Duration::from_millis(time), response)
-                .await
-                .map_err(|e| {
-                    LibError::builder()
+            let _response = timeout(time::Duration::from_millis(time), response).await;
+            match _response {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    let err = LibError::builder()
                         .msg(&e.to_string())
                         .help(&format!("Request timeout reached ({time}ms)."))
-                        .build()
-                })?;
+                        .build();
+                    Err(err.into())
+                }
+            }
         } else {
             let err = LibError::builder()
                 .msg("Connection has no handler.")
@@ -212,7 +215,6 @@ impl Rest for RestClient {
                 .build();
             return Err(err.into());
         }
-        Ok(())
     }
 
     async fn get(&mut self, endpoint: &str) -> Result<Response, VirshleError> {

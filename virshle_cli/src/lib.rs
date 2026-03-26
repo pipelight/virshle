@@ -39,6 +39,7 @@ impl Cli {
     }
     pub async fn switch(cli: Cli) -> Result<(), VirshleError> {
         let verbosity = tracing::Level::from_str(&cli.verbose.to_string()).unwrap();
+
         testing::tracer().verbosity(verbosity).set()?;
         testing::logger().verbosity(verbosity).set()?;
 
@@ -51,7 +52,7 @@ impl Cli {
              */
             Commands::Peer(args) => match args {
                 PeerArgs::Ls(args) => {
-                    let node = args.current_workgin_node.node;
+                    let node = args.current_workgin_node.peer;
                     let node_info = client.node()?.get_info().exec().await?;
 
                     let peer = Peer::default();
@@ -136,7 +137,7 @@ impl Cli {
                     let tag = "create";
                     // Set working node
                     let config = Config::get()?;
-                    let cw_node = args.current_workgin_node.node;
+                    let cw_node = args.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let mut user_data = None;
@@ -189,7 +190,7 @@ impl Cli {
 
                     // Set working node
                     let config = Config::get()?;
-                    let cw_node = args.vm_args.current_workgin_node.node.clone();
+                    let cw_node = args.vm_args.current_workgin_node.peer.clone();
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let user_data: Option<UserData> = match args.user_data {
@@ -259,7 +260,7 @@ impl Cli {
 
                     // Set working node
                     let config = Config::get()?;
-                    let cw_node = args.current_workgin_node.node;
+                    let cw_node = args.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
@@ -298,7 +299,7 @@ impl Cli {
 
                     // Set working node
                     let config = Config::get()?;
-                    let cw_node = args.current_workgin_node.node;
+                    let cw_node = args.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
@@ -335,30 +336,48 @@ impl Cli {
                     }
                 }
                 Crud::Ls(args) => {
-                    let cw_node = args.current_workgin_node.node;
-                    let table = client
-                        .vm()
-                        .get()
-                        .many()
-                        .maybe_state(args.state)
-                        .maybe_account(args.account)
-                        .exec()
-                        .await?;
-                    match args.format.json {
-                        Some(true) => {
-                            let json: Vec<(Peer, Vec<VmTable>)> = table
-                                .iter()
-                                .map(|(k, v)| (k.to_owned(), v.to_owned()))
-                                .collect();
-                            let string = serde_json::to_string_pretty(&json).unwrap();
+                    let cw_node = args.current_workgin_node.peer;
+                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                        let table: VmTable = client
+                            .vm()
+                            .get()
+                            .one()
+                            .maybe_id(args.id)
+                            .maybe_uuid(args.uuid)
+                            .maybe_name(args.name)
+                            .maybe_alias(cw_node)
+                            .exec()
+                            .await?;
+                        if args.format.ron == Some(true) {
+                            println!("{:#?}", table);
+                        } else if args.format.json == Some(true) {
+                            let string = serde_json::to_string_pretty(&table).unwrap();
                             println!("{}", string);
+                        } else {
+                            VmTable::display(&vec![table])?
                         }
-                        _ => VmTable::display_by_peer(&table).await?,
-                    };
+                    } else {
+                        let table = client
+                            .vm()
+                            .get()
+                            .many()
+                            .maybe_state(args.state)
+                            .maybe_account(args.account)
+                            .exec()
+                            .await?;
+                        if args.format.ron == Some(true) {
+                            println!("{:#?}", table);
+                        } else if args.format.json == Some(true) {
+                            let string = serde_json::to_string_pretty(&table).unwrap();
+                            println!("{}", string);
+                        } else {
+                            VmTable::display_by_peer(&table).await?
+                        }
+                    }
                 }
                 Crud::Info(args) => {
                     // Set working node
-                    let cw_node = args.current_workgin_node.node.clone();
+                    let cw_node = args.current_workgin_node.peer.clone();
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         let res = client
                             .vm()

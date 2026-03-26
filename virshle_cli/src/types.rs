@@ -16,7 +16,7 @@ pub struct Cli {
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CurrentWorkingNode {
     #[arg(long, value_name = "NODE_NAME")]
-    pub node: Option<String>,
+    pub peer: Option<String>,
 }
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct OutputFormat {
@@ -25,6 +25,12 @@ pub struct OutputFormat {
         default_missing_value = "true"
     )]
     pub json: Option<bool>,
+
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub ron: Option<bool>,
 }
 
 #[derive(Debug, Subcommand, Clone, Eq, PartialEq)]
