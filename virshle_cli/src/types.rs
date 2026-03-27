@@ -25,7 +25,6 @@ pub struct OutputFormat {
         default_missing_value = "true"
     )]
     pub json: Option<bool>,
-
     #[arg(long,num_args(0..=1),
         require_equals = true,
         default_missing_value = "true"

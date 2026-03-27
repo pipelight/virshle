@@ -3,12 +3,17 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::path::PathBuf;
 use std::str::FromStr;
+
+use pipelight_exec::{Process, Status};
 
 // Error Handling
 use miette::Result;
 use tracing::{debug, error, info, trace};
 use virshle_error::{LibError, VirshleError};
+
+use crate::Vm;
 
 /// Always print trace/logs inside test.
 #[builder(finish_fn = set)]
@@ -107,4 +112,51 @@ where
         debug!("{:#?}", result.unwrap());
     }
     Ok(())
+}
+
+pub fn exec(cmd: &str) -> Result<String, VirshleError> {
+    println!("\n");
+    println!("-> {}\n", cmd);
+    let mut proc = Process::new();
+    proc.term().stdin(&cmd).run()?;
+    let res: Option<String> = match proc.state.status {
+        Some(Status::Succeeded) => proc.io.stdout.clone(),
+        Some(Status::Failed) => proc.io.stderr.clone(),
+        _ => Some("Command is in an unknown state.".to_owned()),
+    };
+    debug!(
+        "Command Status: {:#?}\n I/O: {:#?}\n",
+        proc.state.status, proc.io
+    );
+    Ok(res.unwrap_or("null".to_owned()))
+}
+
+// WARNING:
+// External dependencies.
+// Uses "socat" or "systemd-ssh-proxy"
+#[builder(
+    finish_fn = exec,
+    on(String,into),
+    on(Option<String>,into)
+)]
+pub async fn ssh(vm_name: &str, cmd: &str) -> Result<String, VirshleError> {
+    // Set key path.
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("../virshle_core/keys/user");
+    let key = path.to_str().unwrap();
+
+    // Systemd variant
+    let cmd = format!(r#"ssh vm/{vm_name} "{cmd}""#);
+
+    // TODO(): Socat variant
+    // let vm = Vm::database().await?.one().name(vm_name).get().await?;
+    // let path = vm.get_vsocket()?;
+    // let id = "10".to_owned() + &vm.id.unwrap_or(1).to_string();
+    // let name = vm.name;
+    // let cmd = format!(
+    //     r#"ssh -o ProxyCommand="echo -e \"CONNECT 22\\n\" | socat - UNIX-CONNECT:{path}" localhost "{cmd}""#
+    // );
+
+    let res = exec(&cmd)?;
+    Ok(res)
 }

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tabled::{settings::Style, Table, Tabled};
 use uuid::Uuid;
 use virshle_network::Uri;
@@ -136,15 +136,19 @@ pub fn ensure_directories(template: &VmTemplate, vm: &mut Vm) -> Result<(), Virs
     Ok(())
 }
 
-/*
-* Copy template disks (if some)
-* to vm storage directory and set file permissions.
-*/
+/// Copy template disks (if some)
+/// to vm storage directory and set file permissions.
 pub fn create_disks(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
     if let Some(disks) = &template.disk {
         for disk in disks {
             let source = DiskTemplate::shellexpand(&disk.path)?;
-            let target = format!("{MANAGED_DIR}/vm/{}/disk/{}", vm.uuid, disk.name);
+            let filename = Path::new(&source)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned();
+            let target = format!("{MANAGED_DIR}/vm/{}/disk/{}", vm.uuid, filename);
 
             // Create disk on host drive
             let file = fs::File::create(&target)?;

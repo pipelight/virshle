@@ -1,15 +1,19 @@
 #######################
 # Conventional user-data
 
-# Will be dispatched in the VM at /etc/ssh/authorized_keys.d/
+# User informations are dispatched in the VM on boot:
+# - ssh_keys at /etc/ssh/authorized_keys.d/
 [[user]]
 name = "anon"
 [user.ssh]
-authorized_keys = ["ssh-ed25519 AAAAC3N"]
+authorized_keys = [
+  # ./keys/user.pub
+  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHftzK3MZD0idJTNM4BfxpkfnqxyKiBk8smdQzA1ores",
+]
 
 #######################
 # Crocuda account user-data
 
-# Remains is the VM definition inside the database
+# Remains is the VM definition inside the database.
 [account]
 uuid = "6cff9c9c-8713-40ca-b950-669bae24d9c9"

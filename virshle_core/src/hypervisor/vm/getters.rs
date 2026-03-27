@@ -74,14 +74,11 @@ impl Vm {
         self.disk.iter().map(|e| e.get_size().unwrap_or(0)).sum()
     }
 
-    /*
-     * Return path where to mount vm pipelight-init disk to.
-     *
-     * This path is used to provision a pipelight-init disk (cloud-init alternative)
-     * with user defined data, mainly:
-     * - network interface ips (Ipv4 / Ipv6)
-     * - hostname
-     */
+    /// Return path where to mount vm pipelight-init disk to.
+    /// This path is used to provision a pipelight-init disk (cloud-init alternative)
+    /// with user defined data, mainly:
+    /// - network interface ips (Ipv4 / Ipv6)
+    /// - hostname
     pub fn get_mount_dir(&self) -> Result<String, VirshleError> {
         let path = format!("{MANAGED_DIR}/vm/{}/tmp", self.uuid);
         Ok(path)
@@ -155,7 +152,7 @@ mod test {
     async fn fetch_one_info() -> Result<()> {
         let items = Vm::database().await?.many().get().await?;
         if let Some(vm) = items.first() {
-            Vm::database()
+            let vm = Vm::database()
                 .await?
                 .one()
                 .uuid(vm.uuid)
@@ -163,6 +160,26 @@ mod test {
                 .await?
                 .get_info()
                 .await?;
+            println!("{:#?}", vm)
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn fetch_ips() -> Result<()> {
+        let items = Vm::database().await?.many().get().await?;
+        if let Some(vm) = items.first() {
+            let vm = Vm::database()
+                .await?
+                .one()
+                .uuid(vm.uuid)
+                .get()
+                .await?
+                .networks()
+                .leases()
+                .get_all()
+                .await?;
+            println!("{:#?}", vm)
         }
         Ok(())
     }

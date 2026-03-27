@@ -1,6 +1,7 @@
 mod definition;
 mod load;
 mod node;
+mod dhcp;
 mod template;
 mod user_data;
 /// Initialize system directories, network, database...
@@ -8,7 +9,6 @@ pub mod init;
 
 // Reexport
 pub use definition::Definition;
-use load::PreConfig;
 pub use node::{Node, NodeConfig};
 pub use template::{
     disk::DiskTemplate,
@@ -16,8 +16,9 @@ pub use template::{
     TemplateConfig,
 };
 pub use user_data::{Account, SshParams, User, UserData};
+pub use dhcp::{DhcpType,KeaDhcpConfig, FakeDhcpConfig};
 
-use crate::network::{dhcp::DhcpType, ovs};
+use load::PreConfig;
 use crate::peer::Peer;
 
 use bon::bon;

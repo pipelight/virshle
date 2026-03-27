@@ -60,45 +60,6 @@ pub struct StartManyVmArgs {
     pub user_data: Option<UserData>,
 }
 
-pub trait VmDefaultMethods {
-    async fn get(&self, args: GetVmArgs) -> Result<Vm, VirshleError>;
-    async fn get_many(&self, args: GetManyVmArgs) -> Result<HashMap<Peer, Vec<Vm>>, VirshleError>;
-
-    async fn create(
-        &self,
-        args: CreateVmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<Vm, VirshleError>;
-    async fn create_many(
-        &self,
-        args: CreateManyVmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError>;
-
-    async fn start(&self, args: GetVmArgs, user_data: Option<UserData>)
-        -> Result<Vm, VirshleError>;
-    async fn start_many(
-        &self,
-        args: GetManyVmArgs,
-        user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError>;
-
-    async fn shutdown(&self, args: GetVmArgs) -> Result<Vm, VirshleError>;
-    async fn shutdown_many(
-        &self,
-        args: GetManyVmArgs,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError>;
-
-    async fn delete(&self, args: GetVmArgs) -> Result<Vm, VirshleError>;
-    async fn delete_many(
-        &self,
-        args: GetManyVmArgs,
-    ) -> Result<HashMap<Status, Vec<Vm>>, VirshleError>;
-
-    async fn get_info(&self, args: GetVmArgs) -> Result<VmTable, VirshleError>;
-    async fn get_info_many(&self, args: GetManyVmArgs) -> Result<Vec<VmTable>, VirshleError>;
-}
-
 pub async fn alerte_connection_state(
     peer: &Peer,
     rest: &mut RestClient,

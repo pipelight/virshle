@@ -13,17 +13,21 @@ use uuid::Uuid;
 
 // Hypervisor
 use virshle_core::{
-    config::{Config, Node, UserData, VmTemplate, VmTemplateTable},
+    config::{Config, DhcpType, Node, UserData, VmTemplate, VmTemplateTable},
     hypervisor::{
         vm::{Vm, VmTable},
         vmm::types::{VmInfoResponse, VmState},
     },
+    network::dhcp::KeaDhcp,
     peer::{HostInfo, NodeInfo, Peer},
 };
 
 // Connections and Http
 use bon::bon;
-use virshle_network::http::Rest;
+use virshle_network::{
+    connection::{Connection, TcpConnection},
+    http::{Rest, RestClient},
+};
 
 // Error handling
 use miette::{Diagnostic, Result};
@@ -209,7 +213,11 @@ impl VmMethods<'_> {
 }
 #[bon]
 impl VmCreateMethods<'_> {
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec,
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn one(
         &self,
         template: Option<String>,
@@ -232,36 +240,36 @@ impl VmCreateMethods<'_> {
 
                 // Safeguard before creating.
                 // Peer::can_create_vm(&template).await?;
+
+                // Warning when no user-data provided.
                 match args.user_data {
-                    Some(_) => {
-                        let vm = vm.create(args.user_data).await?;
-                        Ok(vm)
-                    }
+                    Some(_) => {}
                     None => {
                         let err = LibError::builder()
                             .msg("Couldn't create Vm.")
-                            .help("No valid template provided")
-                            .build()
-                            .into();
-                        error!("{:#?}", err);
-                        Err(err)
+                            .help("No user_data provided.")
+                            .build();
+                        warn!("{:#?}", err);
+                        // Err(err.into())
                     }
                 }
+
+                let vm = vm.create(args.user_data).await?;
+                Ok(vm)
             }
             None => Err(LibError::builder()
                 .msg("Couldn't create Vm.")
-                .help("No user_data provided")
+                .help("No valid template provided.")
                 .build()
                 .into()),
         }
     }
-    // Return a VmTable (Vm informations at a specific timestamp).
-    // It is not possible to return a Result through Json, so we return a tuple
-    // of Vm info and the operation State
-    //
     // TODO: Return Status + Reason
     // Add some reason to the operation state.
     //
+    /// Return a VmTable (Vm informations at a specific timestamp).
+    /// It is not possible to return a Result through Json, so we return a tuple
+    /// of Vm info and the operation State
     #[builder(finish_fn = exec)]
     pub async fn many(
         &self,
@@ -311,7 +319,7 @@ impl VmCreateMethods<'_> {
             Ok(res)
         } else {
             Err(LibError::builder()
-                .msg("Couldn't create Vm")
+                .msg("Couldn't create Vm.")
                 .help("No valid template provided")
                 .build()
                 .into())
@@ -329,7 +337,11 @@ impl VmMethods<'_> {
 }
 #[bon]
 impl VmStartMethods<'_> {
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec,
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn one(
         &self,
         id: Option<u64>,
@@ -364,7 +376,11 @@ impl VmStartMethods<'_> {
             .await?;
         Ok(vm)
     }
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec,
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn provision_ch(
         &self,
         id: Option<u64>,
@@ -383,7 +399,46 @@ impl VmStartMethods<'_> {
         let res = VmTable::from(&vm).await?;
         Ok(res)
     }
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec,
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub async fn fresh(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+        user_data: Option<UserData>,
+        attach: Option<bool>,
+    ) -> Result<VmTable, VirshleError> {
+        let vm = Vm::database()
+            .await?
+            .one()
+            .maybe_id(id)
+            .maybe_name(name.clone())
+            .maybe_uuid(uuid)
+            .get()
+            .await?;
+        // Replace disk.
+        vm.replace_disk().name("os").exec()?;
+        // Start vm.
+        let res = self
+            .one()
+            .maybe_id(id)
+            .maybe_name(name)
+            .maybe_uuid(uuid)
+            .maybe_user_data(user_data)
+            .maybe_attach(attach)
+            .exec()
+            .await?;
+        Ok(res)
+    }
+    #[builder(
+        finish_fn = exec,
+        on(String,into),
+        on(Option<String>,into)
+    )]
     pub async fn create_init_resources(
         &self,
         id: Option<u64>,
@@ -660,6 +715,49 @@ impl VmMethods<'_> {
             .await?;
         let path = vm.get_vsocket()?;
         Ok(path)
+    }
+}
+pub struct VmNetworkMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn network(&self) -> VmNetworkMethods<'_> {
+        VmNetworkMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmNetworkMethods<'_> {
+    #[builder(finish_fn = exec)]
+    pub async fn leases(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+    ) -> Result<(), VirshleError> {
+        match self.api.config.dhcp.clone() {
+            Some(DhcpType::Kea(kea_config)) => {
+                let mut cli = KeaDhcp::builder().config(&kea_config).build().await?;
+                let vm = Vm::database()
+                    .await?
+                    .one()
+                    .maybe_id(id)
+                    .maybe_name(name)
+                    .maybe_uuid(uuid)
+                    .get()
+                    .await?;
+                let ips = cli
+                    .ip()
+                    .get()
+                    .many()
+                    .inet4(true)
+                    .inet6(true)
+                    .vm(vm)
+                    .exec()
+                    .await?;
+            }
+            _ => {}
+        };
+        Ok(())
     }
 }
 

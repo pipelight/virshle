@@ -2,6 +2,9 @@ use super::{Disk, Vm};
 // Init disk
 use super::UserData;
 
+// Globals
+use crate::config::init::MANAGED_DIR;
+
 // Filesystem
 use bon::bon;
 use std::fs;
@@ -19,7 +22,12 @@ impl Vm {
     #[tracing::instrument(skip_all)]
     pub async fn create(&mut self, user_data: Option<UserData>) -> Result<Self, VirshleError> {
         // Persist vm config into database
-        self.db().await?.create(user_data).await?;
+        self.db().await?.create(user_data.clone()).await?;
+
+        // Create initial resources
+        self.create_init_resources()
+            .maybe_user_data(user_data)
+            .exec()?;
 
         info!("created vm {:#?}", self.name);
         Ok(self.to_owned())
@@ -107,6 +115,35 @@ impl Vm {
         self.set_vsock_permissions().await?;
         Ok(self.to_owned())
     }
+
+    /// Replace vm disks with a fresh disk.
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub fn replace_disk(&self, name: String) -> Result<(), VirshleError> {
+        let disks: Vec<Disk> = self.disk.clone().into_iter().filter(|e| e.name == name).collect();
+        if let Some(disk) = disks.first() {
+            let path = Path::new(&disk.path);
+            if path.exists() {
+                // remove old disk
+                fs::remove_file(&disk.path)?;
+
+                // create fresh disk
+                let filename = Path::new(&disk.path)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_owned();
+                let source = format!("{MANAGED_DIR}/cache/{}",filename);
+                fs::copy(&source, &disk.path)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Remove vm disks file from filesystem.
     pub fn delete_disks(&self) -> Result<Vec<Disk>, VirshleError> {
         for disk in &self.disk {

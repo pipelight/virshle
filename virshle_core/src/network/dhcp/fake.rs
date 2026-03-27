@@ -1,14 +1,15 @@
-use super::IpPool;
-use ipnet::{IpAddrRange, IpNet, Ipv4AddrRange, Ipv6AddrRange};
-use std::net::{IpAddr, Ipv6Addr};
-
+use bon::{bon, builder};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use ipnet::{IpAddrRange, IpNet, Ipv4AddrRange, Ipv6AddrRange};
+use std::net::{IpAddr, Ipv6Addr};
 
 use std::collections::HashMap;
 use std::str::FromStr;
 
 //Database
+use crate::config::{Config, DhcpType};
 use crate::database;
 use crate::database::connect_db;
 use sea_orm::ColumnTrait;
@@ -18,9 +19,32 @@ use sea_orm::{prelude::*, query::*};
 use miette::Result;
 use virshle_error::{LibError, VirshleError};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Default, Debug, Clone, Deserialize, Serialize)]
 pub struct FakeDhcp {
     pub pool: HashMap<String, IpPool>,
+}
+#[bon]
+impl FakeDhcp {
+    #[builder(
+        start_fn = new,
+        finish_fn = build
+    )]
+    pub fn _new(config: &Config) -> Result<FakeDhcp, VirshleError> {
+        let mut res = FakeDhcp::default();
+        if let Some(config) = &config.dhcp {
+            match config {
+                DhcpType::Kea(_) => {}
+                DhcpType::Fake(e) => res = e.into(),
+            };
+        }
+        Ok(res)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct IpPool {
+    subnet: IpNet,
+    range: [IpAddr; 2],
 }
 
 impl FakeDhcp {
@@ -122,6 +146,13 @@ mod tests {
     use super::*;
     use ipnet::Ipv6Net;
     use miette::IntoDiagnostic;
+
+    #[tokio::test]
+    async fn get_dhcp_cli() -> Result<()> {
+        let config = Config::get()?;
+        let cli = FakeDhcp::new().config(&config).build()?;
+        Ok(())
+    }
 
     #[tokio::test]
     async fn test_get_random_ip() -> Result<()> {

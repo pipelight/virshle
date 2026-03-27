@@ -1,7 +1,8 @@
 use super::Cli;
 use clap::Parser;
 use miette::Result;
-use tracing::debug;
+use std::path::PathBuf;
+use virshle_core::utils::testing;
 
 async fn exec(cmd: &str) -> Result<()> {
     println!("\n");
@@ -25,6 +26,22 @@ async fn vm_ls() -> Result<()> {
     exec("vishle vm ls -vv").await?;
     Ok(())
 }
+
+#[tokio::test]
+async fn vm_create() -> Result<()> {
+    exec(&format!("vishle vm create -t xxs-test")).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn vm_create_with_user_data() -> Result<()> {
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("../virshle_core/user-data.toml");
+    let user_data_path = path.to_str().unwrap();
+    exec(&format!("vishle vm create -t xxs-test -u {user_data_path}")).await?;
+    Ok(())
+}
+
 #[tokio::test]
 async fn vm_ssh_helpers() -> Result<()> {
     exec("vishle vm get-list-names").await?;

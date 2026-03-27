@@ -1,3 +1,6 @@
+#[cfg(test)]
+pub mod e2e_tests;
+
 // Virshle daemon http Rest API
 mod client;
 mod commons;

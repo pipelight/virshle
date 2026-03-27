@@ -24,7 +24,7 @@ in
         kea
       ];
       systemd.tmpfiles.rules = [
-        "d '/var/lib/kea' 700 root kea - -"
+        "d '/var/lib/kea' 744 root kea - -"
         "Z '/var/lib/kea' 766 root kea - -"
       ];
       services.kea = {
@@ -89,8 +89,9 @@ in
             # valid-lifetime = -1;
             #```
             expired-leases-processing = {
-              reclaim-timer-wait-time = 3;
-              flush-reclaimed-timer-wait-time = 5;
+              max-reclaim-time = 700;
+              reclaim-timer-wait-time = 5;
+              flush-reclaimed-timer-wait-time = 25;
               hold-reclaimed-time = 2592000; #30 days
             };
 
@@ -98,6 +99,7 @@ in
               {
                 library = "${pkgs.kea}/lib/kea/hooks/libdhcp_lease_cmds.so";
               }
+              # Not available rn (need to be premium?)
               # {
               #   library = "${pkgs.kea}/lib/kea/hooks/libdhcp_ddns_cmds.so";
               # }
@@ -138,9 +140,6 @@ in
             hooks-libraries = [
               {
                 library = "${pkgs.kea}/lib/kea/hooks/libdhcp_lease_cmds.so";
-              }
-              {
-                library = "${pkgs.kea}/lib/kea/hooks/libdhcp_lease_query.so";
               }
               # Not available rn (need to be premium?)
               # {

@@ -13,8 +13,9 @@ with lib; let
   package = inputs.virshle.packages.${pkgs.system}.default;
 
   virshleProxyCommand = pkgs.writeShellScriptBin "virshleProxyCommand" ''
-    h=$1
-    p=$2
+    h=$1 #hostname
+    p=$2 #port
+    r=$3 #remote user
     fn() {
       vm_name=$(${pkgs.coreutils}/bin/echo $h | ${pkgs.gnused}/bin/sed -e "s/^vm\///");
       vsock_path=$(${package}/bin/virshle vm get-vsock-path --name $vm_name);

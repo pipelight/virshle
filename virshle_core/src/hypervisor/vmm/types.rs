@@ -8,12 +8,12 @@
 * to be sent to cloud-hypervisor http api,
 * in just a few lines.
 */
-use crate::config::{Config, NetType};
+use crate::config::{Config, DhcpType, NetType};
 use crate::hypervisor::{
     disk::{utils::reverse_human_bytes, Disk},
     vm::Vm,
 };
-use crate::network::{dhcp::DhcpType, utils};
+use crate::network::utils;
 
 use owo_colors::OwoColorize;
 use serde::{Deserialize, Serialize};

@@ -193,11 +193,11 @@ mod tests {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
         let mut private_key = path.clone();
-        private_key.push("./keys/default");
+        private_key.push("./keys/node_default");
         let private_key = private_key.to_str().unwrap().to_owned();
 
         let mut public_key = path.clone();
-        public_key.push("./keys/default.pub");
+        public_key.push("./keys/node_default.pub");
         let public_key = public_key.to_str().unwrap().to_owned();
 
         let config = NodeConfig {

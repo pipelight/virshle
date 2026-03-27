@@ -1,6 +1,8 @@
 // TODO: Refactor this fucking mess:
 // factorize functions!!
 
+use bon::builder;
+
 use virshle_network::{
     connection::{Connection, TcpConnection},
     http::{Rest, RestClient},
@@ -10,7 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 // IP
-use super::Lease;
 use macaddr::MacAddr6;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -21,191 +22,7 @@ use std::collections::HashMap;
 use miette::Result;
 use virshle_error::VirshleError;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct KeaDhcp {
-    pub url: Option<String>,
-    pub suffix: Option<String>,
-}
-impl Default for KeaDhcp {
-    fn default() -> Self {
-        Self {
-            url: Some("tcp://localhost:5547".to_owned()),
-            suffix: Some("vm".to_owned()),
-        }
-    }
-}
-
-/*
-* Kea REST API types
-*/
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct RestResponse {
-    arguments: Option<RestLeasesResponse>,
-    result: u64,
-}
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct RestLeasesResponse {
-    leases: Vec<RawLease>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum RawLease {
-    V6(Raw6Lease),
-    V4(Raw4Lease),
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Raw4Lease {
-    #[serde(rename = "ip-address")]
-    address: Ipv4Addr,
-    #[serde(default, rename = "hw-address")]
-    hwaddr: Option<String>, // MacAddr
-    #[serde(rename = "valid-lft")]
-    valid_lifetime: u64,
-    #[serde(default)]
-    hostname: Option<String>,
-    state: u64,
-    #[serde(rename = "subnet-id")]
-    subnet_id: u64,
-    #[serde(flatten)]
-    other: serde_json::Value,
-}
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Raw6Lease {
-    #[serde(rename = "ip-address")]
-    address: Ipv6Addr,
-    #[serde(default, rename = "hw-address")]
-    hwaddr: Option<String>, // MacAddr
-    #[serde(rename = "valid-lft")]
-    valid_lifetime: u64,
-    #[serde(rename = "type")]
-    _type: String,
-    #[serde(default)]
-    hostname: Option<String>,
-    state: u64,
-    #[serde(rename = "subnet-id")]
-    subnet_id: u64,
-    #[serde(flatten)]
-    other: serde_json::Value,
-}
-
-impl From<&RawLease> for Lease {
-    fn from(e: &RawLease) -> Self {
-        match e {
-            RawLease::V6(v) => v.into(),
-            RawLease::V4(v) => v.into(),
-        }
-    }
-}
-impl From<&Raw6Lease> for Lease {
-    fn from(e: &Raw6Lease) -> Self {
-        let mut hostname: String = "default".to_owned();
-        if let Some(val) = &e.hostname {
-            if let Some(val) = val.strip_suffix(".") {
-                hostname = val.to_owned();
-            }
-            hostname = hostname.to_owned();
-        }
-
-        let macaddr: String = if let Some(hwaddr) = &e.hwaddr {
-            hwaddr.to_owned()
-        } else {
-            MacAddr6::nil().to_string()
-        };
-
-        Lease {
-            address: IpAddr::V6(e.address),
-            hostname,
-            mac: MacAddr6::from_str(&macaddr).unwrap(),
-        }
-    }
-}
-impl From<&Raw4Lease> for Lease {
-    fn from(e: &Raw4Lease) -> Self {
-        let mut hostname: String = "default".to_owned();
-        if let Some(val) = &e.hostname {
-            if let Some(val) = val.strip_suffix(".") {
-                hostname = val.to_owned();
-            }
-            hostname = hostname.to_owned();
-        }
-
-        let mut macaddr: String = MacAddr6::nil().to_string();
-        if let Some(hwaddr) = &e.hwaddr {
-            if !hwaddr.is_empty() {
-                macaddr = hwaddr.to_owned();
-            }
-        }
-
-        Lease {
-            address: IpAddr::V4(e.address),
-            hostname,
-            mac: MacAddr6::from_str(&macaddr).unwrap(),
-        }
-    }
-}
-
-pub const LEASES_DIR: &'static str = "/var/lib/kea";
-
-#[serde_with::skip_serializing_none]
-#[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct KeaCommand {
-    command: String,
-    service: Vec<String>,
-    arguments: Option<HashMap<String, String>>,
-}
-#[serde_with::skip_serializing_none]
-#[derive(Default, Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct KeaBulkCommand {
-    command: String,
-    service: Vec<String>,
-    arguments: Option<HashMap<String, Vec<HashMap<String, String>>>>,
-}
-
-impl KeaDhcp {
-    /// Get domain name from ip address type and vm_name.
-    pub fn to_domain_name(&self, ip_type: IpAddr, vm_name: &str) -> Result<String, VirshleError> {
-        let mut domain = vm_name.to_owned();
-        if let Some(suffix) = &self.suffix {
-            domain += ".";
-            domain += suffix;
-        }
-        match ip_type {
-            IpAddr::V4(_) => {}
-            IpAddr::V6(_) => {
-                domain += ".";
-            }
-        };
-        Ok(domain)
-    }
-    /// Get original vm name from dhcp record.
-    pub fn to_vm_name(&self, lease: &Lease) -> Result<String, VirshleError> {
-        let vm_name = match lease.address {
-            IpAddr::V4(_) => {
-                let mut name = lease.hostname.clone();
-                if let Some(suffix) = &self.suffix {
-                    if let Some(val) = name.strip_suffix(suffix) {
-                        name = val.to_owned()
-                    }
-                }
-                name = name.trim_end_matches('.').to_owned();
-                name
-            }
-            IpAddr::V6(_) => {
-                let mut name = lease.hostname.clone();
-                if let Some(suffix) = &self.suffix {
-                    if let Some(val) = name.strip_suffix(suffix) {
-                        name = val.to_owned()
-                    }
-                }
-                name = name.trim_end_matches('.').to_owned();
-                name
-            }
-        };
-        Ok(vm_name)
-    }
-}
+use super::Lease;
 
 impl KeaDhcp {
     pub async fn get_leases_by_hostname(&self, hostname: &str) -> Result<Vec<Lease>, VirshleError> {
@@ -539,6 +356,7 @@ impl KeaDhcp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[tokio::test]
     async fn read_leases() -> Result<()> {
@@ -555,6 +373,42 @@ mod tests {
     #[tokio::test]
     async fn read_leases6() -> Result<()> {
         let res = KeaDhcp::default().get_ipv6_leases().await?;
+        println!("{:#?}", res);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn read_leases6() -> Result<()> {
+        let res = KeaDhcp::default().get_ipv6_leases().await?;
+
+        println!("{:#?}", res);
+        Ok(())
+    }
+    #[tokio::test]
+    async fn extract_hostname_from_lease() -> Result<(), VirshleError> {
+        let ipv4_lease = Lease {
+            address: IpAddr::V4(Ipv4Addr::from_str("172.10.0.1").unwrap()),
+            hostname: "default".to_owned(),
+            mac: MacAddr6::from_str("6e:47:a2:fb:06:78").unwrap(),
+        };
+        let hostname_4 = ipv4_lease.to_vm_name()?;
+
+        let ipv6_lease = Lease {
+            address: IpAddr::V4(Ipv4Addr::from_str("172.10.0.1").unwrap()),
+            hostname: "default".to_owned(),
+            mac: MacAddr6::from_str("6e:47:a2:fb:06:78").unwrap(),
+        };
+        let hostname_6 = ipv6_lease.to_vm_name()?;
+        println!("{:#?}", hostname_6);
+
+        assert_eq!(hostname_4, hostname_6);
+
+        Ok(())
+    }
+    #[tokio::test]
+    async fn read_leases6() -> Result<()> {
+        let res = KeaDhcp::default().get_ipv6_leases().await?;
+
         println!("{:#?}", res);
         Ok(())
     }

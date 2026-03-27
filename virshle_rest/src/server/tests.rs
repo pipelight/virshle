@@ -36,12 +36,12 @@ async fn node_methods() -> Result<()> {
 
     // Did
     let res: String = server.api()?.node().did().await?;
-    info!("\n{:#?}", res);
+    println!("\n{:#?}", res);
 
     // Info
     // Get info for node "Self".
     let res: NodeInfo = server.api()?.node().info().await?;
-    info!("\n{:#?}", res);
+    println!("\n{:#?}", res);
 
     // Print node info as a table.
     let node: Peer = server.config.node.into();
@@ -62,7 +62,7 @@ async fn get_vms() -> Result<()> {
     let server = server()?;
 
     let res: Vec<VmTable> = server.api()?.vm().get().many().exec().await?;
-    info!("{:#?}", res);
+    println!("\n{:#?}", res);
 
     // Print vms info as a table.
     let peer: Peer = server.config.node.into();

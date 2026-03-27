@@ -1,15 +1,14 @@
-{lib, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   ###################################
   # Default user
   users.users."anon" = {
     isNormalUser = true;
     # Set default password for testing vm
     initialPassword = "anon";
-  };
-  users.users."root" = {
-    isNormalUser = true;
-    # Set default password for testing vm
-    initialPassword = "root";
   };
   users.groups = {
     wheel.members = ["anon"];
@@ -28,5 +27,8 @@
         }
       ];
     }
+  ];
+  environment.systemPackages = [
+    pkgs.iproute2
   ];
 }

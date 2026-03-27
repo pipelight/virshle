@@ -1,7 +1,7 @@
-use crate::config::{Config, NetType, VmNet};
-use crate::hypervisor::Vm;
+use crate::config::{Config, DhcpType, NetType, VmNet};
+use crate::hypervisor::{Vm, VmTable};
 use crate::network::{
-    dhcp::{DhcpType, FakeDhcp, Lease},
+    dhcp::{FakeDhcp, KeaDhcp, Lease},
     ip,
     ovs::{OvsBridge, OvsPort},
 };
@@ -163,16 +163,33 @@ pub struct VmLeaseMethods<'a> {
     pub vm: &'a Vm,
 }
 impl VmLeaseMethods<'_> {
-    /// Delete vm associated dhcp ipv4 and ipv6 leases.
+    /// Delete Vm dhcp ipv4 and ipv6 leases .
     pub async fn delete_all(&self) -> Result<(), VirshleError> {
         match Config::get()?.dhcp {
-            Some(DhcpType::Fake(fake_dhcp)) => {
+            Some(DhcpType::Fake(fake_dhcp_config)) => {
                 if let Some(id) = self.vm.id {
                     FakeDhcp::delete_leases(id.try_into().unwrap()).await?;
                 }
             }
-            Some(DhcpType::Kea(kea_dhcp)) => {
-                kea_dhcp.delete_leases(&self.vm.name).await?;
+            Some(DhcpType::Kea(kea_dhcp_config)) => {
+                let mut cli = KeaDhcp::builder().config(&kea_dhcp_config).build().await?;
+                let leases = cli
+                    .lease()
+                    .get()
+                    .many()
+                    .inet4(true)
+                    .inet6(true)
+                    .vm(self.vm.clone())
+                    .exec()
+                    .await?;
+                cli.lease()
+                    .delete()
+                    .many()
+                    .leases(leases)
+                    .inet4(true)
+                    .inet6(true)
+                    .exec()
+                    .await?;
             }
             _ => {}
         }
@@ -182,11 +199,18 @@ impl VmLeaseMethods<'_> {
     /// or error out if nothing found
     pub async fn get_all(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut leases: Vec<Lease> = vec![];
-
         match Config::get()?.dhcp {
-            Some(DhcpType::Kea(kea_dhcp)) => {
-                let hostname = &self.vm.name.clone();
-                leases = kea_dhcp.get_leases_by_hostname(&hostname).await?;
+            Some(DhcpType::Kea(kea_dhcp_config)) => {
+                let mut cli = KeaDhcp::builder().config(&kea_dhcp_config).build().await?;
+                leases = cli
+                    .lease()
+                    .get()
+                    .many()
+                    .inet4(true)
+                    .inet6(true)
+                    .vm(self.vm.clone())
+                    .exec()
+                    .await?;
             }
             _ => {}
         };

@@ -49,6 +49,32 @@ commands = [
   "chmod +w ~/Iso/*",
 ]
 
+[[pipelines]]
+name = "build:disk:test"
+
+[[pipelines.steps]]
+name = "build base disk image"
+commands = [
+  # Build flake
+  """
+  nix build ".#vm_test" \
+  --out-link ./result_vms_test \
+  --show-trace \
+  """,
+]
+[[pipelines.steps]]
+name = "copy disk images to cache"
+commands = [
+  # Copy to destinations
+  "cp -f ./result_vms_test/nixos.*.img /var/lib/virshle/cache/",
+  "cp -f ./result_vms_test/nixos.*.img ~/Iso",
+  # Set permissions
+  "chmod +x /var/lib/virshle/cache/*",
+  "chmod +w /var/lib/virshle/cache/*",
+  "chmod +x ~/Iso/*",
+  "chmod +w ~/Iso/*",
+]
+
 
 [[pipelines]]
 name = "test-ovs-nixosModule"

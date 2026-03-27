@@ -193,6 +193,27 @@ impl Server {
                 ),
             )
             .route(
+                "/vm/fresh",
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .start()
+                                .fresh()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
+                                .maybe_user_data(params.user_data)
+                                .maybe_attach(params.attach)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
+            )
+            .route(
                 "/vm/provision-ch",
                 put(
                     async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {

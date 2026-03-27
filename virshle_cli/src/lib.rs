@@ -120,29 +120,26 @@ impl Cli {
                     }
                 }
             },
-            /*
-             * Operations on virtual machine templates
-             */
+            // Operations on virtual machine templates
+            //
             Commands::Template(args) => match args {
                 TemplateArgs::Ls => {
                     let res = client.template().get().exec().await?;
                     VmTemplate::display_by_peers(res).await?;
                 }
             },
-            /*
-             * Operations on virtual machines
-             */
+            // Operations on virtual machines
+            //
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
                     let tag = "create";
                     // Set working node
-                    let config = Config::get()?;
                     let cw_node = args.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let mut user_data = None;
-                    if let Some(user_data_filepath) = args.user_data {
-                        user_data = Some(UserData::from_file(&user_data_filepath)?);
+                    if let Some(user_data_path) = args.user_data {
+                        user_data = Some(UserData::from_file(&user_data_path)?);
                     }
 
                     match args.ntimes {
@@ -189,7 +186,6 @@ impl Cli {
                     let tag = "start";
 
                     // Set working node
-                    let config = Config::get()?;
                     let cw_node = args.vm_args.current_workgin_node.peer.clone();
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
@@ -259,7 +255,6 @@ impl Cli {
                     let tag = "shutdown";
 
                     // Set working node
-                    let config = Config::get()?;
                     let cw_node = args.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
@@ -298,7 +293,6 @@ impl Cli {
                     let tag = "delete";
 
                     // Set working node
-                    let config = Config::get()?;
                     let cw_node = args.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
@@ -351,8 +345,9 @@ impl Cli {
                         if args.format.ron == Some(true) {
                             println!("{:#?}", table);
                         } else if args.format.json == Some(true) {
-                            let string = serde_json::to_string_pretty(&table).unwrap();
-                            println!("{}", string);
+                            // TODO: do not work on HashMap.
+                            // let string = serde_json::to_string_pretty(&table).unwrap();
+                            // println!("{}", string);
                         } else {
                             VmTable::display(&vec![table])?
                         }
@@ -368,8 +363,9 @@ impl Cli {
                         if args.format.ron == Some(true) {
                             println!("{:#?}", table);
                         } else if args.format.json == Some(true) {
-                            let string = serde_json::to_string_pretty(&table).unwrap();
-                            println!("{}", string);
+                            // TODO: do not work on HashMap.
+                            // let string = serde_json::to_string_pretty(&table).unwrap();
+                            // println!("{}", string);
                         } else {
                             VmTable::display_by_peer(&table).await?
                         }

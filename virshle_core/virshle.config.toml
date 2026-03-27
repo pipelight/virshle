@@ -5,8 +5,8 @@
 alias = "deku-dev-1"
 # private_key = "/var/lib/virshle/node/id_ed25519"
 # public_key = "/var/lib/virshle/node/id_ed25519.pub"
-private_key = "./keys/default"
-public_key = "./keys/default.pub"
+private_key = "./keys/node_default"
+public_key = "./keys/node_default.pub"
 
 # Mandatory
 # Set your node to "passive=true" when:
@@ -56,7 +56,7 @@ weight = 20
 [[template.vm]]
 name = "xxs-offline"
 vcpu = 1
-vram = "2GiB"
+vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -65,7 +65,7 @@ path = "~/Iso/nixos.xxs.efi.img"
 [[template.vm]]
 name = "xxs-tap"
 vcpu = 1
-vram = "2GiB"
+vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
@@ -78,13 +78,24 @@ name = "main"
 [[template.vm]]
 name = "xxs-macvtap"
 vcpu = 1
-vram = "2GiB"
+vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
 path = "~/Iso/nixos.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.macvtap]
+
+[[template.vm]]
+name = "xxs-test"
+vcpu = 1
+vram = "1GiB"
+[[template.vm.disk]]
+name = "os"
+path = "~/Iso/nixos.test.xxs.efi.img"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
 
 
 #########################

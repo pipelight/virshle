@@ -78,7 +78,7 @@ tabled = { version = "0.20.0", features = ["ansi"] }
 crossterm = "0.29.0"
 
 # Do not forget to update the output hash in package.nix.
-radicle-crypto = { version = "0.15.0", git = "https://seed.radicle.xyz/z3gqcJUoA1n9HaHKufZs5FCSGazv5.git" }
+radicle-crypto = { version = "0.16.0", git = "https://seed.radicle.xyz/z3gqcJUoA1n9HaHKufZs5FCSGazv5.git" }
 # sqlite3-sys = { version = "0.18.0", features = ["bundle"] }
 
 # Database

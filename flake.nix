@@ -100,6 +100,10 @@
               ./modules/nixos-generators
             ];
           };
+          # Output all vm disk sizes:
+          # - nixos.xxs.efi.raw
+          # - nixos.xs.efi.raw
+          # - nixos.s.efi.raw
           vm_all_sizes = inputs.nixos-generators.nixosGenerate {
             inherit pkgs;
             inherit specialArgs;
@@ -109,6 +113,8 @@
               ./modules/nixos-generators/default_vm
             ];
           };
+          # Output vm disk for easy testing (with default passwords).
+          # - nixos.test.xxs.iso
           vm_test = inputs.nixos-generators.nixosGenerate {
             inherit pkgs;
             inherit specialArgs;
