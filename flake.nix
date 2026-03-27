@@ -105,8 +105,17 @@
             inherit specialArgs;
             format = "raw-efi";
             modules = [
-              ./modules/make-disk-images.nix
-              ./modules/nixos-generators
+              ./modules/nixos-generators/make-disk-images.nix
+              ./modules/nixos-generators/default_vm
+            ];
+          };
+          vm_test = inputs.nixos-generators.nixosGenerate {
+            inherit pkgs;
+            inherit specialArgs;
+            format = "raw-efi";
+            modules = [
+              ./modules/nixos-generators/make-test-disk-images.nix
+              ./modules/nixos-generators/test_vm
             ];
           };
         };

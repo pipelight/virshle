@@ -56,6 +56,13 @@
     ];
   };
 
+  # See nixos-generators/formats/raw.efi.nix
+  # and nixos-generators/formats/raw.nix
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/ESP";
+    fsType = "vfat";
+  };
+
   # Need to specify root fs for `nixos-rebuild`
   fileSystems."/" = lib.mkDefault {
     # device = "/dev/disk/by-label/nixos";

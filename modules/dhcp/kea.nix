@@ -23,7 +23,10 @@ in
         # dnsmasq
         kea
       ];
-
+      systemd.tmpfiles.rules = [
+        "d '/var/lib/kea' 700 root kea - -"
+        "Z '/var/lib/kea' 766 root kea - -"
+      ];
       services.kea = {
         ctrl-agent = {
           settings = {
@@ -72,7 +75,11 @@ in
             valid-lifetime = -1;
 
             # Force renewal of ipv6 leases on vm up.
-            # Because when setting ipv6 (not 4) lifetimes to forever,
+            #
+            # Because when setting ipv6 lifetimes to forever,
+            # the vm never tries to speak to dhcp again.
+            # So dhcp can lose track of lease!
+            # (not an issue with ipv4.)
             #
             # preferred-lifetime = 3000;
             # valid-lifetime = 4000;
@@ -81,9 +88,6 @@ in
             # preferred-lifetime = -1;
             # valid-lifetime = -1;
             #```
-
-            # The vm never tries to speak to dhcp again.
-            # So dhcp can lose track of lease!
             expired-leases-processing = {
               reclaim-timer-wait-time = 3;
               flush-reclaimed-timer-wait-time = 5;
@@ -135,6 +139,10 @@ in
               {
                 library = "${pkgs.kea}/lib/kea/hooks/libdhcp_lease_cmds.so";
               }
+              {
+                library = "${pkgs.kea}/lib/kea/hooks/libdhcp_lease_query.so";
+              }
+              # Not available rn (need to be premium?)
               # {
               #   library = "${pkgs.kea}/lib/kea/hooks/libdhcp_ddns_cmds.so";
               # }

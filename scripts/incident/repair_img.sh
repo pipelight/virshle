@@ -1,6 +1,6 @@
 #!/usr/bin/env -S bash
 
-set -euo pipefail
+# set -euo pipefail
 
 showUsage() {
   cat <<EOF
@@ -11,6 +11,7 @@ EOF
 
 # Initiate global vars.
 vm_id=
+vm_uuid=
 
 parseArgs() {
   [[ $# -eq 0 ]] && {
@@ -28,10 +29,13 @@ parseArgs() {
       exit 0
       ;;
     --id)
-      # Print commands
       vm_id=$2
-      mountDisk $vm_id
+      vm_uuid=$(getUuid $vm_id)
+      mountDisk $vm_uuid
       ;;
+    --uuid)
+      vm_uuid=$2
+      mountDisk $vm_uuid
     esac
     shift
   done
@@ -44,19 +48,32 @@ getUuid() {
   vm_definition=$(virshle vm ls \
     --id $vm_id \
     --json)
-  vm_uuid=$(echo $vm_definition | jq ".uuid")
+  vm_uuid=$(echo $vm_definition | jq -r ".uuid")
 
   echo $vm_uuid
 }
 
 # Mount Vm disk
 mountDisk() {
-  vm_id=$1
-  vm_uuid=$(getUuid $vm_id)
 
-  virshle_state_dir="/var/lib/virshle/"
+  # Make disk path
+  vm_uuid=$1
+
+  vms_dir="/var/lib/virshle/vm"
   disk_rel_path="disk/os"
-  disk_path="$virshle_state_dir/$vm_uuid/$disk_rel_path"
+  disk_path="$vms_dir/$vm_uuid/$disk_rel_path"
+
+  device="/dev/loop10"
+  efi_partition=$device"p1"
+  root_partition=$device"p2"
+
+  sudo losetup --partscan $device $disk_path
+
+  sudo fsck.vfat -fy $efi_partition
+  sudo fsck.ext4 -fy $root_partition
+
+  sudo losetup -d $device
+  sudo losetup --partscan $device $disk_path
 }
 
 main() {
