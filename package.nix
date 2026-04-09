@@ -17,7 +17,7 @@ pkgs.rustPlatform.buildRustPackage rec {
       # "tappers-0.4.2" = "sha256-kx/gLngL7+fH5JmJTVTGawyNdRde59dbFdrzermy/CE=";
 
       # Readable ID based on pulbic_key
-      "radicle-crypto-0.16.0" = "sha256-DcF/DuFFcZgbyDpzzFCo/b6U418iNuwbNgHBAwf2mdE=";
+      "radicle-crypto-0.16.0" = "sha256-2EEaM5e55ZmoCKu08a0LbYuicSc7JdAXcBAlERwN8cw=";
     };
   };
 
