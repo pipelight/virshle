@@ -59,12 +59,17 @@ pub enum Crud {
     /// Starts/Restart a virtual machine.
     #[command(alias = "on", arg_required_else_help = true)]
     Start(StartArgs),
+
     /// Removes(destroy) a virtual machine.
-    #[command(alias = "rm", arg_required_else_help = true)]
-    Delete(VmArgs),
+    #[command(aliases = ["remove" ,"rm"], arg_required_else_help = true)]
+    Delete(DeleteArgs),
+
     /// Stops a virtual machine.
     #[command(alias = "off", arg_required_else_help = true)]
     Stop(VmArgs),
+    /// Replace Vm os disk with a new one.
+    #[command(arg_required_else_help = true)]
+    Fresh(VmArgs),
 
     /// Parse a virtual machine toml configuration.
     #[command(arg_required_else_help = true)]
@@ -76,12 +81,12 @@ pub enum Crud {
     /// Inspect a created virtual machine configuration (cloud-hypervisor api).
     #[command(arg_required_else_help = true)]
     ChInfo(VmArgs),
-    /// Return the path fo vm vsock
+    /// Return the path of vm vsock
     #[command(arg_required_else_help = true, hide = true)]
     GetVsockPath(VmArgs),
     #[command(arg_required_else_help = true, hide = true)]
     GetListNames(VmArgs),
-    /// Return the path fo vm vsock
+
     #[command(arg_required_else_help = true, hide = true)]
     Definition(VmArgs),
 
@@ -92,7 +97,7 @@ pub enum Crud {
     #[command(hide = true)]
     Update(CreateArgs),
 }
-#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
 pub struct InitArgs {
     /// Initialize everything
     #[arg(long,num_args(0..=1),
@@ -120,7 +125,7 @@ pub struct InitArgs {
     pub dir: Option<bool>,
 }
 
-#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
 pub struct CreateArgs {
     #[arg(short, long, value_name="FILE", value_hint=ValueHint::FilePath, 
         conflicts_with = "template", hide=true
@@ -180,6 +185,21 @@ pub struct VmArgs {
     #[command(flatten)]
     pub format: OutputFormat,
 }
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
+pub struct DeleteArgs {
+    #[arg(short, long, value_name = "MODE")]
+    pub mode: Option<DeletionMode>,
+
+    #[command(flatten)]
+    pub vm: VmArgs,
+}
+
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, ValueEnum)]
+pub enum DeletionMode {
+    #[default]
+    Soft,
+    Hard,
+}
 
 #[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
 pub struct StartArgs {
@@ -191,13 +211,23 @@ pub struct StartArgs {
     )]
     pub attach: bool,
 
+    /// DANGER:
+    /// Wether to use a new disk (delete old one) before starting the vm.
+    #[arg(
+        long,
+        num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub fresh: bool,
+
     // It links the VM to the provided account on the local node database.
     /// Pass user data to VM.
     #[arg(short, long, value_name = "USERDATA_FILEPATH")]
     pub user_data: Option<String>,
 
     #[command(flatten)]
-    pub vm_args: VmArgs,
+    pub vm: VmArgs,
 }
 
 #[derive(Default, Debug, Subcommand, Clone, Eq, PartialEq)]

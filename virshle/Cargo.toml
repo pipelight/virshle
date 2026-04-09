@@ -23,6 +23,8 @@ tracing.workspace = true
 
 virshle_cli = { path = "../virshle_cli" }
 virshle_core = { path = "../virshle_core" }
+virshle_rest = { path = "../virshle_rest" }
+virshle_network = { path = "../virshle_network" }
 virshle_error = { path = "../virshle_error" }
 
 tokio = { version = "1.40.0", features = ["full"] }

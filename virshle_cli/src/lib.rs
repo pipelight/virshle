@@ -186,7 +186,7 @@ impl Cli {
                     let tag = "start";
 
                     // Set working node
-                    let cw_node = args.vm_args.current_workgin_node.peer.clone();
+                    let cw_node = args.vm.current_workgin_node.peer.clone();
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let user_data: Option<UserData> = match args.user_data {
@@ -195,10 +195,7 @@ impl Cli {
                     };
                     let methods = Server::new().config(&config).build()?.api()?;
 
-                    if args.vm_args.name.is_some()
-                        || args.vm_args.uuid.is_some()
-                        || args.vm_args.id.is_some()
-                    {
+                    if args.vm.name.is_some() || args.vm.uuid.is_some() || args.vm.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Starting vm...", None);
 
@@ -207,9 +204,9 @@ impl Cli {
                             .vm()
                             .start()
                             .one()
-                            .maybe_id(args.vm_args.id)
-                            .maybe_uuid(args.vm_args.uuid)
-                            .maybe_name(args.vm_args.name.clone())
+                            .maybe_id(args.vm.id)
+                            .maybe_uuid(args.vm.uuid)
+                            .maybe_name(args.vm.name.clone())
                             .maybe_user_data(user_data.clone())
                             .exec()
                             .await?;
@@ -222,9 +219,9 @@ impl Cli {
                                     .vm()
                                     .start()
                                     .one()
-                                    .maybe_id(args.vm_args.id)
-                                    .maybe_uuid(args.vm_args.uuid)
-                                    .maybe_name(args.vm_args.name.clone())
+                                    .maybe_id(args.vm.id)
+                                    .maybe_uuid(args.vm.uuid)
+                                    .maybe_name(args.vm.name.clone())
                                     .maybe_user_data(user_data.clone())
                                     .exec()
                                     .await?;
@@ -235,15 +232,15 @@ impl Cli {
                         // Spinner
                         // let logs = utils::print_response_op(tag, &node.name, &res)?;
                         // sp.stop_and_persist(&logs, "");
-                    } else if args.vm_args.state.is_some() || args.vm_args.account.is_some() {
+                    } else if args.vm.state.is_some() || args.vm.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Starting vms...", None);
                         let res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = client
                             .vm()
                             .start()
                             .many()
-                            .maybe_state(args.vm_args.state)
-                            .maybe_account(args.vm_args.account)
+                            .maybe_state(args.vm.state)
+                            .maybe_account(args.vm.account)
                             .exec()
                             .await?;
                         // let message =
@@ -293,10 +290,10 @@ impl Cli {
                     let tag = "delete";
 
                     // Set working node
-                    let cw_node = args.current_workgin_node.peer;
+                    let cw_node = args.vm.current_workgin_node.peer;
                     let node: Peer = config.peer().maybe_alias(cw_node).get()?;
 
-                    if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
+                    if args.vm.name.is_some() || args.vm.uuid.is_some() || args.vm.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vm...", None);
 
@@ -304,16 +301,16 @@ impl Cli {
                             .vm()
                             .delete()
                             .one()
-                            .maybe_id(args.id)
-                            .maybe_uuid(args.uuid)
-                            .maybe_name(args.name)
+                            .maybe_id(args.vm.id)
+                            .maybe_uuid(args.vm.uuid)
+                            .maybe_name(args.vm.name)
                             .exec()
                             .await?;
 
                         // Spinner
                         // let message = utils::print_response_op(tag, &node.name, &res)?;
                         // sp.stop_and_persist(&message, "");
-                    } else if args.state.is_some() || args.account.is_some() {
+                    } else if args.vm.state.is_some() || args.vm.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vms...", None);
 
@@ -321,8 +318,8 @@ impl Cli {
                             .vm()
                             .delete()
                             .many()
-                            .maybe_state(args.state)
-                            .maybe_account(args.account)
+                            .maybe_state(args.vm.state)
+                            .maybe_account(args.vm.account)
                             .exec()
                             .await?;
                         // let message = utils::print_response_bulk_op(tag, &node.name, &res)?;

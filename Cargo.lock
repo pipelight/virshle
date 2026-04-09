@@ -6515,6 +6515,8 @@ dependencies = [
  "virshle_cli",
  "virshle_core",
  "virshle_error",
+ "virshle_network",
+ "virshle_rest",
 ]
 
 [[package]]
