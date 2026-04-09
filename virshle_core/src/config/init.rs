@@ -94,7 +94,7 @@ impl InitMethods<'_> {
             Some(DhcpType::Kea(kea_config)) => {
                 let mut cli = KeaDhcp::builder().config(kea_config).build().await?;
                 cli.lease().clean().inet4(true).inet6(true).exec().await?;
-                info!("{} delete unused leases", "[kea-dhcp]".yellow(),);
+                info!("{} delete unused leases", "[kea-dhcp]".yellow());
             }
             _ => {}
         };
