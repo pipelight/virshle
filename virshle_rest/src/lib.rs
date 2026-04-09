@@ -7,4 +7,5 @@ mod commons;
 mod server;
 
 pub use client::Client;
+pub use commons::*;
 pub use server::Server;
