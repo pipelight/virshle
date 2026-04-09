@@ -16,7 +16,7 @@ passive = false
 
 # Network
 ## Kea dhcp
-[network.dhcp.kea]
+[dhcp.kea]
 url = "tcp://localhost:5547"
 suffix = "vm"
 

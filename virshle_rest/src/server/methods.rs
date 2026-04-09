@@ -736,7 +736,7 @@ impl VmNetworkMethods<'_> {
     ) -> Result<(), VirshleError> {
         match self.api.config.dhcp.clone() {
             Some(DhcpType::Kea(kea_config)) => {
-                let mut cli = KeaDhcp::builder().config(&kea_config).build().await?;
+                let mut cli = KeaDhcp::builder().config(kea_config).build().await?;
                 let vm = Vm::database()
                     .await?
                     .one()

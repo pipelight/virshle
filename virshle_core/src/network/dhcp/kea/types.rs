@@ -37,29 +37,32 @@ impl KeaDhcp {
         finish_fn = build
     )]
     // Create new struct and open a connection to kea-ctrl-agent http rest api.
-    pub async fn _new(config: &Config) -> Result<KeaDhcp, VirshleError> {
+    pub async fn _new(config: Option<Config>) -> Result<KeaDhcp, VirshleError> {
         // Default config.
         let default_conf = KeaDhcpConfig {
             url: Some("tcp://localhost:5547".to_owned()),
             suffix: Some("vm".to_owned()),
         };
-        let mut res = KeaDhcp::builder().config(&default_conf).build().await?;
+        let mut res = KeaDhcp::builder().config(default_conf).build().await?;
 
         // Config from file.
-        if let Some(config) = &config.dhcp {
-            match config {
-                DhcpType::Fake(_) => {}
-                DhcpType::Kea(e) => {
-                    res = KeaDhcp::builder().config(&e).build().await?;
+        if let Some(config) = config {
+            if let Some(dhcp_config) = config.dhcp {
+                match dhcp_config {
+                    DhcpType::Fake(_) => {}
+                    DhcpType::Kea(e) => {
+                        res = KeaDhcp::builder().config(e.to_owned()).build().await?;
+                    }
                 }
             }
         }
         Ok(res)
     }
     #[builder(
-        finish_fn = build
+        finish_fn = build,
     )]
-    pub async fn builder(config: &KeaDhcpConfig) -> Result<KeaDhcp, VirshleError> {
+    pub async fn builder(config: Option<KeaDhcpConfig>) -> Result<KeaDhcp, VirshleError> {
+        let config = config.unwrap_or_default();
         let conn = Connection::TcpConnection(TcpConnection::new(&config.url.clone().unwrap())?);
         let mut rest: RestClient = conn.into();
         rest.open().await?;
@@ -211,11 +214,9 @@ impl Into<Lease> for &Raw4Lease {
 #[cfg(test)]
 mod test {
     use super::*;
-
     #[tokio::test]
-    async fn get_dhcp_cli() -> Result<()> {
-        let config = Config::get()?;
-        let cli = KeaDhcp::new().config(&config).build().await?;
+    async fn default_dhcp_cli() -> Result<()> {
+        let cli = KeaDhcp::new().build().await?;
         Ok(())
     }
 }

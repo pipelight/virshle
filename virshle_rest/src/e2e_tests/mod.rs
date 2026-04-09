@@ -90,10 +90,10 @@ async fn test_ssh_connection() -> Result<(), VirshleError> {
 /// The ssh-agent can be quite buggy, restart it if needed.
 ///
 /// ```sh
-/// pkill ssh-agent && ssh-agen
+/// pkill ssh-agent && ssh-agent
 /// ```
 #[tokio::test]
-async fn verify_ssh_provisionning() -> Result<(), VirshleError> {
+async fn test_persistence_of_dhcp_config() -> Result<(), VirshleError> {
     testing::tracer()
         .verbosity(tracing::Level::DEBUG)
         .db(false)
@@ -165,6 +165,71 @@ async fn verify_ssh_provisionning() -> Result<(), VirshleError> {
     let interfaces_b: Vec<IpInterface> = serde_json::from_str(&data_b)?;
 
     println!("{}", Comparison::new(&interfaces_a, &interfaces_b));
+
+    // Delete testing vm.
+    server
+        .api()?
+        .vm()
+        .delete()
+        .one()
+        .name(vm.name)
+        .exec()
+        .await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_init_script() -> Result<(), VirshleError> {
+    testing::tracer()
+        .verbosity(tracing::Level::DEBUG)
+        .db(false)
+        .set()?;
+    let server = server()?;
+
+    // Create vm with testing ssh key.
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("../virshle_core/user-data.toml");
+    let user_data = UserData::from_file(path.to_str().unwrap())?;
+    let vm: VmTable = server
+        .api()?
+        .vm()
+        .create()
+        .one()
+        .template("xxs-test")
+        .user_data(user_data.clone())
+        .exec()
+        .await?;
+
+    // Start vm
+    server
+        .api()?
+        .vm()
+        .start()
+        .one()
+        .name(&vm.name)
+        .user_data(user_data.clone())
+        .exec()
+        .await?;
+    tokio::time::sleep(tokio::time::Duration::from_millis(15000)).await;
+
+    // Add default testing vm ssh key to ssh-agent.
+    let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    path.push("../virshle_core/keys/user");
+    testing::exec(&format!("ssh-add {}", path.to_str().unwrap()))?;
+
+    // Ssh into vm.
+    let data = testing::ssh()
+        .vm_name(&vm.name)
+        .cmd("systemctl status pipelight-init_net_post.service")
+        .exec()
+        .await?;
+    println!("{:#?}", data);
+    let data = testing::ssh()
+        .vm_name(&vm.name)
+        .cmd("systemctl status pipelight-init_net_pre.service")
+        .exec()
+        .await?;
+    println!("{:#?}", data);
 
     // Delete testing vm.
     server

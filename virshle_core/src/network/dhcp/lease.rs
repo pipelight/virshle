@@ -28,17 +28,7 @@ impl Lease {
     )]
     pub fn vm_name(&self, suffix: Option<String>) -> Result<String, VirshleError> {
         let vm_name = match self.address {
-            IpAddr::V4(_) => {
-                let mut name = self.hostname.clone();
-                if let Some(suffix) = suffix {
-                    if let Some(val) = name.strip_suffix(&suffix) {
-                        name = val.to_owned()
-                    }
-                }
-                name = name.trim_end_matches('.').to_owned();
-                name
-            }
-            IpAddr::V6(_) => {
+            IpAddr::V4(_) | IpAddr::V6(_) => {
                 let mut name = self.hostname.clone();
                 if let Some(suffix) = suffix {
                     if let Some(val) = name.strip_suffix(&suffix) {
@@ -76,8 +66,32 @@ impl Lease {
         };
         Ok(domain)
     }
+}
 
-    pub fn get_all() -> Result<(), VirshleError> {
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use miette::IntoDiagnostic;
+    use pretty_assertions::assert_eq;
+
+    #[tokio::test]
+    async fn extract_hostname_from_lease() -> Result<()> {
+        let ipv4_lease = Lease {
+            address: "172.10.0.1".parse().into_diagnostic()?,
+            hostname: "default.vm".to_owned(),
+            mac: "6e:47:a2:fb:06:78".parse().into_diagnostic()?,
+        };
+        let hostname_4 = ipv4_lease.vm_name().extract()?;
+
+        let ipv6_lease = Lease {
+            address: "2001:db8::1".parse().into_diagnostic()?,
+            hostname: "default.vm.".to_owned(),
+            mac: "6e:47:a2:fb:06:78".parse().into_diagnostic()?,
+        };
+        let hostname_6 = ipv6_lease.vm_name().extract()?;
+
+        println!("{:#?}", hostname_6);
+        assert_eq!(hostname_4, hostname_6);
         Ok(())
     }
 }

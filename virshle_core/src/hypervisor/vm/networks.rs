@@ -172,7 +172,7 @@ impl VmLeaseMethods<'_> {
                 }
             }
             Some(DhcpType::Kea(kea_dhcp_config)) => {
-                let mut cli = KeaDhcp::builder().config(&kea_dhcp_config).build().await?;
+                let mut cli = KeaDhcp::builder().config(kea_dhcp_config).build().await?;
                 let leases = cli
                     .lease()
                     .get()
@@ -199,9 +199,12 @@ impl VmLeaseMethods<'_> {
     /// or error out if nothing found
     pub async fn get_all(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut leases: Vec<Lease> = vec![];
-        match Config::get()?.dhcp {
+
+        let config = Config::get()?;
+        println!("{:#?}", config);
+        match config.dhcp {
             Some(DhcpType::Kea(kea_dhcp_config)) => {
-                let mut cli = KeaDhcp::builder().config(&kea_dhcp_config).build().await?;
+                let mut cli = KeaDhcp::builder().config(kea_dhcp_config).build().await?;
                 leases = cli
                     .lease()
                     .get()
@@ -222,5 +225,22 @@ impl VmLeaseMethods<'_> {
         } else {
             Ok(leases)
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[tokio::test]
+    async fn fetch_one_ips() -> Result<()> {
+        let items = Vm::database().await?.many().get().await?;
+        if let Some(vm) = items.first() {
+            let vm = Vm::database().await?.one().uuid(vm.uuid).get().await?;
+            let leases = vm.networks().leases().get_all().await?;
+            println!("{:#?}", leases);
+        }
+        Ok(())
     }
 }

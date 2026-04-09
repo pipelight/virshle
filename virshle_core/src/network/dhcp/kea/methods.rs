@@ -250,6 +250,7 @@ impl LeaseGetterMethods<'_> {
         let mut leases: Vec<Lease> = vec![];
         for cmd in cmds {
             let response: Vec<RestResponse> = self.api.rest.post("/", Some(cmd.clone())).await?.to_value().await?;
+            // println!("{:#?}", response);
             leases.extend(RestResponse::to_leases(response)?);
         }
         Ok(leases)
@@ -311,12 +312,25 @@ impl LeaseDeleteMethods<'_> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config::{Config, DhcpType};
+    use crate::utils::testing;
     use pretty_assertions::assert_eq;
 
-    #[test]
-    fn getter() -> Result<()> {
+
+    #[tokio::test]
+    async fn read_leases6() -> Result<()> {
+        testing::tracer()
+            .verbosity(tracing::Level::DEBUG)
+            .db(false)
+            .set()?;
+
+        // let config = Config::get()?;
+        // let mut cli = KeaDhcp::new().config(config).build().await?;
+        let mut cli = KeaDhcp::new().build().await?;
+        
+        let res = cli.lease().get().many().inet4(true).inet6(true).exec().await?;
+        println!("{:#?}", res);
 
         Ok(())
     }
-
 }

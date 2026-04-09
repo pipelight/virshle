@@ -203,14 +203,17 @@ mod tests {
             [node]
             name = "self"
             url = "anon@localhost:22"
-            private_key = "/var/lib/virshle/keys/private_key"
-            public_key = "/var/lib/virshle/keys/public_key"
+            private_key = "./keys/node_default"
+            public_key = "./keys/node_default.pub"
+
+            [dhcp.kea]
+            url = "tcp://localhost:5547"
+            suffix = "vm"
 
             [[peer]]
             alias = "remote"
             url = "ssh://anon@remote:22/var/lib/virshle/virshle.sock"
             weight = 20
-
 
             [template]
             # Vms
@@ -265,6 +268,8 @@ mod tests {
 
         let res = PreConfig::from_toml(&toml)?;
         println!("{:#?}", res);
+        let config: Config = res.try_into()?;
+        println!("{:#?}", config);
         Ok(())
     }
 }

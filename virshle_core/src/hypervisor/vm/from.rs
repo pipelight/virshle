@@ -152,7 +152,7 @@ mod test {
     #[test]
     fn make_vm_template_from_toml() -> Result<()> {
         let toml = r#"
-            name = "my_template"
+            name = "default_xs"
 
             vcpu = 1
             vram = "2GiB"
@@ -172,7 +172,7 @@ mod test {
     #[test]
     fn make_vm_from_toml() -> Result<()> {
         let toml = r#"
-            name = "vm-my-test"
+            name = "default_xs"
             uuid = "b30458d1-7c7f-4d06-acc2-159e43892e87"
 
             vcpu = 1

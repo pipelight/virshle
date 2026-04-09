@@ -162,6 +162,8 @@ impl VmTable {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::utils::testing;
+    use miette::IntoDiagnostic;
 
     #[test]
     fn try_display_state() -> Result<()> {
@@ -170,6 +172,10 @@ mod test {
     }
     #[tokio::test]
     async fn display_mock() -> Result<()> {
+        testing::logger()
+            .verbosity(tracing::Level::INFO)
+            .db(false)
+            .set()?;
         // Get vms
         let vms = vec![
             VmTable {
@@ -189,7 +195,7 @@ mod test {
                 vram: "4GiB".to_owned(),
                 state: VmState::Running,
                 uuid: Uuid::new_v4(),
-                ips: None,
+                ips: Some(vec!["2001:db8a::1".parse().into_diagnostic()?]),
                 ..Default::default()
             },
         ];
