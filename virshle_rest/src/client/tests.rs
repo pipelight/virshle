@@ -18,7 +18,7 @@ use virshle_error::{LibError, VirshleError, WrapError};
 
 fn client() -> Result<Client, VirshleError> {
     let config = Config::get()?;
-    let client = Client::new().config(&config).build()?;
+    let client = Client::new().peers(config.peers()?).build()?;
     Ok(client)
 }
 

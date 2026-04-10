@@ -44,7 +44,7 @@ impl Cli {
         testing::logger().verbosity(verbosity).set()?;
 
         let config = Config::get()?;
-        let mut client = Client::new().config(&config).build()?.api().await?;
+        let mut client = Client::new().peers(config.peers()?).build()?.api().await?;
 
         match cli.commands {
             /*
@@ -91,11 +91,12 @@ impl Cli {
                 }
                 PeerArgs::Ping(args) => {
                     let res = client.peer().ping().exec().await?;
-                } /*
-                   * Serve the node rest API and wait for http requests.
-                   */
+                }
             },
             Commands::Node(args) => match args {
+                /*
+                 * Serve the node rest API and wait for http requests.
+                 */
                 NodeArgs::Serve => {
                     Server::new().config(&config).build()?.serve().await?;
                 }
@@ -120,16 +121,18 @@ impl Cli {
                     }
                 }
             },
-            // Operations on virtual machine templates
-            //
+            /*
+             * Operations on virtual machine templates
+             */
             Commands::Template(args) => match args {
                 TemplateArgs::Ls => {
                     let res = client.template().get().exec().await?;
                     VmTemplate::display_by_peers(res).await?;
                 }
             },
-            // Operations on virtual machines
-            //
+            /*
+             * Operations on virtual machines
+             */
             Commands::Vm(args) => match args {
                 Crud::Create(args) => {
                     let tag = "create";

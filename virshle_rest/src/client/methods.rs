@@ -34,7 +34,7 @@ impl Client {
         // and open connection to remote peers.
         let mut peers: IndexMap<String, (Peer, RestClient)> = IndexMap::new();
 
-        for (alias, peer) in self.config.peers()? {
+        for (alias, peer) in self.peers.clone() {
             let mut conn: Connection = peer.clone().try_into()?;
 
             let state = conn.get_state().await?;
@@ -314,9 +314,28 @@ impl PeerMethods<'_> {
 }
 #[bon]
 impl PeerGetterMethods<'_> {
-    pub fn default(&mut self) -> Result<(&Peer, &mut RestClient), VirshleError> {
-        let (ref peer, ref mut rest) = self.api.peers.get_mut("Self").unwrap();
-        Ok((peer, rest))
+    pub fn _self(&mut self) -> Result<(&Peer, &mut RestClient), VirshleError> {
+        if let Some((ref peer, ref mut rest)) = self.api.peers.get_mut("Self") {
+            Ok((peer, rest))
+        }
+        else {
+            let message = format!("Couldn't get the local \"Self\" peer.");
+            let help = "";
+            let err = LibError::builder().msg(&message).help(help).build();
+            Err(err.into())
+        }
+    }
+    pub fn _first(&mut self) -> Result<(&Peer, &mut RestClient), VirshleError> {
+        if let Some((_,(ref peer, ref mut rest))) = self.api.peers.first_mut(){
+            Ok((peer, rest))
+        }
+        else {
+            let message = format!("Couldn't get a default peer.");
+            let help = "Provide a list of peers in your config under [[peer]].";
+            let err = LibError::builder().msg(&message).help(help).build();
+            Err(err.into())
+        }
+
     }
     pub fn alias(&mut self, alias: &str) -> Result<(&Peer, &mut RestClient), VirshleError> {
         match self.api.peers.get_mut(alias) {
@@ -329,6 +348,9 @@ impl PeerGetterMethods<'_> {
             }
         }
     }
+    // If no alias provided:
+    // - local node active: return the local node if it is active,
+    // - local node passive: returns the first of the config peer list.
     #[builder(
         finish_fn = exec,
         on(String,into),
@@ -339,7 +361,12 @@ impl PeerGetterMethods<'_> {
         alias: Option<String>,
     ) -> Result<(&Peer, &mut RestClient), VirshleError> {
         match alias {
-            None => self.default(),
+            None => {
+                match self.api.peers.get("Self"){
+                    Some(_) => self._self(),
+                    None => self._first()
+                }
+            },
             Some(v) => self.alias(&v),
         }
     }

@@ -5,7 +5,8 @@ mod display;
 mod methods;
 
 use bon::bon;
-use virshle_core::config::Config;
+use indexmap::IndexMap;
+use virshle_core::peer::Peer;
 
 // Error Handling
 use miette::Result;
@@ -14,7 +15,7 @@ use virshle_error::VirshleError;
 
 #[derive(Clone)]
 pub struct Client {
-    config: Config,
+    peers: IndexMap<String, Peer>,
 }
 
 #[bon]
@@ -23,10 +24,8 @@ impl Client {
         start_fn = new,
         finish_fn = build
     )]
-    pub fn _new(config: &Config) -> Result<Client, VirshleError> {
-        let client = Client {
-            config: config.clone(),
-        };
+    pub fn _new(peers: IndexMap<String, Peer>) -> Result<Client, VirshleError> {
+        let client = Client { peers };
         Ok(client)
     }
 }
