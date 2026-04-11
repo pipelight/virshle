@@ -8,7 +8,6 @@ use http_body_util::BodyExt;
 use indexmap::IndexMap;
 
 use pipelight_exec::{Finder, Status};
-use std::collections::HashMap;
 use uuid::Uuid;
 
 // Hypervisor
@@ -101,7 +100,7 @@ impl NodeMethods<'_> {
     /// Get decentralized ID for locally running node "Self".
     pub async fn did(&self) -> Result<String, VirshleError> {
         let did = self.api.config.node.did()?;
-        // let mut list = HashMap::new();
+        // let mut list = IndexMap::new();
         // list.insert(self.node, v);
         Ok(did)
     }
@@ -112,7 +111,7 @@ impl PeerMethods<'_> {
     }
     pub async fn info(&self) -> Result<NodeInfo, VirshleError> {
         let res = NodeInfo::get().await?;
-        // let mut list = HashMap::new();
+        // let mut list = IndexMap::new();
         // list.insert(self.node, v);
         Ok(res)
     }
@@ -467,7 +466,7 @@ impl VmStartMethods<'_> {
         state: Option<VmState>,
         account: Option<Uuid>,
         user_data: Option<UserData>,
-    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
+    ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
         let vms = Vm::database()
             .await?
             .many()
@@ -488,7 +487,7 @@ impl VmStartMethods<'_> {
         }
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
-        let res: HashMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        let res: IndexMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
         Ok(res)
     }
 }
@@ -532,7 +531,7 @@ impl VmDeleteMethods<'_> {
         &self,
         state: Option<VmState>,
         account: Option<Uuid>,
-    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
+    ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
         let vms = Vm::database()
             .await?
             .many()
@@ -552,7 +551,7 @@ impl VmDeleteMethods<'_> {
         }
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
-        let res: HashMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        let res: IndexMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
         Ok(res)
     }
 }
@@ -596,7 +595,7 @@ impl VmShutdownMethods<'_> {
         &self,
         state: Option<VmState>,
         account: Option<Uuid>,
-    ) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
+    ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
         let vms = Vm::database()
             .await?
             .many()
@@ -616,7 +615,7 @@ impl VmShutdownMethods<'_> {
         }
         let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
             futures::future::join_all(tasks).await;
-        let res: HashMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        let res: IndexMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
         Ok(res)
     }
 }

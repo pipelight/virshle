@@ -108,7 +108,7 @@ impl Uri {
             "tcp" => Ok(Self::TcpUri(TcpUri::new(string)?)),
             _ => Err(LibError::builder()
                 .msg("Couldn't determine the uri scheme")
-                .help("Try ssh://, tcp:// or file://")
+                .help("Try ssh://, tcp:// or unix://")
                 .build()
                 .into()),
         }

@@ -17,7 +17,6 @@ use tokio::sync::RwLock;
 
 use indexmap::IndexMap;
 use pipelight_exec::Status;
-use std::collections::HashMap;
 use tower_http::trace::TraceLayer;
 use virshle_core::{
     config::{Config, UserData, VmTemplate, VmTemplateTable},
@@ -257,7 +256,7 @@ impl Server {
                 put(
                     async move |State(server): State<Server>,
                                 Json(params): Json<StartManyVmArgs>| {
-                        Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                        Result::<Json<IndexMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
                             server
                                 .api()?
                                 .vm()
@@ -294,7 +293,7 @@ impl Server {
                 "/vm/shutdown.many",
                 put(
                     async move |State(server): State<Server>, Json(params): Json<GetManyVmArgs>| {
-                        Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                        Result::<Json<IndexMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
                             server
                                 .api()?
                                 .vm()
@@ -331,7 +330,7 @@ impl Server {
                 "/vm/delete.many",
                 put(
                     async move |State(server): State<Server>, Json(params): Json<GetManyVmArgs>| {
-                        Result::<Json<HashMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                        Result::<Json<IndexMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
                             server
                                 .api()?
                                 .vm()

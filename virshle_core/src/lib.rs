@@ -7,7 +7,7 @@ pub mod config;
 pub mod utils;
 
 pub mod peer;
-pub use peer::Peer;
+pub use peer::{NodeInfo, Peer};
 
 /// Interact with host network configuration.
 pub mod network;
@@ -18,7 +18,7 @@ pub mod hypervisor;
 pub use hypervisor::disk::utils::{human_bytes, reverse_human_bytes};
 pub use hypervisor::{Vm, VmInfo, VmState, VmTable};
 
-pub use config::{Account, Config, VmTemplate};
+pub use config::{Account, Config, Node, VmTemplate};
 
 pub mod exec;
 

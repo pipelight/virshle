@@ -1185,8 +1185,8 @@ impl VmShutdownMethods<'_> {
         state: Option<VmState>,
         account: Option<Uuid>,
         alias: Option<String>,
-    ) -> Result<IndexMap<Peer, Vec<Result<VmTable, VirshleError>>>, VirshleError> {
-        let mut res: IndexMap<Peer, Vec<Result<VmTable, VirshleError>>> = IndexMap::new();
+    ) -> Result<IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>, VirshleError> {
+        let mut res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = IndexMap::new();
         let mut method = self.api.peer();
         let mut getter = method.get();
         let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
@@ -1206,10 +1206,10 @@ impl VmShutdownMethods<'_> {
         peer: &Peer,
         rest: &mut RestClient,
         args: Option<GetManyVmArgs>,
-    ) -> Result<Vec<Result<VmTable, VirshleError>>, VirshleError> {
+    ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
         rest.open().await?;
         rest.ping().await?;
-        let vms: Vec<Result<VmTable, VirshleError>> = rest
+        let vms: IndexMap<Status, Vec<VmTable>> = rest
             .put("/vm/shutdown.many", args.clone())
             .await?
             .to_value()

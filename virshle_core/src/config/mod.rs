@@ -81,7 +81,7 @@ impl Config {
         node_and_peers.extend(self.peers.to_owned());
         Ok(node_and_peers)
     }
-    /// Returns node with alias.
+    /// Returns peer definition from its alias.
     #[builder(
         finish_fn = get, 
         on(String,into),

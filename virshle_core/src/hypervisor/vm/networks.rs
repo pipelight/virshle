@@ -199,9 +199,7 @@ impl VmLeaseMethods<'_> {
     /// or error out if nothing found
     pub async fn get_all(&self) -> Result<Vec<Lease>, VirshleError> {
         let mut leases: Vec<Lease> = vec![];
-
         let config = Config::get()?;
-        println!("{:#?}", config);
         match config.dhcp {
             Some(DhcpType::Kea(kea_dhcp_config)) => {
                 let mut cli = KeaDhcp::builder().config(kea_dhcp_config).build().await?;

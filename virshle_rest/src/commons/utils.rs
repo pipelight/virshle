@@ -1,4 +1,9 @@
+use super::Status;
+
+use indexmap::IndexMap;
 use owo_colors::OwoColorize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use virshle_core::{
     config::{VmTemplate, VmTemplateTable},
     hypervisor::{
@@ -10,55 +15,11 @@ use virshle_core::{
 use virshle_network::connection::{Connection, ConnectionHandle, ConnectionState};
 use virshle_network::http::{Rest, RestClient};
 
-pub use pipelight_exec::Status;
-
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use uuid::Uuid;
-
 // Error handling
 use miette::Result;
 use tokio::task::JoinError;
 use tracing::{info, warn};
 use virshle_error::VirshleError;
-
-/// A strutc to query a VM from a node.
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct GetVmArgs {
-    pub id: Option<u64>,
-    pub uuid: Option<Uuid>,
-    pub name: Option<String>,
-}
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct GetManyVmArgs {
-    pub vm_state: Option<VmState>,
-    pub account_uuid: Option<Uuid>,
-}
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct CreateVmArgs {
-    pub template_name: Option<String>,
-    pub user_data: Option<UserData>,
-}
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct CreateManyVmArgs {
-    pub ntimes: Option<u8>,
-    pub template_name: Option<String>,
-    pub user_data: Option<UserData>,
-}
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct StartVmArgs {
-    pub id: Option<u64>,
-    pub uuid: Option<Uuid>,
-    pub name: Option<String>,
-    pub user_data: Option<UserData>,
-    pub attach: Option<bool>,
-}
-#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct StartManyVmArgs {
-    pub vm_state: Option<VmState>,
-    pub account_uuid: Option<Uuid>,
-    pub user_data: Option<UserData>,
-}
 
 pub async fn alerte_connection_state(
     peer: &Peer,
@@ -97,7 +58,7 @@ pub async fn alerte_connection_state(
 // pub fn log_response(
 //     tag: &str,
 //     node: &str,
-//     response: &HashMap<Peer, Result<Vec<Vm>, VirshleError>>,
+//     response: &IndexMap<Peer, Result<Vec<Vm>, VirshleError>>,
 // ) -> Result<(), VirshleError> {
 //     let tag = format!("[{tag}]");
 //     for (peer, res) in response.iter() {
@@ -121,14 +82,14 @@ pub async fn alerte_connection_state(
 // }
 
 /// Convert bulk operations result like start.many
-/// into HashMap of successful and failed operations.
+/// into HashMap/IndexMap of successful and failed operations.
 #[tracing::instrument]
 pub async fn vm_bulk_results_to_hashmap(
     vms: Vec<Vm>,
     results: Vec<Result<Result<Vm, VirshleError>, JoinError>>,
-) -> Result<HashMap<Status, Vec<VmTable>>, VirshleError> {
-    let mut response: HashMap<Status, Vec<VmTable>> =
-        HashMap::from([(Status::Succeeded, vec![]), (Status::Failed, vec![])]);
+) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
+    let mut response: IndexMap<Status, Vec<VmTable>> =
+        IndexMap::from([(Status::Succeeded, vec![]), (Status::Failed, vec![])]);
     for res in results {
         match res? {
             Err(_) => {}
@@ -160,7 +121,10 @@ pub async fn vm_bulk_results_to_hashmap(
 
 /// Log response
 #[tracing::instrument(skip(response), name = "bulk op")]
-pub fn log_response_op(tag: &str, response: &HashMap<Status, Vec<Vm>>) -> Result<(), VirshleError> {
+pub fn log_response_op(
+    tag: &str,
+    response: &IndexMap<Status, Vec<Vm>>,
+) -> Result<(), VirshleError> {
     let tag = format!("[bulk-op][{tag}]");
     for (k, v) in response.iter() {
         match k {

@@ -2,7 +2,6 @@
 mod tests;
 
 mod types;
-mod utils;
 pub use types::*;
 
 use virshle_core::{
@@ -23,7 +22,7 @@ use owo_colors::OwoColorize;
 use spinoff::{spinners, Color, Spinner};
 
 // Rest API client
-use virshle_rest::{Client, Server};
+use virshle_rest::{Client, Printer, Server};
 
 use pipelight_exec::Status;
 
@@ -45,6 +44,7 @@ impl Cli {
 
         let config = Config::get()?;
         let mut client = Client::new().peers(config.peers()?).build()?.api().await?;
+        let printer = Printer::default();
 
         match cli.commands {
             /*
@@ -138,7 +138,7 @@ impl Cli {
                     let tag = "create";
                     // Set working node
                     let cw_node = args.current_workgin_node.peer;
-                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
+                    let peer: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let mut user_data = None;
                     if let Some(user_data_path) = args.user_data {
@@ -162,8 +162,13 @@ impl Cli {
 
                             // cw_node.clone(),
                             // Spinner
-                            // let message = utils::print_response_bulk_op(tag, &node.name, &res)?;
-                            // sp.stop_and_persist(&message, "");
+                            let message = printer
+                                .vec_vm()
+                                .tag(tag)
+                                .peer(&peer.alias)
+                                .content(&res)
+                                .print()?;
+                            sp.stop_and_persist(&message, "");
                         }
                         None => {
                             // Spinner
@@ -180,8 +185,13 @@ impl Cli {
                                 .await;
 
                             // Spinner
-                            // let message = utils::print_response_op(tag, &node.name, &res)?;
-                            // sp.stop_and_persist(&message, "");
+                            let message = printer
+                                .res_vm()
+                                .tag(tag)
+                                .peer(&peer.alias)
+                                .content(&res)
+                                .print()?;
+                            sp.stop_and_persist(&message, "");
                         }
                     }
                 }
@@ -190,7 +200,7 @@ impl Cli {
 
                     // Set working node
                     let cw_node = args.vm.current_workgin_node.peer.clone();
-                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
+                    let peer: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     let user_data: Option<UserData> = match args.user_data {
                         Some(path) => Some(UserData::from_file(&path)?),
@@ -203,7 +213,7 @@ impl Cli {
                         let mut sp = Spinner::new(spinners::Toggle5, "Starting vm...", None);
 
                         // Rest API
-                        let res: VmTable = client
+                        let res: Result<VmTable, VirshleError> = client
                             .vm()
                             .start()
                             .one()
@@ -212,7 +222,7 @@ impl Cli {
                             .maybe_name(args.vm.name.clone())
                             .maybe_user_data(user_data.clone())
                             .exec()
-                            .await?;
+                            .await;
 
                         match args.attach {
                             true => {
@@ -231,10 +241,14 @@ impl Cli {
                             }
                             _ => {}
                         }
-
                         // Spinner
-                        // let logs = utils::print_response_op(tag, &node.name, &res)?;
-                        // sp.stop_and_persist(&logs, "");
+                        let message = printer
+                            .res_vm()
+                            .tag(tag)
+                            .peer(&peer.alias)
+                            .content(&res)
+                            .print()?;
+                        sp.stop_and_persist(&message, "");
                     } else if args.vm.state.is_some() || args.vm.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Starting vms...", None);
@@ -247,8 +261,8 @@ impl Cli {
                             .exec()
                             .await?;
                         // let message =
-                        //     utils::print_response_bulk_op("start", &node.name, &res)?;
-                        // sp.stop_and_persist(&message, "");
+                        let message = printer.by_peer_indexmap().tag(tag).content(&res).print()?;
+                        sp.stop_and_persist(&message, "");
                     }
                 }
                 Crud::Stop(args) => {
@@ -256,12 +270,12 @@ impl Cli {
 
                     // Set working node
                     let cw_node = args.current_workgin_node.peer;
-                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
+                    let peer: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     if args.name.is_some() || args.uuid.is_some() || args.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Shutting down vm...", None);
-                        let _res: VmTable = client
+                        let res = client
                             .vm()
                             .shutdown()
                             .one()
@@ -269,10 +283,17 @@ impl Cli {
                             .maybe_uuid(args.uuid)
                             .maybe_name(args.name)
                             .exec()
-                            .await?;
+                            .await;
+
                         // Spinner
-                        // let message = utils::print_response_op(tag, &node.name, &res)?;
-                        // sp.stop_and_persist(&message, "");
+                        let message = printer
+                            .res_vm()
+                            .tag(tag)
+                            .peer(&peer.alias)
+                            .content(&res)
+                            .print()?;
+
+                        sp.stop_and_persist(&message, "");
                     } else if args.state.is_some() || args.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Shutting down vms...", None);
@@ -285,8 +306,8 @@ impl Cli {
                             .exec()
                             .await?;
                         // Spinner
-                        // let message = utils::print_response_bulk_op(tag, &node.name, &res)?;
-                        // sp.stop_and_persist(&message, "");
+                        let message = printer.by_peer_indexmap().tag(tag).content(&res).print()?;
+                        sp.stop_and_persist(&message, "");
                     }
                 }
                 Crud::Delete(args) => {
@@ -294,13 +315,13 @@ impl Cli {
 
                     // Set working node
                     let cw_node = args.vm.current_workgin_node.peer;
-                    let node: Peer = config.peer().maybe_alias(cw_node).get()?;
+                    let peer: Peer = config.peer().maybe_alias(cw_node).get()?;
 
                     if args.vm.name.is_some() || args.vm.uuid.is_some() || args.vm.id.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vm...", None);
 
-                        let _res: VmTable = client
+                        let res = client
                             .vm()
                             .delete()
                             .one()
@@ -308,11 +329,16 @@ impl Cli {
                             .maybe_uuid(args.vm.uuid)
                             .maybe_name(args.vm.name)
                             .exec()
-                            .await?;
+                            .await;
 
                         // Spinner
-                        // let message = utils::print_response_op(tag, &node.name, &res)?;
-                        // sp.stop_and_persist(&message, "");
+                        let message = printer
+                            .res_vm()
+                            .tag(tag)
+                            .peer(&peer.alias)
+                            .content(&res)
+                            .print()?;
+                        sp.stop_and_persist(&message, "");
                     } else if args.vm.state.is_some() || args.vm.account.is_some() {
                         // Spinner
                         let mut sp = Spinner::new(spinners::Toggle5, "Deleting vms...", None);
@@ -325,8 +351,9 @@ impl Cli {
                             .maybe_account(args.vm.account)
                             .exec()
                             .await?;
-                        // let message = utils::print_response_bulk_op(tag, &node.name, &res)?;
-                        // sp.stop_and_persist(&message, "");
+
+                        let message = printer.by_peer_indexmap().tag(tag).content(&res).print()?;
+                        sp.stop_and_persist(&message, "");
                     }
                 }
                 Crud::Ls(args) => {

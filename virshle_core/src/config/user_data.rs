@@ -36,7 +36,7 @@ pub struct Account {
 }
 
 impl Account {
-    pub async fn db(&mut self) -> Result<AccountDbMethods, VirshleError> {
+    pub async fn db(&mut self) -> Result<AccountDbMethods<'_>, VirshleError> {
         let db = connect_db().await?;
         Ok(AccountDbMethods { account: self, db })
     }
