@@ -38,7 +38,10 @@
         nixosModules = rec {
           default = virshle;
           virshle = ./modules/default.nix;
-          nixos-generators = ./modules/nixos-generators;
+          nixos-generators = {
+            default = ./modules/nixos-generators;
+            test = ./modules/nixos-generators/test_vm;
+          };
         };
         defaultTemplate = templates.default;
         templates = {
