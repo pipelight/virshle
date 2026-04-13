@@ -5,7 +5,7 @@ use crate::commons::{
 };
 
 use virshle_core::{
-    config::{Config, Node, UserData, VmTemplate},
+    config::{ UserData, VmTemplate},
     hypervisor::{Vm, VmInfo, VmInfoResponse, VmState, VmTable},
     peer::{HostInfo, NodeInfo, Peer},
 };
@@ -304,11 +304,11 @@ impl PeerMethods<'_> {
     }
 }
 
-struct PeerGetterMethods<'a> {
+pub struct PeerGetterMethods<'a> {
     api: &'a mut Methods,
 }
 impl PeerMethods<'_> {
-    pub fn get(&mut self) -> PeerGetterMethods {
+    pub fn get(&mut self) -> PeerGetterMethods<'_> {
         PeerGetterMethods { api: self.api }
     }
 }
@@ -562,7 +562,7 @@ pub struct VmVmmMethods<'a> {
     api: &'a mut Methods,
 }
 impl VmMethods<'_> {
-    pub fn vmm(&mut self) -> VmVmmMethods {
+    pub fn vmm(&mut self) -> VmVmmMethods<'_> {
         VmVmmMethods { api: self.api }
     }
 }
@@ -631,7 +631,7 @@ pub struct VmGetterMethods<'a> {
     api: &'a mut Methods,
 }
 impl VmMethods<'_> {
-    pub fn get(&mut self) -> VmGetterMethods {
+    pub fn get(&mut self) -> VmGetterMethods<'_> {
         VmGetterMethods { api: self.api }
     }
 }
@@ -750,7 +750,7 @@ pub struct VmCreateMethods<'a> {
     api: &'a mut Methods,
 }
 impl VmMethods<'_> {
-    pub fn create(&mut self) -> VmCreateMethods {
+    pub fn create(&mut self) -> VmCreateMethods<'_> {
         VmCreateMethods { api: self.api }
     }
 }
@@ -871,7 +871,7 @@ pub struct VmDeleteMethods<'a> {
     api: &'a mut Methods,
 }
 impl VmMethods<'_> {
-    pub fn delete(&mut self) -> VmDeleteMethods {
+    pub fn delete(&mut self) -> VmDeleteMethods<'_> {
         VmDeleteMethods { api: self.api }
     }
 }
@@ -965,7 +965,7 @@ pub struct VmStartMethods<'a> {
     api: &'a mut Methods,
 }
 impl VmMethods<'_> {
-    pub fn start(&mut self) -> VmStartMethods {
+    pub fn start(&mut self) -> VmStartMethods<'_> {
         VmStartMethods { api: self.api }
     }
 }
