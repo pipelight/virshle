@@ -71,4 +71,5 @@
     autoResize = true;
   };
   services.dbus.implementation = "broker";
+  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }

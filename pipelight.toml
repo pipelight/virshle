@@ -92,8 +92,7 @@ commands = [
 ]
 
 [[pipelines]]
-name = "test-nixosModule"
-
+name = "test-nixosModule-dirty"
 [[pipelines.steps]]
 name = "build module test flake"
 commands = [
@@ -110,5 +109,43 @@ commands = [
   nixos-rebuild build \
   --flake './templates/vm#default' \
   --override-input virshle ./
+  """,
+]
+[[pipelines]]
+name = "test-nixosModule-dev"
+[[pipelines.steps]]
+name = "build module test flake"
+commands = [
+  # Update flake deps
+  "nix flake update --flake ./templates/host",
+  "nix flake update --flake ./templates/vm",
+  # Build flake
+  """
+  nixos-rebuild build \
+    --flake './templates/host#default' \
+    --override-input virshle "github:pipelight/virshle?ref=dev"
+  """,
+  """
+  nixos-rebuild build \
+    --flake './templates/vm#default' \
+    --override-input virshle "github:pipelight/virshle?ref=dev"
+  """,
+]
+[[pipelines]]
+name = "test-nixosModule-master"
+[[pipelines.steps]]
+name = "build module test flake"
+commands = [
+  # Update flake deps
+  "nix flake update --flake ./templates/host",
+  "nix flake update --flake ./templates/vm",
+  # Build flake
+  """
+  nixos-rebuild build \
+    --flake './templates/host#default'
+  """,
+  """
+  nixos-rebuild build \
+    --flake './templates/vm#default'
   """,
 ]

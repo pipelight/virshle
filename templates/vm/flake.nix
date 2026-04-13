@@ -22,7 +22,7 @@
       default = pkgs.lib.nixosSystem {
         specialArgs = {inherit inputs;};
         modules = [
-          inputs.virshle.nixosModules.nixos-generators.default
+          inputs.virshle.nixosModules.nixos-generators
           # ./my_modules/default.nix
         ];
       };

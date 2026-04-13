@@ -4,8 +4,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     virshle = {
-      url = "github:pipelight/virshle?ref=dev";
-      # url = "path:../../";
+      url = "github:pipelight/virshle";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     pipelight.url = "github:pipelight/pipelight";

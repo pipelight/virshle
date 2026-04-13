@@ -38,10 +38,8 @@
         nixosModules = rec {
           default = virshle;
           virshle = ./modules/default.nix;
-          nixos-generators = {
-            default = ./modules/nixos-generators;
-            test = ./modules/nixos-generators/test_vm;
-          };
+          nixos-generators = ./modules/nixos-generators/default_vm;
+          nixos-generators-test-vm = ./modules/nixos-generators/test_vm;
         };
         defaultTemplate = templates.default;
         templates = {
@@ -100,7 +98,7 @@
             inherit specialArgs;
             format = "raw-efi";
             modules = [
-              ./modules/nixos-generators
+              ./modules/nixos-generators/default_vm
             ];
           };
           # Output all vm disk sizes:
