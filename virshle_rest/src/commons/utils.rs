@@ -83,7 +83,7 @@ pub async fn alerte_connection_state(
 
 /// Convert bulk operations result like start.many
 /// into HashMap/IndexMap of successful and failed operations.
-#[tracing::instrument]
+#[tracing::instrument(skip_all)]
 pub async fn vm_bulk_results_to_hashmap(
     vms: Vec<Vm>,
     results: Vec<Result<Result<Vm, VirshleError>, JoinError>>,

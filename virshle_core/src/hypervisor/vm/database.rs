@@ -97,7 +97,7 @@ impl VmDbFunctions {
         vm_state: Option<VmState>,
         account_uuid: Option<Uuid>,
     ) -> Result<Vec<Vm>, VirshleError> {
-        let account = match account_uuid {
+        let records = match account_uuid {
             Some(account_uuid) => {
                 let account: Option<database::entity::account::Model> =
                     database::prelude::Account::find()
@@ -106,38 +106,32 @@ impl VmDbFunctions {
                         )
                         .one(&self.db)
                         .await?;
-                account
-            }
-            None => None,
-        };
-
-        let records: Vec<database::entity::vm::Model> = match account {
-            Some(account) => {
-                account
-                    .find_related(database::entity::prelude::Vm)
-                    .order_by_asc(database::entity::vm::Column::CreatedAt)
-                    .all(&self.db)
-                    .await?
+                match account {
+                    Some(account) =>account
+                        .find_related(database::entity::prelude::Vm)
+                        .order_by_asc(database::entity::vm::Column::CreatedAt)
+                        .all(&self.db)
+                        .await?,
+                    None => vec![]
+                }
             }
             None => {
                 database::prelude::Vm::find()
                     .order_by_asc(database::entity::vm::Column::CreatedAt)
                     .all(&self.db)
                     .await?
-            }
-        };
 
+            },
+        };
         let mut vms: Vec<Vm> = vec![];
         for record in records {
             let vm: Vm = record.try_into()?;
             vms.push(vm);
         }
-
         // Filter by state
         if let Some(vm_state) = vm_state {
             vms = Self::filter_by_state(vms, &vm_state).await?;
         }
-
         Ok(vms)
     }
     async fn filter_by_state(vms: Vec<Vm>, state: &VmState) -> Result<Vec<Vm>, VirshleError> {
