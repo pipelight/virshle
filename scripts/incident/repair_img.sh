@@ -47,7 +47,7 @@ getUuid() {
 
   vm_definition=$(virshle vm ls \
     --id $vm_id \
-    --json)
+    --ron)
   vm_uuid=$(echo $vm_definition | jq -r ".uuid")
 
   echo $vm_uuid
@@ -60,7 +60,7 @@ mountDisk() {
   vm_uuid=$1
 
   vms_dir="/var/lib/virshle/vm"
-  disk_rel_path="disk/os"
+  disk_rel_path="disk/nixos.xxs.efi.img"
   disk_path="$vms_dir/$vm_uuid/$disk_rel_path"
 
   device="/dev/loop10"
@@ -72,8 +72,8 @@ mountDisk() {
   sudo fsck.vfat -fy $efi_partition
   sudo fsck.ext4 -fy $root_partition
 
-  sudo losetup -d $device
-  sudo losetup --partscan $device $disk_path
+  # sudo losetup -d $device
+  # sudo losetup --partscan $device $disk_path
 }
 
 main() {

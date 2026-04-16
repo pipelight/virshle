@@ -15,28 +15,31 @@
   ## Console output
   # Expose guest VM tty to host through virsh
   boot.kernelParams = lib.mkForce [
-    "console=hvc0"
+    # "console=hvc0"
     "console=ttyS0,115200"
   ];
-  systemd.services."serial-getty@hvc0".enable = true;
+  # systemd.services."serial-getty@hvc0".enable = true;
   systemd.services."serial-getty@ttyS0".enable = true;
 
   boot = {
     # Do not try to resize partition on boot.
-    growPartition = lib.mkForce false;
-    tmp.cleanOnBoot = true;
+    # growPartition = lib.mkForce false;
+    # tmp.cleanOnBoot = true;
     # tmpOnTmpfs = false;
     # tmp.tmpfsHugeMemoryPages = "within_size";
 
+    # Test
+    growPartition = true;
+
     kernelPackages = pkgs.linuxPackages; #lts
-    loader = {
+    loader = lib.mkForce {
       efi = {
         canTouchEfiVariables = true;
       };
       # Systemd boot
       systemd-boot = {
         enable = true;
-        graceful = true;
+        # graceful = true;
       };
     };
   };
@@ -48,13 +51,13 @@
 
   services.pipelight-init.enable = true;
 
-  fileSystems."/pipelight-init" = {
-    device = "/dev/disk/by-label/INIT";
-    fsType = "vfat";
-    options = [
-      "nofail"
-    ];
-  };
+  # fileSystems."/pipelight-init" = {
+  #   device = "/dev/disk/by-label/INIT";
+  #   fsType = "vfat";
+  #   options = [
+  #     "nofail"
+  #   ];
+  # };
 
   # See nixos-generators/formats/raw.efi.nix
   # and nixos-generators/formats/raw.nix
@@ -65,11 +68,12 @@
 
   # Need to specify root fs for `nixos-rebuild`
   fileSystems."/" = lib.mkDefault {
-    # device = "/dev/disk/by-label/nixos";
-    device = "/dev/disk/by-label/ROOT";
+    device = "/dev/disk/by-label/nixos";
+    ## device = "/dev/disk/by-label/ROOT";
     fsType = "ext4";
     autoResize = true;
   };
-  services.dbus.implementation = "broker";
-  nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+
+  # services.dbus.implementation = "broker";
+  # nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }

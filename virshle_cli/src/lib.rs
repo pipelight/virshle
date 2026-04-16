@@ -372,9 +372,8 @@ impl Cli {
                         if args.format.ron == Some(true) {
                             println!("{:#?}", table);
                         } else if args.format.json == Some(true) {
-                            // TODO: do not work on HashMap.
-                            // let string = serde_json::to_string_pretty(&table).unwrap();
-                            // println!("{}", string);
+                            let string = serde_json::to_string_pretty(&table).unwrap();
+                            println!("{}", string);
                         } else {
                             VmTable::display(&vec![table])?
                         }
