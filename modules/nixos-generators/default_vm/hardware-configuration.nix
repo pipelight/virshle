@@ -65,7 +65,7 @@
   # Need to specify root fs for `nixos-rebuild`
   fileSystems."/" = lib.mkDefault {
     # device = "/dev/disk/by-label/nixos";
-    device = "/dev/disk/by-label/ROOT";
+    # device = "/dev/disk/by-label/ROOT";
     fsType = "ext4";
     autoResize = true;
   };

@@ -984,6 +984,7 @@ impl VmStartMethods<'_> {
         name: Option<String>,
         user_data: Option<UserData>,
         attach: Option<bool>,
+        fresh: Option<bool>,
         alias: Option<String>,
     ) -> Result<VmTable, VirshleError> {
         let mut method = self.api.peer();
@@ -998,6 +999,7 @@ impl VmStartMethods<'_> {
                 name: name.clone(),
                 user_data,
                 attach,
+                fresh,
             }),
         )
         .await;
@@ -1026,63 +1028,14 @@ impl VmStartMethods<'_> {
             .await?;
         Ok(vm)
     }
+
+    /// Bulk operation
+    /// Start many virtual machine on a node.
     #[builder(
         finish_fn = exec, 
         on(String,into),
         on(Option<String>,into)
     )]
-    pub async fn fresh(
-        &mut self,
-        id: Option<u64>,
-        uuid: Option<Uuid>,
-        name: Option<String>,
-        user_data: Option<UserData>,
-        attach: Option<bool>,
-        alias: Option<String>,
-    ) -> Result<VmTable, VirshleError> {
-        let mut method = self.api.peer();
-        let mut getter = method.get();
-        let (peer, rest) = getter.alias_or_default().maybe_alias(alias.clone()).exec()?;
-        let res: Result<VmTable, VirshleError> = Self::_fresh(
-            peer,
-            rest,
-            Some(StartVmArgs {
-                id,
-                uuid,
-                name: name.clone(),
-                user_data,
-                attach,
-            }),
-        )
-        .await;
-        match res {
-            Ok(vm) => {
-                info!("Started *fresh* vm {:#?} on node {:#?}.", name, alias);
-                Ok(vm)
-            }
-            Err(e) => {
-                error!("Couldn't *fresh* start vm {:#?} on node {:#?}", name, alias);
-                Err(e)
-            }
-        }
-    }
-    pub async fn _fresh(
-        peer: &Peer,
-        rest: &mut RestClient,
-        args: Option<StartVmArgs>,
-    ) -> Result<VmTable, VirshleError> {
-        rest.open().await?;
-        rest.ping().await?;
-        let vm: VmTable = rest
-            .put("/vm/fresh", args.clone())
-            .await?
-            .to_value()
-            .await?;
-        Ok(vm)
-    }
-    /// Bulk operation
-    /// Start many virtual machine on a node.
-    #[builder(finish_fn = exec)]
     pub async fn many(
         &mut self,
         state: Option<VmState>,

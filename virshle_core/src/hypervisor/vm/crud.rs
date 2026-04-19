@@ -36,11 +36,20 @@ impl Vm {
     /// Start Vm
     #[builder(finish_fn = exec)]
     #[tracing::instrument(skip_all)]
-    pub async fn start(&mut self, user_data: Option<UserData>) -> Result<Vm, VirshleError> {
+    pub async fn start(&mut self, fresh: Option<bool>, user_data: Option<UserData>) -> Result<Vm, VirshleError> {
+
+        match fresh {
+            Some(true) => {
+                // Replace disk.
+                self.replace_disk().name("os").exec()?;
+            },
+            _ => {}
+        };
         // Create initial resources
         self.create_init_resources()
             .maybe_user_data(user_data)
             .exec()?;
+
 
         // Start the ch process
         self.vmm().start().exec().await?;

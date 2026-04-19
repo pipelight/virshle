@@ -185,27 +185,7 @@ impl Server {
                                 .maybe_uuid(params.uuid)
                                 .maybe_user_data(params.user_data)
                                 .maybe_attach(params.attach)
-                                .exec()
-                                .await?,
-                        ))
-                    },
-                ),
-            )
-            .route(
-                "/vm/fresh",
-                put(
-                    async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
-                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                            server
-                                .api()?
-                                .vm()
-                                .start()
-                                .fresh()
-                                .maybe_id(params.id)
-                                .maybe_name(params.name)
-                                .maybe_uuid(params.uuid)
-                                .maybe_user_data(params.user_data)
-                                .maybe_attach(params.attach)
+                                .maybe_fresh(params.fresh)
                                 .exec()
                                 .await?,
                         ))

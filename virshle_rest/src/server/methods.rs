@@ -348,6 +348,7 @@ impl VmStartMethods<'_> {
         uuid: Option<Uuid>,
         user_data: Option<UserData>,
         attach: Option<bool>,
+        fresh: Option<bool>,
     ) -> Result<VmTable, VirshleError> {
         let vm = Self::_one(StartVmArgs {
             id,
@@ -355,6 +356,7 @@ impl VmStartMethods<'_> {
             uuid,
             user_data,
             attach,
+            fresh,
         })
         .await?;
         let res = VmTable::from(&vm).await?;
@@ -371,6 +373,7 @@ impl VmStartMethods<'_> {
             .await?;
         vm.start()
             .maybe_user_data(args.user_data.clone())
+            .maybe_fresh(args.fresh)
             .exec()
             .await?;
         Ok(vm)
@@ -396,41 +399,6 @@ impl VmStartMethods<'_> {
             .await?;
         vm.provision_ch_process().await?;
         let res = VmTable::from(&vm).await?;
-        Ok(res)
-    }
-    #[builder(
-        finish_fn = exec,
-        on(String,into),
-        on(Option<String>,into)
-    )]
-    pub async fn fresh(
-        &self,
-        id: Option<u64>,
-        name: Option<String>,
-        uuid: Option<Uuid>,
-        user_data: Option<UserData>,
-        attach: Option<bool>,
-    ) -> Result<VmTable, VirshleError> {
-        let vm = Vm::database()
-            .await?
-            .one()
-            .maybe_id(id)
-            .maybe_name(name.clone())
-            .maybe_uuid(uuid)
-            .get()
-            .await?;
-        // Replace disk.
-        vm.replace_disk().name("os").exec()?;
-        // Start vm.
-        let res = self
-            .one()
-            .maybe_id(id)
-            .maybe_name(name)
-            .maybe_uuid(uuid)
-            .maybe_user_data(user_data)
-            .maybe_attach(attach)
-            .exec()
-            .await?;
         Ok(res)
     }
     #[builder(

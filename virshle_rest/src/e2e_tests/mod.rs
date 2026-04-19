@@ -147,7 +147,8 @@ async fn test_persistence_of_dhcp_config() -> Result<(), VirshleError> {
         .api()?
         .vm()
         .start()
-        .fresh()
+        .one()
+        .fresh(true)
         .name(&vm.name)
         .user_data(user_data)
         .exec()

@@ -272,11 +272,11 @@ impl VmConfig {
         config.balloon = Some(balloon);
 
         // Add bootloader
+        // If you want read only disks or partitions put it in cmdline.
+        // - example: "root=/dev/vda2 rw"
         let payload = PayloadConfig {
             kernel: Some("/run/cloud-hypervisor/hypervisor-fw".to_owned()),
-            cmdline: Some(
-                "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda2 rw".to_owned(),
-            ),
+            cmdline: Some("earlyprintk=ttyS0 console=ttyS0 console=hvc0".to_owned()),
         };
         config.payload = Some(payload);
 
