@@ -10,7 +10,7 @@ vm_uuid="0d1aa5c2-d114-4492-ac40-f56c32812df4"
 rm -rf /var/lib/virshle/vm/$vm_uuid/ch.sock
 cloud-hypervisor \
   --api-socket /var/lib/virshle/vm/$vm_uuid/ch.sock \
-  --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda1 rw" \
+  --cmdline "earlyprintk=ttyS0 console=ttyS0 console=hvc0 root=/dev/vda2 rw" \
   --disk path=/var/lib/virshle/vm/$vm_uuid/disk/nixos.xxs.efi.img \
   --cpus boot=2 \
   --memory size=2048M \

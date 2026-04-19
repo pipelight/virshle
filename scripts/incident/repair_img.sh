@@ -47,7 +47,7 @@ getUuid() {
 
   vm_definition=$(virshle vm ls \
     --id $vm_id \
-    --ron)
+    --json)
   vm_uuid=$(echo $vm_definition | jq -r ".uuid")
 
   echo $vm_uuid
