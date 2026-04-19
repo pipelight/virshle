@@ -100,16 +100,29 @@ impl Vm {
     }
 
     /// Create init disk and network before vm is booted.
-    #[builder(finish_fn = exec)]
+    #[builder(
+        finish_fn = exec,
+    )]
     #[tracing::instrument(skip_all)]
     pub fn create_init_resources(
         &mut self,
         user_data: Option<UserData>,
+        init_disk: Option<bool>,
+        net: Option<bool>,
     ) -> Result<Vm, VirshleError> {
         // Create ressources
-        self.add_init_disk(user_data)?;
-        self.networks().create_all()?;
-
+        match init_disk {
+            Some(true) =>{
+                self.add_init_disk(user_data)?;
+            }
+            _ => {}
+        };
+        match net {
+            Some(true) => {
+                self.networks().ensure_all()?;
+            }
+            _ => {}
+        };
         Ok(self.to_owned())
     }
 
@@ -152,7 +165,6 @@ impl Vm {
         }
         Ok(())
     }
-
     /// Remove vm disks file from filesystem.
     pub fn delete_disks(&self) -> Result<Vec<Disk>, VirshleError> {
         for disk in &self.disk {

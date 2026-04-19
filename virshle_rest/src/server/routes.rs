@@ -1,6 +1,4 @@
-use crate::commons::{
-    CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
-};
+use crate::commons::*;
 use crate::server::Server;
 use axum::{
     extract::{Extension, Path, Query, State},
@@ -171,6 +169,50 @@ impl Server {
                 ),
             )
             .route(
+                "/vm/ensure_resources",
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<EnsureVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .ensure()
+                                .one()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
+                                .maybe_init_disk(params.init_disk)
+                                .maybe_user_data(params.user_data)
+                                .maybe_net(params.net)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
+            )
+            .route(
+                "/vm/ensure_resources.many",
+                put(
+                    async move |State(server): State<Server>,
+                                Json(params): Json<EnsureManyVmArgs>| {
+                        Result::<Json<IndexMap<Status, Vec<VmTable>>>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .ensure()
+                                .many()
+                                .maybe_state(params.vm_state)
+                                .maybe_account(params.account_uuid)
+                                .maybe_init_disk(params.init_disk)
+                                .maybe_user_data(params.user_data)
+                                .maybe_net(params.net)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
+            )
+            .route(
                 "/vm/start",
                 put(
                     async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
@@ -193,45 +235,6 @@ impl Server {
                 ),
             )
             .route(
-                "/vm/provision-ch",
-                put(
-                    async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
-                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                            server
-                                .api()?
-                                .vm()
-                                .start()
-                                .provision_ch()
-                                .maybe_id(params.id)
-                                .maybe_name(params.name)
-                                .maybe_uuid(params.uuid)
-                                .exec()
-                                .await?,
-                        ))
-                    },
-                ),
-            )
-            .route(
-                "/vm/create-init-resources",
-                put(
-                    async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
-                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
-                            server
-                                .api()?
-                                .vm()
-                                .start()
-                                .create_init_resources()
-                                .maybe_id(params.id)
-                                .maybe_name(params.name)
-                                .maybe_uuid(params.uuid)
-                                .maybe_user_data(params.user_data)
-                                .exec()
-                                .await?,
-                        ))
-                    },
-                ),
-            )
-            .route(
                 "/vm/start.many",
                 put(
                     async move |State(server): State<Server>,
@@ -244,6 +247,25 @@ impl Server {
                                 .many()
                                 .maybe_state(params.vm_state)
                                 .maybe_account(params.account_uuid)
+                                .exec()
+                                .await?,
+                        ))
+                    },
+                ),
+            )
+            .route(
+                "/vm/provision_ch",
+                put(
+                    async move |State(server): State<Server>, Json(params): Json<StartVmArgs>| {
+                        Result::<Json<VmTable>, VirshleError>::Ok(Json(
+                            server
+                                .api()?
+                                .vm()
+                                .start()
+                                .provision_ch()
+                                .maybe_id(params.id)
+                                .maybe_name(params.name)
+                                .maybe_uuid(params.uuid)
                                 .exec()
                                 .await?,
                         ))

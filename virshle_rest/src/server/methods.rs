@@ -325,6 +325,86 @@ impl VmCreateMethods<'_> {
         }
     }
 }
+pub struct VmEnsureMethods<'a> {
+    api: &'a Methods,
+}
+impl VmMethods<'_> {
+    pub fn ensure(&self) -> VmEnsureMethods<'_> {
+        VmEnsureMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmEnsureMethods<'_> {
+    #[builder(
+        finish_fn = exec,
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub async fn one(
+        &self,
+        id: Option<u64>,
+        name: Option<String>,
+        uuid: Option<Uuid>,
+
+        init_disk: Option<bool>,
+        user_data: Option<UserData>,
+
+        net: Option<bool>,
+    ) -> Result<VmTable, VirshleError> {
+        let mut vm = Vm::database()
+            .await?
+            .one()
+            .maybe_id(id)
+            .maybe_name(name)
+            .maybe_uuid(uuid)
+            .get()
+            .await?;
+        vm.create_init_resources()
+            .maybe_init_disk(init_disk)
+            .maybe_user_data(user_data.clone())
+            .maybe_net(net)
+            .exec()?;
+
+        let res = VmTable::from(&vm).await?;
+        Ok(res)
+    }
+    #[builder(finish_fn = exec)]
+    pub async fn many(
+        &self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
+        init_disk: Option<bool>,
+        user_data: Option<UserData>,
+        net: Option<bool>,
+    ) -> Result<IndexMap<Status, Vec<VmTable>>, VirshleError> {
+        let vms = Vm::database()
+            .await?
+            .many()
+            .maybe_account_uuid(account)
+            .maybe_vm_state(state)
+            .get()
+            .await?;
+
+        let mut tasks = vec![];
+        for vm in vms.clone() {
+            tasks.push(tokio::spawn({
+                let user_data = user_data.clone();
+                async move {
+                    let mut vm = vm.clone();
+                    vm.create_init_resources()
+                        .maybe_init_disk(init_disk)
+                        .maybe_user_data(user_data)
+                        .maybe_net(net)
+                        .exec()
+                }
+            }));
+        }
+        let results: Vec<Result<Result<Vm, VirshleError>, JoinError>> =
+            futures::future::join_all(tasks).await;
+        let res: IndexMap<Status, Vec<VmTable>> = vm_bulk_results_to_hashmap(vms, results).await?;
+        Ok(res)
+    }
+}
 
 pub struct VmStartMethods<'a> {
     api: &'a Methods,
@@ -401,33 +481,6 @@ impl VmStartMethods<'_> {
         let res = VmTable::from(&vm).await?;
         Ok(res)
     }
-    #[builder(
-        finish_fn = exec,
-        on(String,into),
-        on(Option<String>,into)
-    )]
-    pub async fn create_init_resources(
-        &self,
-        id: Option<u64>,
-        name: Option<String>,
-        uuid: Option<Uuid>,
-        user_data: Option<UserData>,
-    ) -> Result<VmTable, VirshleError> {
-        let mut vm = Vm::database()
-            .await?
-            .one()
-            .maybe_id(id)
-            .maybe_name(name)
-            .maybe_uuid(uuid)
-            .get()
-            .await?;
-        vm.create_init_resources()
-            .maybe_user_data(user_data.clone())
-            .exec()?;
-        let res = VmTable::from(&vm).await?;
-        Ok(res)
-    }
-
     #[builder(finish_fn = exec)]
     pub async fn many(
         &self,

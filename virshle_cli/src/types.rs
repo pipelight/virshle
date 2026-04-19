@@ -67,6 +67,7 @@ pub enum Crud {
     /// Stops a virtual machine.
     #[command(alias = "off", arg_required_else_help = true)]
     Stop(VmArgs),
+
     /// Replace Vm os disk with a new one.
     #[command(arg_required_else_help = true)]
     Fresh(VmArgs),
@@ -81,14 +82,17 @@ pub enum Crud {
     /// Inspect a created virtual machine configuration (cloud-hypervisor api).
     #[command(arg_required_else_help = true)]
     ChInfo(VmArgs),
+
     /// Return the path of vm vsock
     #[command(arg_required_else_help = true, hide = true)]
     GetVsockPath(VmArgs),
+    /// Replace Vm os disk with a new one.
+    #[command(arg_required_else_help = true, hide = true)]
+    Ensure(EnsureArgs),
+
+    /// Deprecated: No known usage.
     #[command(arg_required_else_help = true, hide = true)]
     GetListNames(VmArgs),
-
-    #[command(arg_required_else_help = true, hide = true)]
-    Definition(VmArgs),
 
     /// List existing vms.
     #[command()]
@@ -189,6 +193,29 @@ pub struct VmArgs {
 pub struct DeleteArgs {
     #[arg(short, long, value_name = "MODE")]
     pub mode: Option<DeletionMode>,
+
+    #[command(flatten)]
+    pub vm: VmArgs,
+}
+
+#[derive(Default, Debug, Args, Clone, Eq, PartialEq, Serialize)]
+pub struct EnsureArgs {
+    /// Wether to create the network interfaces on host.
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    pub net: Option<bool>,
+    /// Wether to create the pipelight-init disk.
+    #[arg(long,num_args(0..=1),
+        require_equals = true,
+        default_missing_value = "true"
+    )]
+    #[arg(short, long)]
+    pub init_disk: Option<bool>,
+    /// Pass user data to VM.
+    #[arg(short, long, value_name = "USERDATA_FILEPATH")]
+    pub user_data: Option<String>,
 
     #[command(flatten)]
     pub vm: VmArgs,

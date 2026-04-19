@@ -73,7 +73,6 @@ mountDisk() {
   sudo fsck.ext4 -fy $root_partition
 
   sudo losetup -d $device
-  sudo losetup --partscan $device $disk_path
 
   # TODO: mount partitions for manual inspection
   # mount $efi_partition

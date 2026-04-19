@@ -122,7 +122,7 @@ in
           text = ''
             set +e # Do not exit if a command fails
             echo "Restarting running VMs..."
-            ${package}/bin/virshle vm start --state running ${verbosity}
+            ${package}/bin/virshle vm ensure --net --state running ${verbosity}
             exit 0
           '';
           script = pkgs.writeShellScriptBin name text;

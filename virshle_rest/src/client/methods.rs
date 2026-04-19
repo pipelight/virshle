@@ -1,9 +1,6 @@
 use crate::client::Client;
 
-use crate::commons::{
-    CreateManyVmArgs, CreateVmArgs, GetManyVmArgs, GetVmArgs, StartManyVmArgs, StartVmArgs,
-};
-
+use crate::commons::*;
 use virshle_core::{
     config::{ UserData, VmTemplate},
     hypervisor::{Vm, VmInfo, VmInfoResponse, VmState, VmTable},
@@ -621,9 +618,109 @@ impl VmMethods<'_> {
             .await?
             .to_value()
             .await?;
-
-        // info!("[end] fetched info on a vm on node {:#?}", peer.name);
         Ok(path)
+    }
+}
+
+pub struct VmEnsureMethods<'a> {
+    api: &'a mut Methods,
+}
+impl VmMethods<'_> {
+    pub fn ensure(&mut self) -> VmEnsureMethods<'_> {
+        VmEnsureMethods { api: self.api }
+    }
+}
+#[bon]
+impl VmEnsureMethods<'_> {
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub async fn one(
+        &mut self,
+        id: Option<u64>,
+        uuid: Option<Uuid>,
+        name: Option<String>,
+
+        user_data: Option<UserData>,
+        init_disk:Option<bool>,
+
+        net: Option<bool>,
+
+        alias: Option<String>,
+    ) -> Result<VmTable, VirshleError> {
+
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        rest.open().await?;
+        rest.ping().await?;
+        let vm: VmTable = rest
+            .put(
+                "/vm/ensure_resources",
+                Some(EnsureVmArgs {
+                    id,
+                    uuid,
+                    name,
+                    init_disk,
+                    user_data,
+                    net,
+                }),
+            )
+            .await?
+            .to_value()
+            .await?;
+        Ok(vm)
+    }
+    #[builder(
+        finish_fn = exec, 
+        on(String,into),
+        on(Option<String>,into)
+    )]
+    pub async fn many(
+        &mut self,
+        state: Option<VmState>,
+        account: Option<Uuid>,
+
+        user_data: Option<UserData>,
+        init_disk:Option<bool>,
+
+        net: Option<bool>,
+
+        alias: Option<String>,
+    ) -> Result<IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>,VirshleError> {
+        let mut res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = IndexMap::new();
+        let mut method = self.api.peer();
+        let mut getter = method.get();
+        let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
+        let vms = Self::_many(
+            peer,
+            rest,
+            Some(EnsureManyVmArgs {
+                vm_state: state,
+                account_uuid: account,
+                init_disk,
+                user_data,
+                net,
+            })
+        )
+        .await?;
+        res.insert(peer.clone(), vms);
+        Ok(res)
+    }
+    async fn _many(
+        peer: &Peer,
+        rest: &mut RestClient,
+        args: Option<EnsureManyVmArgs>,
+    ) -> Result<IndexMap<Status, Vec<VmTable>>,VirshleError> {
+        rest.ping().await?;
+        let vms: IndexMap<Status,Vec<VmTable>> = rest
+            .put("/vm/ensure_resources.many", args.clone())
+            .await?
+            .to_value()
+            .await?;
+        Ok(vms)
     }
 }
 
@@ -673,7 +770,6 @@ impl VmGetterMethods<'_> {
         rest: &mut RestClient,
         args: Option<GetVmArgs>,
     ) -> Result<VmTable, VirshleError> {
-        rest.open().await?;
         rest.ping().await?;
         let vm: VmTable = rest.post("/vm/info", args.clone())
             .await?
@@ -1043,8 +1139,7 @@ impl VmStartMethods<'_> {
         user_data: Option<UserData>,
         alias: Option<String>,
     ) -> Result<IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>,VirshleError> {
-        let mut res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>>
-        = IndexMap::new();
+        let mut res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = IndexMap::new();
         let mut method = self.api.peer();
         let mut getter = method.get();
         let (peer, rest) = getter.alias_or_default().maybe_alias(alias).exec()?;
@@ -1067,7 +1162,6 @@ impl VmStartMethods<'_> {
         rest: &mut RestClient,
         args: Option<StartManyVmArgs>,
     ) -> Result<IndexMap<Status, Vec<VmTable>>,VirshleError> {
-        rest.open().await?;
         rest.ping().await?;
         let vms: IndexMap<Status,Vec<VmTable>> = rest
             .put("/vm/start.many", args.clone())
@@ -1082,7 +1176,7 @@ pub struct VmShutdownMethods<'a> {
     api: &'a mut Methods,
 }
 impl VmMethods<'_> {
-    pub fn shutdown(&mut self) -> VmShutdownMethods {
+    pub fn shutdown(&mut self) -> VmShutdownMethods<'_> {
         VmShutdownMethods { api: self.api }
     }
 }

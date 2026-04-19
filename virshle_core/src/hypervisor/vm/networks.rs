@@ -34,6 +34,20 @@ impl VmNetMethods<'_> {
         }
         Ok(ips)
     }
+    /// Create all networks associated to Vm on host (and ovs configuration).
+    #[tracing::instrument(skip_all)]
+    pub fn ensure_all(&self) -> Result<(), VirshleError> {
+        trace!("creating networks for vm {:#?}", self.vm.name);
+        if let Some(networks) = &self.vm.net {
+            for net in networks {
+                // Clean up
+                self._delete(&net)?;
+                self._create(&net)?;
+            }
+        }
+        Ok(())
+    }
+
     /// Create network <name> on host (and ovs configuration).
     #[tracing::instrument(skip_all)]
     pub fn create_one(&self, name: &str) -> Result<(), VirshleError> {
@@ -55,8 +69,6 @@ impl VmNetMethods<'_> {
         trace!("creating networks for vm {:#?}", self.vm.name);
         if let Some(networks) = &self.vm.net {
             for net in networks {
-                // Clean up
-                self._delete(&net)?;
                 self._create(&net)?;
             }
         }

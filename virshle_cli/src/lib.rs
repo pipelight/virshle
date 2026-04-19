@@ -195,6 +195,62 @@ impl Cli {
                         }
                     }
                 }
+                Crud::Ensure(args) => {
+                    let tag = "ensure";
+
+                    // Set working node
+                    let cw_node = args.vm.current_workgin_node.peer.clone();
+                    let peer: Peer = config.peer().maybe_alias(cw_node).get()?;
+
+                    let user_data: Option<UserData> = match args.user_data {
+                        Some(path) => Some(UserData::from_file(&path)?),
+                        None => None,
+                    };
+
+                    if args.vm.name.is_some() || args.vm.uuid.is_some() || args.vm.id.is_some() {
+                        // Spinner
+                        let mut sp =
+                            Spinner::new(spinners::Toggle5, "Ensure vm resources...", None);
+
+                        // Rest API
+                        let res: Result<VmTable, VirshleError> = client
+                            .vm()
+                            .ensure()
+                            .one()
+                            .maybe_id(args.vm.id)
+                            .maybe_uuid(args.vm.uuid)
+                            .maybe_name(args.vm.name.clone())
+                            .maybe_init_disk(args.init_disk)
+                            .maybe_user_data(user_data.clone())
+                            .exec()
+                            .await;
+
+                        // Spinner
+                        let message = printer
+                            .res_vm()
+                            .tag(tag)
+                            .peer(&peer.alias)
+                            .content(&res)
+                            .print()?;
+                        sp.stop_and_persist(&message, "");
+                    } else if args.vm.state.is_some() || args.vm.account.is_some() {
+                        // Spinner
+                        let mut sp =
+                            Spinner::new(spinners::Toggle5, "Ensure vms resources...", None);
+                        let res: IndexMap<Peer, IndexMap<Status, Vec<VmTable>>> = client
+                            .vm()
+                            .ensure()
+                            .many()
+                            .maybe_state(args.vm.state)
+                            .maybe_account(args.vm.account)
+                            .maybe_init_disk(args.init_disk)
+                            .maybe_user_data(user_data.clone())
+                            .exec()
+                            .await?;
+                        let message = printer.by_peer_indexmap().tag(tag).content(&res).print()?;
+                        sp.stop_and_persist(&message, "");
+                    }
+                }
                 Crud::Start(args) => {
                     let tag = "start";
 
@@ -260,7 +316,6 @@ impl Cli {
                             .maybe_account(args.vm.account)
                             .exec()
                             .await?;
-                        // let message =
                         let message = printer.by_peer_indexmap().tag(tag).content(&res).print()?;
                         sp.stop_and_persist(&message, "");
                     }

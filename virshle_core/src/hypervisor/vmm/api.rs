@@ -58,21 +58,28 @@ impl VmmMethods<'_> {
         Ok(())
     }
 
-    pub async fn refresh_networks(&mut self) -> Result<(), VirshleError> {
-        self._remove_networks().await?;
-        Ok(())
-    }
-    /// Remove network:
+    /// Remove networks:
     /// - remove config from vmm process.
-    /// - remove network device from host.
+    /// This function does not remove network device from host.
     async fn _remove_networks(&mut self) -> Result<(), VirshleError> {
         let config = VmConfig::from(self.vm).await?;
         if let Some(networks) = config.net {
             for e in networks {
                 if let Some(id) = e.id {
                     self.api()?.remove_device(&id).await?;
-                    // Delete network from host.
                 }
+            }
+        }
+        Ok(())
+    }
+    /// Add networks:
+    /// - push config to vmm process.
+    /// This function does not create network on host.
+    async fn _add_networks(&mut self) -> Result<(), VirshleError> {
+        let config = VmConfig::from(self.vm).await?;
+        if let Some(networks) = config.net {
+            for e in networks {
+                self.api()?.add_net(&e).await?;
             }
         }
         Ok(())
@@ -218,12 +225,15 @@ impl VmmApiMethods<'_> {
         trace!("{:#?}", res);
         Ok(())
     }
-    pub async fn add_net(&mut self, net_config: NetConfig) -> Result<(), VirshleError> {
+    pub async fn add_net(&mut self, net_config: &NetConfig) -> Result<(), VirshleError> {
         // Safeguard
         self.ping().await?;
         let endpoint = "/vm.add-net";
         let req = net_config;
-        let res = self.client.put::<NetConfig>(endpoint, Some(req)).await?;
+        let res = self
+            .client
+            .put::<NetConfig>(endpoint, Some(req.to_owned()))
+            .await?;
 
         Ok(())
     }

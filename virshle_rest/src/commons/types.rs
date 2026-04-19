@@ -43,3 +43,20 @@ pub struct StartManyVmArgs {
     pub account_uuid: Option<Uuid>,
     pub user_data: Option<UserData>,
 }
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct EnsureVmArgs {
+    pub id: Option<u64>,
+    pub uuid: Option<Uuid>,
+    pub name: Option<String>,
+    pub init_disk: Option<bool>,
+    pub user_data: Option<UserData>,
+    pub net: Option<bool>,
+}
+#[derive(Default, Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct EnsureManyVmArgs {
+    pub vm_state: Option<VmState>,
+    pub account_uuid: Option<Uuid>,
+    pub init_disk: Option<bool>,
+    pub user_data: Option<UserData>,
+    pub net: Option<bool>,
+}
