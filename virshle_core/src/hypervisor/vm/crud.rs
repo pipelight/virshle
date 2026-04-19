@@ -2,6 +2,7 @@ use super::{Disk, Vm};
 // Init disk
 use super::UserData;
 
+use crate::VmState;
 // Globals
 use crate::config::init::MANAGED_DIR;
 
@@ -27,7 +28,7 @@ impl Vm {
         // Create initial resources
         self.create_init_resources()
             .maybe_user_data(user_data)
-            .exec()?;
+            .exec().await?;
 
         info!("created vm {:#?}", self.name);
         Ok(self.to_owned())
@@ -48,7 +49,7 @@ impl Vm {
         // Create initial resources
         self.create_init_resources()
             .maybe_user_data(user_data)
-            .exec()?;
+            .exec().await?;
 
 
         // Start the ch process
@@ -104,7 +105,7 @@ impl Vm {
         finish_fn = exec,
     )]
     #[tracing::instrument(skip_all)]
-    pub fn create_init_resources(
+    pub async fn create_init_resources(
         &mut self,
         user_data: Option<UserData>,
         init_disk: Option<bool>,
@@ -120,6 +121,14 @@ impl Vm {
         match net {
             Some(true) => {
                 self.networks().ensure_all()?;
+                if let Ok(mut api) = self.vmm().api() {
+                    match api.state().await {
+                        Ok(VmState::Running) => {
+                            self.vmm().ensure_networks().await?;
+                        },
+                        _ => {}
+                    };
+                }
             }
             _ => {}
         };

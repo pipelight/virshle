@@ -363,7 +363,8 @@ impl VmEnsureMethods<'_> {
             .maybe_init_disk(init_disk)
             .maybe_user_data(user_data.clone())
             .maybe_net(net)
-            .exec()?;
+            .exec()
+            .await?;
 
         let res = VmTable::from(&vm).await?;
         Ok(res)
@@ -396,6 +397,7 @@ impl VmEnsureMethods<'_> {
                         .maybe_user_data(user_data)
                         .maybe_net(net)
                         .exec()
+                        .await
                 }
             }));
         }

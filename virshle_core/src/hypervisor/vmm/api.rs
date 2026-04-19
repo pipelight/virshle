@@ -58,6 +58,11 @@ impl VmmMethods<'_> {
         Ok(())
     }
 
+    pub async fn ensure_networks(&mut self) -> Result<(), VirshleError> {
+        self._remove_networks().await?;
+        self._add_networks().await?;
+        Ok(())
+    }
     /// Remove networks:
     /// - remove config from vmm process.
     /// This function does not remove network device from host.
