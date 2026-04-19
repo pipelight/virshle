@@ -222,6 +222,7 @@ impl Cli {
                             .maybe_name(args.vm.name.clone())
                             .maybe_init_disk(args.init_disk)
                             .maybe_user_data(user_data.clone())
+                            .maybe_net(args.net)
                             .exec()
                             .await;
 
@@ -245,6 +246,7 @@ impl Cli {
                             .maybe_account(args.vm.account)
                             .maybe_init_disk(args.init_disk)
                             .maybe_user_data(user_data.clone())
+                            .maybe_net(args.net)
                             .exec()
                             .await?;
                         let message = printer.by_peer_indexmap().tag(tag).content(&res).print()?;

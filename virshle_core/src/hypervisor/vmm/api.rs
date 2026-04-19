@@ -66,8 +66,9 @@ impl VmmMethods<'_> {
     /// Remove networks:
     /// - remove config from vmm process.
     /// This function does not remove network device from host.
-    async fn _remove_networks(&mut self) -> Result<(), VirshleError> {
-        let config = VmConfig::from(self.vm).await?;
+    pub async fn _remove_networks(&mut self) -> Result<(), VirshleError> {
+        let response: VmInfoResponse = self.api()?.info().await?;
+        let config = response.config;
         if let Some(networks) = config.net {
             for e in networks {
                 if let Some(id) = e.id {
@@ -80,7 +81,7 @@ impl VmmMethods<'_> {
     /// Add networks:
     /// - push config to vmm process.
     /// This function does not create network on host.
-    async fn _add_networks(&mut self) -> Result<(), VirshleError> {
+    pub async fn _add_networks(&mut self) -> Result<(), VirshleError> {
         let config = VmConfig::from(self.vm).await?;
         if let Some(networks) = config.net {
             for e in networks {

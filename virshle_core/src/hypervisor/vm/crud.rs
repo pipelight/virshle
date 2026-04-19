@@ -27,6 +27,7 @@ impl Vm {
 
         // Create initial resources
         self.create_init_resources()
+            .init_disk(true)
             .maybe_user_data(user_data)
             .exec().await?;
 
@@ -46,11 +47,13 @@ impl Vm {
             },
             _ => {}
         };
+
         // Create initial resources
         self.create_init_resources()
+            .init_disk(true)
             .maybe_user_data(user_data)
+            .net(true)
             .exec().await?;
-
 
         // Start the ch process
         self.vmm().start().exec().await?;
@@ -120,13 +123,16 @@ impl Vm {
         };
         match net {
             Some(true) => {
-                self.networks().ensure_all()?;
                 if let Ok(mut api) = self.vmm().api() {
                     match api.state().await {
                         Ok(VmState::Running) => {
-                            self.vmm().ensure_networks().await?;
+                            self.vmm()._remove_networks().await?;
+                            self.networks().ensure_all()?;
+                            self.vmm()._add_networks().await?;
                         },
-                        _ => {}
+                        _ => {
+                            self.networks().ensure_all()?;
+                        }
                     };
                 }
             }
