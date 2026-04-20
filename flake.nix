@@ -81,24 +81,27 @@
       };
       nixosConfigurations = {
         vm_base = nixpkgs.lib.nixosSystem {
+          inherit pkgs;
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko/disko-base.nix
+            ./modules/nixos-generators/disko/disko_base.nix
           ];
         };
         vm_all_sizes = nixpkgs.lib.nixosSystem {
+          inherit pkgs;
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko/disko-all.nix
+            ./modules/nixos-generators/disko/disko_all.nix
           ];
         };
         vm_test = nixpkgs.lib.nixosSystem {
+          inherit pkgs;
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/test_vm
-            ./modules/nixos-generators/disko/disko-test.nix
+            ./modules/nixos-generators/disko/disko_test.nix
           ];
         };
       };
@@ -120,15 +123,19 @@
       devShells.default = pkgs.callPackage ./shell.nix {};
       packages = {
         default = pkgs.callPackage ./package.nix {};
+
+        ###################################
+        ## Btrfs VMs
+        vm_base = nixosConfigurations.vm_base.config.system.build.diskoImages;
         # Output all vm disk sizes:
         # - nixos.xxs.efi.raw
         # - nixos.xs.efi.raw
         # - nixos.s.efi.raw
         vm_all_sizes = nixosConfigurations.vm_all_sizes.config.system.build.diskoImages;
-        vm_base = nixosConfigurations.vm_base.config.system.build.diskoImages;
         vm_test = nixosConfigurations.vm_test.config.system.build.diskoImages;
 
-        _vm_disko = nixosConfigurations.installer.config.system.build.isoImage;
+        ###################################
+        ## Ext4 VMs
         _vm_base = inputs.nixos-generators.nixosGenerate {
           inherit pkgs;
           inherit specialArgs;
@@ -148,11 +155,6 @@
           modules = [
             ./modules/nixos-generators/make-disk-images.nix
             ./modules/nixos-generators/default_vm
-            {
-              nix.settings = {
-                trusted-users = ["root" "@wheel"];
-              };
-            }
           ];
         };
         # Output vm disk for easy testing (with default passwords).
