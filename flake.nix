@@ -36,7 +36,15 @@
       inherit virshle_lib;
     };
   in
-    flake-utils.lib.eachDefaultSystem (system: let
+    {
+      nixosModules = rec {
+        default = virshle;
+        virshle = ./modules/default.nix;
+        vm = ./modules/nixos-generators/default_vm;
+        vm_test = ./modules/nixos-generators/test_vm;
+      };
+    }
+    // flake-utils.lib.eachDefaultSystem (system: let
       # Fix big disk image creation stuck at 'crng init done'.
       #
       # https://github.com/nix-community/nixos-generators/issues/443#issuecomment-3697547318
@@ -63,22 +71,6 @@
         inherit system overlays;
       };
     in rec {
-      nixosModules = rec {
-        default = virshle;
-        virshle = ./modules/default.nix;
-        nixos-generators = {
-          modules = [
-            ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko/disko.nix
-          ];
-        };
-        nixos-generators-test-vm = {
-          modules = [
-            ./modules/nixos-generators/test_vm
-            ./modules/nixos-generators/disko/disko.nix
-          ];
-        };
-      };
       nixosConfigurations = {
         vm_base = nixpkgs.lib.nixosSystem {
           inherit pkgs;

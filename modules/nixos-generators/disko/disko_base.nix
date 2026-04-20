@@ -7,7 +7,6 @@
 }: {
   imports = [
     inputs.disko.nixosModules.disko
-    ./disko.nix
   ];
 
   virtualisation.vmVariantWithDisko = {
