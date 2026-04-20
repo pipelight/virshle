@@ -66,29 +66,39 @@
       nixosModules = rec {
         default = virshle;
         virshle = ./modules/default.nix;
-        nixos-generators = ./modules/nixos-generators/default_vm;
-        nixos-generators-test-vm = ./modules/nixos-generators/test_vm;
+        nixos-generators = {
+          modules = [
+            ./modules/nixos-generators/default_vm
+            ./modules/nixos-generators/disko/disko.nix
+          ];
+        };
+        nixos-generators-test-vm = {
+          modules = [
+            ./modules/nixos-generators/test_vm
+            ./modules/nixos-generators/disko/disko.nix
+          ];
+        };
       };
       nixosConfigurations = {
         vm_base = nixpkgs.lib.nixosSystem {
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko.nix
+            ./modules/nixos-generators/disko/disko-base.nix
           ];
         };
         vm_all_sizes = nixpkgs.lib.nixosSystem {
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko-all.nix
+            ./modules/nixos-generators/disko/disko-all.nix
           ];
         };
         vm_test = nixpkgs.lib.nixosSystem {
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/test_vm
-            ./modules/nixos-generators/disko-test.nix
+            ./modules/nixos-generators/disko/disko-test.nix
           ];
         };
       };

@@ -6,6 +6,22 @@
   modulesPath,
   ...
 }: {
+  # See nixos-generators/formats/raw.efi.nix
+  # and nixos-generators/formats/raw.nix
+  #
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-label/ESP";
+    fsType = "vfat";
+  };
+  # Need to specify root fs for `nixos-rebuild`
+  #
+  fileSystems."/" = lib.mkDefault {
+    # device = "/dev/disk/by-label/nixos";
+    device = "/dev/disk/by-label/ROOT";
+    fsType = "ext4";
+    # fsType = "btrfs"; # does not exist
+    autoResize = true;
+  };
   ## Override nixos-generators config.
   # Add a postVM script to build multible VMs of sizes:
   # - xxs, 20 GiB
