@@ -56,19 +56,19 @@
   };
   # See nixos-generators/formats/raw.efi.nix
   # and nixos-generators/formats/raw.nix
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/ESP";
-    fsType = "vfat";
-  };
+  # fileSystems."/boot" = {
+  #   device = "/dev/disk/by-label/ESP";
+  #   fsType = "vfat";
+  # };
 
   # Need to specify root fs for `nixos-rebuild`
-  fileSystems."/" = lib.mkDefault {
-    # device = "/dev/disk/by-label/nixos";
-    device = "/dev/disk/by-label/ROOT";
-    fsType = "ext4";
-    # fsType = "btrfs"; # does not exist
-    autoResize = true;
-  };
+  # fileSystems."/" = lib.mkDefault {
+  #   # device = "/dev/disk/by-label/nixos";
+  #   device = "/dev/disk/by-label/ROOT";
+  #   fsType = "ext4";
+  #   # fsType = "btrfs"; # does not exist
+  #   autoResize = true;
+  # };
   services.dbus.implementation = "broker";
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 }

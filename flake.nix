@@ -74,12 +74,14 @@
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/default_vm
+            ./modules/nixos-generators/disko.nix
           ];
         };
-        vm_disko_test = nixpkgs.lib.nixosSystem {
+        vm_test = nixpkgs.lib.nixosSystem {
           inherit specialArgs;
           modules = [
             ./modules/nixos-generators/test_vm
+            ./modules/nixos-generators/disko-test.nix
           ];
         };
       };
@@ -101,7 +103,8 @@
       devShells.default = pkgs.callPackage ./shell.nix {};
       packages = {
         #   # default = pkgs.callPackage ./package.nix {};
-        vm_base = nixosConfigurations.vm_base.config.system.build.vmWithDisko;
+        vm_base = nixosConfigurations.vm_base.config.system.build.diskoImages;
+        vm_test = nixosConfigurations.vm_test.config.system.build.diskoImages;
         #
         #   # vm_disko = nixosConfigurations.installer.config.system.build.isoImage;
         #   # vm_base = inputs.nixos-generators.nixosGenerate {
