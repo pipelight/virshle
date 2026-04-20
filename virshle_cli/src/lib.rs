@@ -279,6 +279,7 @@ impl Cli {
                             .maybe_uuid(args.vm.uuid)
                             .maybe_name(args.vm.name.clone())
                             .maybe_user_data(user_data.clone())
+                            .fresh(args.fresh)
                             .exec()
                             .await;
 

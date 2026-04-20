@@ -11,9 +11,12 @@
   # - xxs, 20 GiB
   system.build.raw = lib.mkForce (import "${toString modulesPath}/../lib/make-disk-image.nix" {
     inherit lib config pkgs;
-    partitionTableType = "efi";
     inherit (config.virtualisation) diskSize;
+
+    partitionTableType = "efi";
     format = "raw";
+    label = "ROOT";
+
     postVM = let
       # Copy the image and resize to the given size (in GiB)
       make_disk = name: size:

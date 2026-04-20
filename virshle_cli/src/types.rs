@@ -68,10 +68,6 @@ pub enum Crud {
     #[command(alias = "off", arg_required_else_help = true)]
     Stop(VmArgs),
 
-    /// Replace Vm os disk with a new one.
-    #[command(arg_required_else_help = true)]
-    Fresh(VmArgs),
-
     /// Parse a virtual machine toml configuration.
     #[command(arg_required_else_help = true)]
     Config(VmArgs),

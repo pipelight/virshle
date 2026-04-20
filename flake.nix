@@ -41,6 +41,20 @@
           nixos-generators = ./modules/nixos-generators/default_vm;
           nixos-generators-test-vm = ./modules/nixos-generators/test_vm;
         };
+        nixosConfigurations = {
+          vm_disko_base = nixpkgs.lib.nixosSystem {
+            inherit specialArgs;
+            modules = [
+              ./modules/nixos-generators/default_vm
+            ];
+          };
+          vm_disko_test = nixpkgs.lib.nixosSystem {
+            inherit specialArgs;
+            modules = [
+              ./modules/nixos-generators/test_vm
+            ];
+          };
+        };
         defaultTemplate = templates.default;
         templates = {
           default = {
@@ -89,10 +103,12 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
-      in {
+      in rec {
         devShells.default = pkgs.callPackage ./shell.nix {};
         packages = {
           default = pkgs.callPackage ./package.nix {};
+
+          # vm_disko = nixosConfigurations.installer.config.system.build.isoImage;
           vm_base = inputs.nixos-generators.nixosGenerate {
             inherit pkgs;
             inherit specialArgs;
@@ -112,6 +128,11 @@
             modules = [
               ./modules/nixos-generators/make-disk-images.nix
               ./modules/nixos-generators/default_vm
+              {
+                nix.settings = {
+                  trusted-users = ["root" "@wheel"];
+                };
+              }
             ];
           };
           # Output vm disk for easy testing (with default passwords).

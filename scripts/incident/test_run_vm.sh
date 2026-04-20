@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-vm_uuid="22fd9d87-e4bf-4cd6-96da-7b4c9ae68df3"
+vm_uuid="c504b524-a095-4d4a-9367-61712459f001"
 
 sudo chown -R anon:users /var/lib/virshle/vm/$vm_uuid
 rm -rf /var/lib/virshle/vm/$vm_uuid/ch.*
