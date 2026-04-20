@@ -9,6 +9,7 @@
   imports = [
     (modulesPath + "/profiles/qemu-guest.nix")
     inputs.pipelight.nixosModules.pipelight-init
+    inputs.disko.nixosModules.disko
   ];
 
   ###################################
@@ -44,7 +45,6 @@
   systemd.tmpfiles.rules = [
     "Z '/pipelight-init' 774 root users - -"
   ];
-
   services.pipelight-init.enable = true;
 
   fileSystems."/pipelight-init" = {
@@ -65,8 +65,8 @@
   fileSystems."/" = lib.mkDefault {
     # device = "/dev/disk/by-label/nixos";
     device = "/dev/disk/by-label/ROOT";
-    # fsType = "btrfs";
-    # fsType = "ext4";
+    fsType = "ext4";
+    # fsType = "btrfs"; # does not exist
     autoResize = true;
   };
   services.dbus.implementation = "broker";

@@ -6,6 +6,11 @@
   modulesPath,
   ...
 }: {
-  image.modules.raw-efi = {
-  };
+  # virtualisation.vmVariantWithDisko = {
+  #   # virtualisation.fileSystems."/persist".neededForBoot = true;
+  #   virtualisation = {
+  #     fileSystems =
+  #
+  #   }
+  # };
 }
