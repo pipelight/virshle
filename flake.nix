@@ -77,6 +77,13 @@
             ./modules/nixos-generators/disko.nix
           ];
         };
+        vm_all_sizes = nixpkgs.lib.nixosSystem {
+          inherit specialArgs;
+          modules = [
+            ./modules/nixos-generators/default_vm
+            ./modules/nixos-generators/disko-all.nix
+          ];
+        };
         vm_test = nixpkgs.lib.nixosSystem {
           inherit specialArgs;
           modules = [
@@ -102,48 +109,53 @@
 
       devShells.default = pkgs.callPackage ./shell.nix {};
       packages = {
-        #   # default = pkgs.callPackage ./package.nix {};
+        default = pkgs.callPackage ./package.nix {};
+        # Output all vm disk sizes:
+        # - nixos.xxs.efi.raw
+        # - nixos.xs.efi.raw
+        # - nixos.s.efi.raw
+        vm_all_sizes = nixosConfigurations.vm_all_sizes.config.system.build.diskoImages;
         vm_base = nixosConfigurations.vm_base.config.system.build.diskoImages;
         vm_test = nixosConfigurations.vm_test.config.system.build.diskoImages;
-        #
-        #   # vm_disko = nixosConfigurations.installer.config.system.build.isoImage;
-        #   # vm_base = inputs.nixos-generators.nixosGenerate {
-        #   #   inherit pkgs;
-        #   #   inherit specialArgs;
-        #   #   format = "raw-efi";
-        #   #   modules = [
-        #   #     ./modules/nixos-generators/default_vm
-        #   #   ];
-        #   # };
-        #   # Output all vm disk sizes:
-        #   # - nixos.xxs.efi.raw
-        #   # - nixos.xs.efi.raw
-        #   # - nixos.s.efi.raw
-        #   vm_all_sizes = inputs.nixos-generators.nixosGenerate {
-        #     inherit pkgs;
-        #     inherit specialArgs;
-        #     format = "raw-efi";
-        #     modules = [
-        #       ./modules/nixos-generators/make-disk-images.nix
-        #       ./modules/nixos-generators/default_vm
-        #       {
-        #         nix.settings = {
-        #           trusted-users = ["root" "@wheel"];
-        #         };
-        #       }
-        #     ];
-        #   };
-        #   # Output vm disk for easy testing (with default passwords).
-        #   # - nixos.test.xxs.iso
-        #   vm_test = inputs.nixos-generators.nixosGenerate {
-        #     inherit pkgs;
-        #     inherit specialArgs;
-        #     format = "raw-efi";
-        #     modules = [
-        #       ./modules/nixos-generators/make-test-disk-images.nix
-        #       ./modules/nixos-generators/test_vm
-        #     ];
-        #   };
+
+        _vm_disko = nixosConfigurations.installer.config.system.build.isoImage;
+        _vm_base = inputs.nixos-generators.nixosGenerate {
+          inherit pkgs;
+          inherit specialArgs;
+          format = "raw-efi";
+          modules = [
+            ./modules/nixos-generators/default_vm
+          ];
+        };
+        # Output all vm disk sizes:
+        # - nixos.xxs.efi.raw
+        # - nixos.xs.efi.raw
+        # - nixos.s.efi.raw
+        _vm_all_sizes = inputs.nixos-generators.nixosGenerate {
+          inherit pkgs;
+          inherit specialArgs;
+          format = "raw-efi";
+          modules = [
+            ./modules/nixos-generators/make-disk-images.nix
+            ./modules/nixos-generators/default_vm
+            {
+              nix.settings = {
+                trusted-users = ["root" "@wheel"];
+              };
+            }
+          ];
+        };
+        # Output vm disk for easy testing (with default passwords).
+        # - nixos.test.xxs.iso
+        _vm_test = inputs.nixos-generators.nixosGenerate {
+          inherit pkgs;
+          inherit specialArgs;
+          format = "raw-efi";
+          modules = [
+            ./modules/nixos-generators/make-test-disk-images.nix
+            ./modules/nixos-generators/test_vm
+          ];
+        };
       };
     });
 }
