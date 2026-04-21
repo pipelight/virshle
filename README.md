@@ -1,7 +1,8 @@
 <span>
 <h1>
-<img width="125px" alt="virshle_logo" src="https://github.com/pipelight/virshle/blob/master/public/images/logo.png"/>
+<img width="125px" alt="virshle_logo" src="https://github.com/pipelight/virshle/blob/master/docs/static/images/virshle.png"/>
 <p>Virshle - A cli for multiple relentless virtual machines.</p>
+
 </h1>
 </span>
 
