@@ -8,9 +8,17 @@
   imports = [
     inputs.disko.nixosModules.disko
   ];
+
+  disko.imageBuilder = lib.mkForce {
+    imageFormat = "raw";
+    copyNixStore = true;
+  };
+
   disko.devices = {
     disk = {
-      "nixos.efi" = {
+      # Set default imageSize
+      # imageSize = "20G";
+      "main" = {
         type = "disk";
         content = {
           type = "gpt";

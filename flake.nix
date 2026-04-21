@@ -71,13 +71,25 @@
         inherit system overlays;
       };
     in rec {
-      nixosConfigurations = {
-        vm_base = nixpkgs.lib.nixosSystem {
+      nixosConfigurations = let
+        make_disk = name: size:
+          nixpkgs.lib.nixosSystem {
+            inherit pkgs;
+            inherit specialArgs;
+            modules = [
+              ./modules/nixos-generators/disko/default.nix
+              ./modules/nixos-generators/default_vm
+              {disko.devices.disk.main.imageSize = "20G";}
+            ];
+          };
+      in {
+        vm = nixpkgs.lib.nixosSystem {
           inherit pkgs;
           inherit specialArgs;
           modules = [
+            ./modules/nixos-generators/disko/default.nix
             ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko/disko_base.nix
+            {disko.devices.disk.main.imageSize = "20G";}
           ];
         };
         vm_all_sizes = nixpkgs.lib.nixosSystem {
@@ -118,13 +130,20 @@
 
         ###################################
         ## Btrfs VMs
-        vm_base = nixosConfigurations.vm_base.config.system.build.diskoImages;
+        vm = pkgs.stdenv.mkDerivation {
+          name = "vms";
+          import = [
+            # nixosConfigurations.vm_base.config.system.build.diskoImages
+            nixosConfigurations.vm.config.system.build.diskoImages
+          ];
+        };
         # Output all vm disk sizes:
         # - nixos.xxs.efi.raw
         # - nixos.xs.efi.raw
         # - nixos.s.efi.raw
-        vm_all_sizes = nixosConfigurations.vm_all_sizes.config.system.build.diskoImages;
-        vm_test = nixosConfigurations.vm_test.config.system.build.diskoImages;
+        vm-xxs = nixosConfigurations.vm_all_sizes.config.system.build.diskoImages;
+
+        vm-xxs_test = nixosConfigurations.vm_test.config.system.build.diskoImages;
 
         ###################################
         ## Ext4 VMs
