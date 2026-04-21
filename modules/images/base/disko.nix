@@ -16,9 +16,9 @@
 
   disko.devices = {
     disk = {
-      # Set default imageSize
-      # imageSize = "20G";
       "main" = {
+        # Set default imageSize
+        # imageSize = "20G";
         type = "disk";
         content = {
           type = "gpt";

@@ -77,18 +77,16 @@
             inherit pkgs;
             inherit specialArgs;
             modules = [
-              ./modules/nixos-generators/disko/default.nix
-              ./modules/nixos-generators/default_vm
+              ./modules/images/default.nix
               {disko.devices.disk.main.imageSize = "20G";}
             ];
           };
       in {
-        vm = nixpkgs.lib.nixosSystem {
+        xxs = nixpkgs.lib.nixosSystem {
           inherit pkgs;
           inherit specialArgs;
           modules = [
-            ./modules/nixos-generators/disko/default.nix
-            ./modules/nixos-generators/default_vm
+            ./modules/images/default.nix
             {disko.devices.disk.main.imageSize = "20G";}
           ];
         };
@@ -134,8 +132,11 @@
           name = "vms";
           import = [
             # nixosConfigurations.vm_base.config.system.build.diskoImages
-            nixosConfigurations.vm.config.system.build.diskoImages
+            nixosConfigurations.xxs.config.system.build.diskoImages
+            # nixosConfigurations.xs.config.system.build.diskoImages
+            # nixosConfigurations.s.config.system.build.diskoImages
           ];
+          src = ./.;
         };
         # Output all vm disk sizes:
         # - nixos.xxs.efi.raw

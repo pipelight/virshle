@@ -3,6 +3,9 @@
   pkgs,
   ...
 }: {
+  imports = [
+    ./base
+  ];
   ###################################
   # Default user
   users.users."anon" = {
