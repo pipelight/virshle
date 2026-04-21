@@ -10,8 +10,8 @@
   ];
 
   systemd.tmpfiles.rules = [
-    "d /persist 764 root users - -"
-    "d /var/log 764 root users - -"
+    "d /persist 740 root users - -"
+    "d /var/log 740 root root - -"
   ];
 
   disko.memSize = 6 * 1024;

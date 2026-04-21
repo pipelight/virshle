@@ -40,8 +40,8 @@
       nixosModules = rec {
         default = virshle;
         virshle = ./modules/default.nix;
-        vm = ./modules/nixos-generators/default_vm;
-        vm_test = ./modules/nixos-generators/test_vm;
+        vm = ./modules/images/default.nix;
+        vm-test = ./modules/images/test.nix;
       };
     }
     // flake-utils.lib.eachDefaultSystem (system: let
