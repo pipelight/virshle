@@ -54,6 +54,12 @@
       "nofail"
     ];
   };
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 1 * 1024; # in MiB (=32 GiB)
+    }
+  ];
 
   services.dbus.implementation = "broker";
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";

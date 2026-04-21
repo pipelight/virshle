@@ -9,12 +9,6 @@
     inputs.disko.nixosModules.disko
   ];
 
-  systemd.tmpfiles.rules = [
-    "d /persist 764 root users - -"
-    "d /var/log 764 root users - -"
-  ];
-
-  disko.memSize = 6 * 1024;
   disko.imageBuilder = lib.mkForce {
     imageFormat = "raw";
     copyNixStore = true;
@@ -42,32 +36,32 @@
                 extraArgs = ["-nESP"];
               };
             };
+
             ROOT = {
               size = "100%";
               content = {
                 type = "btrfs";
                 extraArgs = ["-f" "-LROOT"];
                 subvolumes = {
-                  # Disable zstd compression for CPU friendly I/O.
                   "root" = {
                     mountpoint = "/";
-                    mountOptions = ["subvol=root"];
+                    mountOptions = ["subvol=root" "compress=zstd"];
                   };
                   "home" = {
                     mountpoint = "/home";
-                    mountOptions = ["subvol=home"];
+                    mountOptions = ["subvol=home" "compress=zstd"];
                   };
                   "nix" = {
                     mountpoint = "/nix";
-                    mountOptions = ["subvol=nix" "noatime"];
+                    mountOptions = ["subvol=nix" "compress=zstd" "noatime"];
                   };
                   "persist" = {
                     mountpoint = "/persist";
-                    mountOptions = ["subvol=persist" "noatime"];
+                    mountOptions = ["subvol=persist" "compress=zstd" "noatime"];
                   };
                   "log" = {
                     mountpoint = "/var/log";
-                    mountOptions = ["subvol=log" "noatime"];
+                    mountOptions = ["subvol=log" "compress=zstd" "noatime"];
                   };
                 };
               };

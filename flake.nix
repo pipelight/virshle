@@ -72,40 +72,45 @@
       };
     in rec {
       nixosConfigurations = let
-        make_disk = name: size:
+        make_vm_configuration = size: swap:
           nixpkgs.lib.nixosSystem {
             inherit pkgs;
             inherit specialArgs;
             modules = [
               ./modules/images/default.nix
-              {disko.devices.disk.main.imageSize = "20G";}
+              {
+                disko.devices.disk.main.imageSize = size;
+                swapDevices = [
+                  {
+                    device = "/var/lib/swapfile";
+                    size = swap * 1024;
+                  }
+                ];
+              }
+            ];
+          };
+        make_vm_test_configuration = size: swap:
+          nixpkgs.lib.nixosSystem {
+            inherit pkgs;
+            inherit specialArgs;
+            modules = [
+              ./modules/images/test.nix
+              {
+                disko.devices.disk.main.imageSize = size;
+                swapDevices = [
+                  {
+                    device = "/var/lib/swapfile";
+                    size = swap * 1024;
+                  }
+                ];
+              }
             ];
           };
       in {
-        xxs = nixpkgs.lib.nixosSystem {
-          inherit pkgs;
-          inherit specialArgs;
-          modules = [
-            ./modules/images/default.nix
-            {disko.devices.disk.main.imageSize = "20G";}
-          ];
-        };
-        vm_all_sizes = nixpkgs.lib.nixosSystem {
-          inherit pkgs;
-          inherit specialArgs;
-          modules = [
-            ./modules/nixos-generators/default_vm
-            ./modules/nixos-generators/disko/disko_all.nix
-          ];
-        };
-        vm_test = nixpkgs.lib.nixosSystem {
-          inherit pkgs;
-          inherit specialArgs;
-          modules = [
-            ./modules/nixos-generators/test_vm
-            ./modules/nixos-generators/disko/disko_test.nix
-          ];
-        };
+        xxs-test = make_vm_test_configuration "20G" 1;
+        xxs = make_vm_configuration "20G" 1;
+        xs = make_vm_configuration "50G" 1;
+        s = make_vm_configuration "80G" 2;
       };
       defaultTemplate = templates.default;
       templates = {
@@ -123,63 +128,46 @@
       };
 
       devShells.default = pkgs.callPackage ./shell.nix {};
-      packages = {
+      packages = rec {
         default = pkgs.callPackage ./package.nix {};
 
         ###################################
         ## Btrfs VMs
-        vm = pkgs.stdenv.mkDerivation {
-          name = "vms";
-          import = [
-            # nixosConfigurations.vm_base.config.system.build.diskoImages
-            nixosConfigurations.xxs.config.system.build.diskoImages
-            # nixosConfigurations.xs.config.system.build.diskoImages
-            # nixosConfigurations.s.config.system.build.diskoImages
-          ];
-          src = ./.;
-        };
         # Output all vm disk sizes:
-        # - nixos.xxs.efi.raw
-        # - nixos.xs.efi.raw
-        # - nixos.s.efi.raw
-        vm-xxs = nixosConfigurations.vm_all_sizes.config.system.build.diskoImages;
+        # - nixos.xxs.efi.raw 20GiB
+        # - nixos.xs.efi.raw 50GiB
+        # - nixos.s.efi.raw 80GiB
+        vm-xxs-test = nixosConfigurations.xxs-test.config.system.build.diskoImages;
+        vm-xxs = nixosConfigurations.xxs.config.system.build.diskoImages;
+        vm-xs = nixosConfigurations.xs.config.system.build.diskoImages;
+        vm-s = nixosConfigurations.s.config.system.build.diskoImages;
 
-        vm-xxs_test = nixosConfigurations.vm_test.config.system.build.diskoImages;
-
-        ###################################
-        ## Ext4 VMs
-        _vm_base = inputs.nixos-generators.nixosGenerate {
-          inherit pkgs;
-          inherit specialArgs;
-          format = "raw-efi";
-          modules = [
-            ./modules/nixos-generators/default_vm
-          ];
-        };
-        # Output all vm disk sizes:
-        # - nixos.xxs.efi.raw
-        # - nixos.xs.efi.raw
-        # - nixos.s.efi.raw
-        _vm_all_sizes = inputs.nixos-generators.nixosGenerate {
-          inherit pkgs;
-          inherit specialArgs;
-          format = "raw-efi";
-          modules = [
-            ./modules/nixos-generators/make-disk-images.nix
-            ./modules/nixos-generators/default_vm
-          ];
-        };
-        # Output vm disk for easy testing (with default passwords).
-        # - nixos.test.xxs.iso
-        _vm_test = inputs.nixos-generators.nixosGenerate {
-          inherit pkgs;
-          inherit specialArgs;
-          format = "raw-efi";
-          modules = [
-            ./modules/nixos-generators/make-test-disk-images.nix
-            ./modules/nixos-generators/test_vm
-          ];
-        };
+        ## Build all VMs images.
+        vm = let
+          ## Get Vm image store path.
+          vm-derivation-store-path = name:
+            nixosConfigurations.${name}.config.system.build.diskoImages;
+          ## Create commands to copy derivations result to same directory.
+          copy-images-to-output = with pkgs;
+            names:
+            # Join commands
+              lib.strings.concatStringsSep "\n"
+              # Yield command list/array
+              (lib.lists.forEach names (
+                name: "cp ${vm-derivation-store-path name}/* $out/nixos.${name}.efi.img"
+              ));
+        in
+          pkgs.stdenv.mkDerivation {
+            name = "vms";
+            installPhase = ''
+              mkdir $out
+              ${copy-images-to-output ["xxs-test" "xxs" "xs" "s"]}
+            '';
+            fixupPhase = "";
+            buildPhase = "";
+            outputs = ["out"];
+            src = ./.;
+          };
       };
     });
 }
