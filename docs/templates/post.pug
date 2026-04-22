@@ -25,9 +25,9 @@ vcode
   // Table of content
   .tocContainer
     .navbarContainer
-        :tera
-          {% set doc = get_page(path="docs/main.md") %}
-          {{ page_navbar::make(page=doc) }}
+      :tera
+        {% set doc = get_page(path="docs/main.md") %}
+        {{ page_navbar::make(page=doc) }}
     :tera
       {{ toc::make(page=page) }}
 
@@ -36,7 +36,6 @@ vcode
     :tera
       {{ page.content | safe }}
 
-  
   .navContainer
     :tera
       {{ prev_next::make(page=page) }}
