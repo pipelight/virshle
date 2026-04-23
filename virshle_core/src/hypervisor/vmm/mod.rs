@@ -90,7 +90,6 @@ impl VmmMethods<'_> {
         // If we can't establish connection to socket,
         // this means cloud-hypervisor is dead.
         // So we start a new viable process.
-
         if self.api()?.ping().await.is_err() {
             // cmd = format!(
             //     "kitty \
@@ -124,16 +123,16 @@ impl VmmMethods<'_> {
             }
 
             // Set loose permission on cloud-hypervisor socket.
+            #[cfg(debug_assertions)]
+            Process::new()
+                .stdin(&format!("sudo chmod 774 {}", &socket))
+                .run()?;
             #[cfg(not(debug_assertions))]
             {
                 let mut perms = fs::metadata(&path)?.permissions();
                 perms.set_mode(0o774);
                 fs::set_permissions(&path, perms)?;
             }
-            #[cfg(debug_assertions)]
-            Process::new()
-                .stdin(&format!("sudo chmod 774 {}", &socket))
-                .run()?;
         }
         Ok(())
     }
