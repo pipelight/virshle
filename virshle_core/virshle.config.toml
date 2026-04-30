@@ -59,7 +59,7 @@ vcpu = 1
 vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.xxs.efi.img"
+path = "/var/lib/virshle/cache/nixos.xxs.efi.img"
 
 # Tap network device
 [[template.vm]]
@@ -68,7 +68,7 @@ vcpu = 1
 vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.xxs.efi.img"
+path = "/var/lib/virshle/cache/nixos.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -81,7 +81,7 @@ vcpu = 1
 vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.xxs.efi.img"
+path = "/var/lib/virshle/cache/nixos.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.macvtap]
@@ -92,7 +92,7 @@ vcpu = 1
 vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.test.xxs.efi.img"
+path = "/var/lib/virshle/cache/nixos.test.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -108,7 +108,7 @@ vcpu = 1
 vram = "1GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.xxs.efi.img"
+path = "/var/lib/virshle/cache/nixos.xxs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -119,7 +119,7 @@ vcpu = 1
 vram = "2GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.xs.efi.img"
+path = "/var/lib/virshle/cache/nixos.xs.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -130,7 +130,7 @@ vcpu = 2
 vram = "4GiB"
 [[template.vm.disk]]
 name = "os"
-path = "~/Iso/nixos.s.efi.img"
+path = "/var/lib/virshle/cache/nixos.s.efi.img"
 [[template.vm.net]]
 name = "main"
 [template.vm.net.type.tap]
@@ -143,7 +143,7 @@ name = "main"
 # vram = "8GiB"
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Iso/nixos.m.efi.img"
+# path = "/var/lib/virshle/cache/nixos.m.efi.img"
 # [[template.vm.net]]
 # name = "main"
 # [template.vm.net.type.tap]
@@ -154,7 +154,7 @@ name = "main"
 # vram = "10GiB"
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Iso/nixos.l.efi.img"
+# path = "/var/lib/virshle/cache/nixos.l.efi.img"
 # [[template.vm.net]]
 # name = "main"
 # [template.vm.net.type.tap]
@@ -165,7 +165,7 @@ name = "main"
 # vram = "16GiB"
 # [[template.vm.disk]]
 # name = "os"
-# path = "~/Iso/nixos.xl.efi.img"
+# path = "/var/lib/virshle/cache/nixos.xl.efi.img"
 # [[template.vm.net]]
 # name = "main"
 # [template.vm.net.type.tap]

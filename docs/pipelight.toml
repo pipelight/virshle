@@ -32,7 +32,7 @@ actions = ["watch", "manual", "blank"]
 name = "convert tailwindcss to css"
 commands = [
   # main css
-  """tailwindcss \
+  """bun tailwindcss \
     --input ./templates/css/main.css \
     --output ./static/css/main.css \
     --minify
@@ -47,11 +47,11 @@ actions = ["watch", "manual", "blank"]
 name = "convert pug to html"
 commands = [
   # main templates
-  """pug \
+  """bun pug \
     --obj ./templates/pug.options.js \
     ./templates/*.pug
   """,
-  """pug \
+  """bun pug \
     --obj ./templates/pug.options.js \
     ./templates/**/*.pug
   """,

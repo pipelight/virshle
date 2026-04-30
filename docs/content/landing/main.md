@@ -8,20 +8,9 @@ description = ""
 render = false
 +++
 
-{% container(type="null") %}
-**tl;dr**
+{% container(type="warning") %}
 
-Virshle is **toml** configuration files and fancy cli
-on top of a modern hypervisor.
-
-{% end %}
-
-{% container(type="danger") %}
-
-**Alpha releases.**
-
-Although virshle is stable enough to be the engine propelling [Crocuda_vps](https://crocuda.com),
-You shouldn't use it in production as you may encounter unnoticed breaking changes.
+Virshle is still in **alpha**. You may encounter unnoticed breaking changes.
 
 {% end %}
 
@@ -43,7 +32,7 @@ Create machines based on your personal nixos configurations.
 Access your local virtual machine via a shared ssh socket.
 
 ```sh
-ssh vm/<name>`
+ssh vm/<name>
 ```
 
 {% end %}
@@ -58,7 +47,7 @@ List your VMs.
 And get details on resources, storage and network.
 
 ```sh
-v vm ls -v`
+v vm ls -v
 ```
 
 ![cli_preview](/images/v_vm_ls_v.png)
@@ -67,12 +56,10 @@ v vm ls -v`
 
 {% container(type="info") %}
 
-**\[\[ Template centric \]\]**
+Easy **\[\[ Template \]\]** language.
 
-In the vein of NixOs,
-you get a declarative/reproducible approach of VM creation.
-
-A **single template** can spin up **multiple identical** VMs.
+You get a declarative/reproducible approach of VM creation.
+A **single TOML template** can be used to spin up **multiple identical** VMs.
 
 {% sbs() %}
 

@@ -10,8 +10,7 @@
   {% block content %}
 
 :tera
-  {% set why = get_page(path="docs/main.md") %}
-  {% set usage = get_page(path="docs/get_started.md") %}
+  {% set docs = get_page(path="docs/main.md") %}
 
 // Post content
 vprogress
@@ -26,19 +25,14 @@ vcode
       style="background-image: url({{ config.extra.hero.high | safe }}), url({{ config.extra.hero.low | safe }})"
     )
     h1.title {{ section.title }}
-    p.subtitle-xs.pb-6 A cli for multiple relentless <br/> virtual machines.
+    p.subtitle-xs.pb-6 Create and manage<br>ordinary virtual machines.
 
     .subtitleContainer
       .flex.flex-row.flex-wrap
         a.button.primary.mt-5(
-          href="{{ why.permalink }}"
+          href="{{ docs.permalink }}"
         )
-          p Why virshle?
-
-        a.button.primary.mt-5(
-          href="{{ usage.permalink }}"
-        )
-          p Usage
+          p Documentation
 
 .pageContainer
   .postContainer

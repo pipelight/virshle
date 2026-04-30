@@ -4,21 +4,29 @@ updated = 2026-02-11
 
 weight = 40
 
-title = "Run your first VM."
+title = "Spin a virtual machine."
 
 draft=false
 +++
 
-# Run your first VM.
+# Spin a virtual machine.
 
 ## Prerequisite
 
-### Get a default bootable disk...
+### Create a default bootable disk...
 
-You can create default bootable disks from the virshle repository flake.
+You can create a default bootable disks from the virshle repository flake.
 
 ```sh
-nix build "github:pipelight/virshle/#vm_all_sizes" \
+nix build "github:pipelight/virshle/#vm-xxs" \
+    --out-link ./result_vm-xxs \
+    --show-trace
+```
+
+Or create all disks sizes.(Beware: long command).
+
+```sh
+nix build "github:pipelight/virshle/#vm" \
     --out-link ./result_vms \
     --show-trace
 ```
@@ -31,8 +39,8 @@ This command yields the following disks inside the `./result_vms` directory.
 | nixos.xs.efi.img  | 50 GiB |
 | nixos.s.efi.img   | 80 GiB |
 
-You are free to move them around (or in the `/var/lib/virshle/cache` directory)
-and use them inside your template definitions.
+Move them in the cache directory at `/var/lib/virshle/cache`.
+And use them inside your template definitions.
 
 ```sh
 rsync --progress -azv ./result_vms/* /var/lib/virshle/cache
@@ -46,7 +54,7 @@ name = "os"
 path = "/var/lib/virshle/cache/nixos.xxs.efi.img"
 ```
 
-### ...or build a custom one.
+### ...or build a custom disk.
 
 You can create a default disk image (`.img`),
 with your favourite configuration already built-in.
@@ -76,17 +84,26 @@ And add the required dependencies to your flake.
     self,
     nixpkgs,
   } @ inputs:
-    vm_base = inputs.nixos-generators.nixosGenerate {
-      inherit pkgs;
-      inherit specialArgs;
-      format = "raw-efi";
-      modules = [
-        inputs.virshle.nixosModules.nixos-generators
-        # Set a custom disk size
-        {virtualisation.diskSize = 10 * 1024;}
+    {
+    nixosConfigurations = {
+      my_vm = nixpkgs.lib.nixosSystem {
+          inherit pkgs;
+          inherit specialArgs;
+          modules = [
+            inputs.virshle.nixosModules.vm
 
-        ./my_configuration.nix
-      ];
+            ###################################
+            # Preferences
+
+            # Set a custom disk size
+            #disko.devices.disk.main.imageSize = "20G";
+
+            ./my_configuration.nix
+          ];
+      };
+    };
+    packages = {
+        my_vm = nixosConfigurations.xxs-test.config.system.build.diskoImages;
     };
 }
 ```
@@ -94,17 +111,17 @@ And add the required dependencies to your flake.
 Then build the disk image.
 
 ```sh
-nix build ".#vm_base" \
-    --out-link ./result_vms \
+nix build ".#my_vm" \
+    --out-link ./result_my_vm \
     --show-trace
 ```
 
-And feel free to add it to Virshle cache directory for convenience.
+And add the disk to the cache directory.
 
 ```sh
-rsync --progress -azv ./result_vms/* /var/lib/virshle/cache
+rsync --progress -azv ./result_my_vm/* /var/lib/virshle/cache
 # or
-cp ./result_vms/* /var/lib/virshle/cache
+cp -f ./result_vms/* /var/lib/virshle/cache
 ```
 
 ### Make your configuration compatible.
@@ -130,7 +147,7 @@ flake as a dependency to your configuration:
 }
 ```
 
-- And import the **nixos-generators** module.
+- And import the **vm** module.
 
 ```nix
 # vm.nix
@@ -139,7 +156,7 @@ flake as a dependency to your configuration:
   ...
 }: {
   imports = [
-    inputs.virshle.nixosModules.nixos-generators
+    inputs.virshle.nixosModules.vm
   ];
 }
 ```
@@ -148,7 +165,7 @@ Or, you can just start fresh from the **template flake**:
 
 ```sh
 nix flake init \
-    --template github:pipelight/virshle?ref=master
+    --template github:pipelight/virshle
 ```
 
 {% container(type="warning") %}
@@ -164,10 +181,10 @@ _Pipelight is used inside the machine for runtime configuration after boot._
 
 **FHS Linux (Arch, Debian...)**
 
-The creation of a custom raw-efi image on FHS Linux hasn't been automated and
+The creation of a custom disk image on FHS Linux hasn't been automated and
 is therefore beyond the scope of this documentation.
 
-Instructions available in the [FHS_install](../unstable/fhs-installation) section.
+Instructions are a work in progress but still a draft is available at the [FHS_install](../unstable/fhs-installation) section.
 
 {% end %}
 

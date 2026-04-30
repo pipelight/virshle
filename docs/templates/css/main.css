@@ -166,9 +166,9 @@ header {
   .image {
     transition: all 150ms ease;
     @apply absolute;
-    @apply -top-10 xs:top-20;
-    @apply xs:left-100 md:left-150;
-    @apply -z-10;
+    @apply xs:left-80 md:left-150;
+    @apply md:top-4;
+    @apply z-10;
     @apply h-30 w-30 md:h-40 md:w-40;
     /* bg */
     @apply bg-no-repeat bg-cover;

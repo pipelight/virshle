@@ -19,29 +19,24 @@ Virshle is a virtual machine manager (VMM).
 
 It is a single command line utility (cli) written in Rust,
 to be used from inside a terminal.
-It allows you to create and manage multiple virtual machines (VM:
-isolated computers running inside your computer).
+
+It allows you to create and manage multiple virtual machines (isolated computers running inside your computer).
 
 Virshle primarily focuses on **terminal experience** and **agreeable configuration files**.
-
-## Why does it exists?
-
-I wanted to test
-[pipelight](https://github.com/pipelight/pipelight)
-inside a VM to ensure that it could work as a git forge on a remote server.
-But oh boy virtualization isn't easy.
-
-Wrestling with existing VMMs and network tooling, had me learned the fundamentals to finally
-bring together a VMM I enjoy using.
 
 {% container(type="tip") %}
 
 **The ultimate goal.**
 
 Virshle aims to provide immediately usable pre-configured VMs with internet access
-**as fast as possible, and with the lightest burden possible for the end user.**
+**as fast as possible and with minimal configuration.**
 
 {% end %}
+
+## Who is it for?
+
+When you need to spin up banal VMs that can connect to internet, whatever your purpose is.
+Virshle removes the pain of traditional XML, GUI, configuration.
 
 Of course living up to those assumptions has a price.
 
@@ -121,5 +116,6 @@ Some of the most known similar virtualization software can be found at:
 If you want VMs for specific usage like workload isolation,
 some hypervisors may suit you better:
 
+- [clone](https://github.com/unixshells/clone)
 - [Firecracker](https://github.com/firecracker-microvm/firecracker),
 - [CrosVm](https://chromium.googlesource.com/chromiumos/platform/crosvm)

@@ -48,6 +48,16 @@ services.virshle = {
     enable = true;
     logLevel = "info"; # error | warn | info | debug | trace
     user = "anon"; # The user to run the node as (default to root).
+    dhcp.defaultConfig = true; # Add base configuration for kea-dhcp (vm ips handling).
+};
+```
+
+Later one, once you've tweaked virshle configuration to your needs,
+you may want to add it to your host nix configuration.
+
+```nix
+environment.etc = {
+    "virshle/config.toml".source = ./dotfiles/virshle/config.toml;
 };
 ```
 
@@ -106,37 +116,47 @@ You can troubleshoot the node by either:
 
 {% container(type="info") %}
 
-A node is an instance of Virshle that can communicate
-with other peer instances.
+A **node** is an instance of Virshle that can communicate
+with other **peer** instances.
 
-The notion of `node` has been introduced very early in development
-and is greatly inspired by [radicle](https://radicle.xyz/) work on the subject.
-The aim is to further create a peer-to-peer hosting network (decentralized hosting!).
+The notions of node and peers has been introduced very early in development,
+and is greatly inspired by [radicle](https://radicle.xyz/) the decentralized github.
+It provides the foundations for next releases to allow for a peer-to-peer hosting network (decentralized hosting!).
 
 {% end %}
 
 ## Network configuration
 
+Virshle automatically adds seamless connectivity between the host, VMs and the outside.
+
+For your virtual machines to get external network connectivity
+you need to append the following config snippet to your vm template definition.
+
+```toml
+[template.vm.net.type.tap]
+```
+
+```toml
+[[template.vm]]
+name = "default"
+vcpu = 1
+vram = "1GiB"
+[[template.vm.disk]]
+name = "os"
+path = "/var/lib/virshle/cache/nixos.xxs.efi.img"
+[[template.vm.net]]
+name = "main"
+[template.vm.net.type.tap]
+```
+
 {% container(type="tip") %}
 
-Mandatory for external connectivity
+From here, your VM can connect to the outside and **any host network configuration is optional**.
 
 {% end %}
 
-{% container(type="danger") %}
-
-The module to ease host network configuration is still a work in progress.
-
-{% end %}
-
-Virshle is able to add seamless connectivity between host, VMs and the outside
-from a single physical port.
-
-However, the module is not ready yet,
-so you'll need a heavy ass configuration to enable this (500 lines).
-
-For now, you can fine tune your host network configuration based on the following template:
-[`/virshle/modules/networking.nix`](https://github.com/pipelight/virshle/modules/network.nix).
+If you want to have control over your VMs ipv6 and ipv4, you can fine tune your host network configuration based on the following template:
+[`/virshle/modules/networking.nix`](https://github.com/crocuda/virshle/modules/network.nix).
 
 ## Set a custom storage (Optional).
 
