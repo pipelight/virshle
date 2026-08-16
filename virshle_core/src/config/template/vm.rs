@@ -113,27 +113,10 @@ impl TryInto<Vm> for &VmTemplate {
             net: self.net.clone(),
             ..Default::default()
         };
-        ensure_directories(&self, &mut vm)?;
+        vm.ensure_directories()?;
         create_disks(&self, &mut vm)?;
         Ok(vm)
     }
-}
-/*
-* Ensure vm storage directories exists on host.
-*/
-pub fn ensure_directories(template: &VmTemplate, vm: &mut Vm) -> Result<(), VirshleError> {
-    let directories = [
-        format!("{MANAGED_DIR}/vm/{}", vm.uuid),
-        format!("{MANAGED_DIR}/vm/{}/disk", vm.uuid),
-        format!("{MANAGED_DIR}/vm/{}/net", vm.uuid),
-    ];
-    for directory in directories {
-        let path = Path::new(&directory);
-        if !path.exists() {
-            fs::create_dir_all(&directory)?;
-        }
-    }
-    Ok(())
 }
 
 /// Copy template disks (if some)

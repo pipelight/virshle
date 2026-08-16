@@ -160,10 +160,10 @@ mod tests {
 
     #[tokio::test]
     async fn load_testing_node_random_keys() -> Result<()> {
-        testing::tracer()
-            .verbosity(tracing::Level::TRACE)
-            .db(true)
-            .set()?;
+        // testing::tracer()
+        //     .verbosity(tracing::Level::TRACE)
+        //     .db(true)
+        //     .set()?;
 
         let node = Node::default();
         trace!("{:#?}", node);
@@ -185,10 +185,10 @@ mod tests {
 
     #[tokio::test]
     async fn load_testing_node_keys_from_file() -> Result<()> {
-        testing::tracer()
-            .verbosity(tracing::Level::TRACE)
-            .db(true)
-            .set()?;
+        // testing::tracer()
+        //     .verbosity(tracing::Level::TRACE)
+        //     .db(true)
+        //     .set()?;
 
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
@@ -213,10 +213,10 @@ mod tests {
 
     #[tokio::test]
     async fn load_testing_node_keys_from_config_file() -> Result<()> {
-        testing::tracer()
-            .verbosity(tracing::Level::TRACE)
-            .db(true)
-            .set()?;
+        // testing::tracer()
+        //     .verbosity(tracing::Level::TRACE)
+        //     .db(true)
+        //     .set()?;
 
         let node = Config::get()?.node;
         trace!("{:#?}", node);

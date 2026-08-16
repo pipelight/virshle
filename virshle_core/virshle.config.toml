@@ -34,6 +34,11 @@ suffix = "vm"
 alias = "v0"
 url = "ssh://anon@home-v0:2214/var/lib/virshle/virshle.sock"
 weight = 20
+
+[[peer]]
+alias = "v1"
+url = "ssh://anon@v1:2214/var/lib/virshle/virshle.sock"
+weight = 0
 # Whitelist the node by adding its pubkey.
 # public_key = "/var/lib/virshle/node/peers/id_ed25519.pub"
 

@@ -1,3 +1,8 @@
+// Globals
+use crate::config::init::MANAGED_DIR;
+use std::fs;
+use std::path::Path;
+
 use crate::config::UserData;
 use crate::hypervisor::{
     disk::{Disk, InitDisk},
@@ -8,8 +13,6 @@ use crate::network::utils::{uuid_to_duid, uuid_to_mac};
 use unindent::unindent;
 
 pub use uuid::Uuid;
-
-// Templating engine
 
 // Mac
 use serde::{Deserialize, Serialize};
@@ -166,6 +169,21 @@ impl InitData {
 }
 
 impl Vm {
+    /// Ensure vm storage directories exists on host.
+    pub fn ensure_directories(&self) -> Result<(), VirshleError> {
+        let directories = [
+            format!("{MANAGED_DIR}/vm/{}", self.uuid),
+            format!("{MANAGED_DIR}/vm/{}/disk", self.uuid),
+            format!("{MANAGED_DIR}/vm/{}/net", self.uuid),
+        ];
+        for directory in directories {
+            let path = Path::new(&directory);
+            if !path.exists() {
+                fs::create_dir_all(&directory)?;
+            }
+        }
+        Ok(())
+    }
     /// Create and provision an init disk,
     /// and add it vm config.
     #[tracing::instrument]

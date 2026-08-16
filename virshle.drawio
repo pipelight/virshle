@@ -1,0 +1,19 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="mqMP1VjD3d2v7qOuWYjp">
+    <mxGraphModel dx="1060" dy="1108" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="V7votXHu-xTJbmbfe18p-1" parent="1" style="whiteSpace=wrap;html=1;aspect=fixed;" value="client" vertex="1">
+          <mxGeometry height="80" width="80" x="130" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="V7votXHu-xTJbmbfe18p-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="create connection to peer" vertex="1">
+          <mxGeometry height="60" width="120" x="240" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="V7votXHu-xTJbmbfe18p-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="create connection to all peers" vertex="1">
+          <mxGeometry height="60" width="120" x="240" y="500" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

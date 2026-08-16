@@ -198,6 +198,7 @@ impl VmGetterMethods<'_> {
             .maybe_vm_state(args.vm_state)
             .get()
             .await?;
+        // println!("{:#?}", vms);
         Ok(vms)
     }
 }

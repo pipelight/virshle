@@ -111,4 +111,5 @@ impl Peer {
             }
         };
     }
+    // pub async fn rest(&self) -> Result<RestClient, VirshleError> {}
 }

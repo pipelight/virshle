@@ -42,6 +42,8 @@ impl Vm {
 
         match fresh {
             Some(true) => {
+                // Recreate directories if missing
+                self.ensure_directories()?;
                 // Replace disk.
                 self.replace_disk().name("os").exec()?;
             },
